@@ -41,16 +41,21 @@ export interface EncryptedIp {
   ciphertext: string;
 }
 
+function normalizeEncryptionKeyVersion(keyVersion: string): string {
+  const normalized = keyVersion.trim().toLowerCase();
+  if (!/^v[1-9]\d*$/.test(normalized)) {
+    throw new Error(`Unsupported IP encryption key version: ${keyVersion}`);
+  }
+  return normalized;
+}
+
 export function getEncryptionKeyBytes(keyVersion: string): Uint8Array<ArrayBuffer> {
   if (!/^v[1-9]\d*$/.test(keyVersion)) {
     throw new Error(`Unsupported IP encryption key version: ${keyVersion}`);
   }
 
   const versionedKeyName = `IP_ENCRYPTION_KEY_${keyVersion.toUpperCase()}_HEX`;
-  const keyHex =  Bun.env[versionedKeyName];
-
-  //  (keyVersion === "v1" ? Bun.env.IP_ENCRYPTION_KEY_V1_HEX : undefined);
-  //    const keyHex = (keyVersion === "v1" ? Bun.env.IP_ENCRYPTION_KEY_V1_HEX : undefined);
+  const keyHex = Bun.env[versionedKeyName];
 
   if (!keyHex || !/^[0-9a-fA-F]{64}$/.test(keyHex)) {
     throw new Error(`${versionedKeyName} must be a 64-character hex-encoded AES-256 key.`);
@@ -75,10 +80,11 @@ function toBase64(bytes: Uint8Array): string {
 /** Encrypts an IP address; retain nonce and ciphertext together to decrypt later. */
 export async function encryptIP(ip: string): Promise<EncryptedIp> {
   const plaintext = ipSchema.parse(ip);
-  const keyVersion = Bun.env.IP_ENCRYPTION_KEY_VERSION?.trim().toLowerCase();
-  if (!keyVersion) {
+  const configuredKeyVersion = Bun.env.IP_ENCRYPTION_KEY_VERSION;
+  if (!configuredKeyVersion?.trim()) {
     throw new Error("IP_ENCRYPTION_KEY_VERSION is missing.");
   }
+  const keyVersion = normalizeEncryptionKeyVersion(configuredKeyVersion);
   const keyBytes = getEncryptionKeyBytes(keyVersion);
 
   const key = await crypto.subtle.importKey(
@@ -108,7 +114,8 @@ export async function decryptIP(
   ciphertextBase64: string,
   keyVersion: string,
 ): Promise<string> {
-  const keyBytes = getEncryptionKeyBytes(keyVersion);
+  const normalizedKeyVersion = normalizeEncryptionKeyVersion(keyVersion);
+  const keyBytes = getEncryptionKeyBytes(normalizedKeyVersion);
   const key = await crypto.subtle.importKey(
     "raw",
     keyBytes,
