@@ -95,10 +95,10 @@ export async function writeNativeTokenZipArchive(
     const uncompressedSize = rawPayload.length;
     const entryCrc = crc32(rawPayload);
 
-    let payloadToWrite = rawPayload;
+    let payloadToWrite: Uint8Array = rawPayload;
     let compressionMethod = 0; // 0 = STORE
     if (useDeflate && rawPayload.length > 128) {
-      const deflated = Bun.deflateSync(rawPayload);
+      const deflated = Bun.deflateSync(new Uint8Array(rawPayload));
       if (deflated.length < rawPayload.length) {
         payloadToWrite = deflated;
         compressionMethod = 8; // 8 = DEFLATE

@@ -59,7 +59,7 @@ function uuidStringToBytes(uuid: string): Uint8Array {
 /**
  * Encodes a complete binary token guaranteed to fit within MAX_TOKEN_BYTES (25,600 bytes).
  */
-export function encodeBinaryToken(input: EncodeTokenInput): Uint8Array {
+export function encodeBinaryToken(input: EncodeTokenInput): Uint8Array<ArrayBuffer> {
   const uuidBytes =
     input.uuidBytes && input.uuidBytes.length === 16
       ? input.uuidBytes
@@ -70,7 +70,7 @@ export function encodeBinaryToken(input: EncodeTokenInput): Uint8Array {
 
   // Serialize Section II Metadata
   const rawMetaBytes = new TextEncoder().encode(JSON.stringify(input.metadata));
-  let metaBytes = rawMetaBytes;
+  let metaBytes: Uint8Array = rawMetaBytes;
   let flags = TokenFlags.HAS_VQ_GRID | TokenFlags.SNARK_ATTESTED;
   if (input.metadata.totalPages > 1) {
     flags |= TokenFlags.MULTI_PAGE_DOC;

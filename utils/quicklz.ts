@@ -7,7 +7,7 @@ export class QuickLZ {
   private static readonly DEFAULT_HEADER_LEN = 9;
   private static readonly HASH_VALUES = 4096;
 
-  public static compress(source: Uint8Array): Uint8Array {
+  public static compress(source: Uint8Array): Uint8Array<ArrayBuffer> {
     const srcLen = source.length;
     if (srcLen === 0) return new Uint8Array(0);
 
@@ -98,7 +98,7 @@ export class QuickLZ {
     return destination.subarray(0, dstIdx);
   }
 
-  public static decompress(source: Uint8Array): Uint8Array {
+  public static decompress(source: Uint8Array): Uint8Array<ArrayBuffer> {
     if (source.length === 0) return new Uint8Array(0);
 
     const sizeDecompressed = this.readUInt32LE(source, 1);
