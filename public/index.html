@@ -1,15 +1,880 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title></title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TinyToken • GF(2⁸) + VQ + SHARK Fast Token & Image Viewer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      /* Glow2 Design Palette (from README.md) */
+      --glow-cyan: #38bdf8;
+      --glow-rose: #f43f5e;
+      --glow-emerald: #10b981;
+      --glow-purple: #a855f7;
+      --glow-yellow: #f78522;
 
+      --dk-blue: #14213D;   /* Deep Canvas / App Void */
+      --dk-blue2: #124E78;  /* Elevated Surface / Structural Border */
+      --dk-gray: #333533;   /* Neutral Inset / Control Surface */
+      --gray: #CFDBD5;      /* Secondary Text / Structural Borders */
+      --lt-gray: #E5E5E5;   /* Primary Text / High Contrast Readout */
+      --dk-orange: #F78522; /* Telemetry / Byte Mapping / Warn */
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--dk-blue);
+      background-image:
+        radial-gradient(at 0% 0%, rgba(56, 189, 248, 0.10) 0px, transparent 45%),
+        radial-gradient(at 100% 0%, rgba(168, 85, 247, 0.08) 0px, transparent 45%);
+      color: var(--lt-gray);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      line-height: 1.45;
+    }
+
+    .mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Top Header & Telemetry Bar */
+    header {
+      background: rgba(20, 33, 61, 0.92);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--dk-blue2);
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      padding: 0.65rem 1.25rem;
+    }
+
+    .header-row {
+      max-width: 1440px;
+      margin: 0 auto;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+    }
+
+    .brand-mark {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      background: var(--dk-blue2);
+      border: 1px solid var(--glow-cyan);
+      display: grid;
+      place-items: center;
+      color: var(--glow-cyan);
+      font-weight: 700;
+      font-size: 0.8rem;
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.25);
+    }
+
+    .brand-title {
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--lt-gray);
+    }
+
+    .brand-title span {
+      color: var(--glow-cyan);
+    }
+
+    .telemetry-strip {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.25rem 0.6rem;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      background: var(--dk-gray);
+      border: 1px solid var(--dk-blue2);
+      color: var(--lt-gray);
+    }
+
+    .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    .pill-emerald { border-color: rgba(16, 185, 129, 0.5); color: var(--glow-emerald); }
+    .pill-rose    { border-color: rgba(244, 63, 94, 0.5);  color: var(--glow-rose); }
+    .pill-purple  { border-color: rgba(168, 85, 247, 0.5); color: var(--glow-purple); }
+    .pill-orange  { border-color: rgba(247, 133, 34, 0.5); color: var(--dk-orange); }
+    .pill-cyan    { border-color: rgba(56, 189, 248, 0.5); color: var(--glow-cyan); }
+
+    /* Main Split Workspace */
+    .workspace {
+      max-width: 1440px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 1rem 1.25rem;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1rem;
+      flex: 1;
+    }
+
+    @media (min-width: 1024px) {
+      .workspace {
+        grid-template-columns: 7fr 5fr;
+        align-items: start;
+      }
+    }
+
+    /* Panel Cards */
+    .panel {
+      background: rgba(18, 78, 120, 0.22);
+      border: 1px solid var(--dk-blue2);
+      border-radius: 10px;
+      padding: 0.9rem;
+    }
+
+    /* Search & Toolbar */
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-bottom: 0.85rem;
+    }
+
+    .search-input {
+      flex: 1;
+      min-width: 200px;
+      background: var(--dk-gray);
+      border: 1px solid var(--dk-blue2);
+      color: var(--lt-gray);
+      padding: 0.5rem 0.75rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    .search-input:focus {
+      border-color: var(--glow-cyan);
+      box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.15);
+    }
+
+    .btn {
+      background: var(--dk-gray);
+      color: var(--lt-gray);
+      border: 1px solid var(--dk-blue2);
+      padding: 0.45rem 0.75rem;
+      border-radius: 6px;
+      font-size: 0.76rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      transition: all 0.15s;
+    }
+
+    .btn:hover {
+      border-color: var(--glow-cyan);
+      color: var(--glow-cyan);
+    }
+
+    .btn-active {
+      background: var(--dk-blue2);
+      border-color: var(--glow-cyan);
+      color: var(--glow-cyan);
+    }
+
+    .btn-purple {
+      border-color: rgba(168, 85, 247, 0.6);
+      color: var(--glow-purple);
+    }
+
+    .btn-rose {
+      border-color: rgba(244, 63, 94, 0.6);
+      color: var(--glow-rose);
+    }
+
+    /* Token Grid */
+    .token-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(152px, 1fr));
+      gap: 0.65rem;
+      max-height: calc(100vh - 210px);
+      overflow-y: auto;
+      padding-right: 0.25rem;
+    }
+
+    .token-card {
+      background: rgba(20, 33, 61, 0.85);
+      border: 1px solid var(--dk-blue2);
+      border-radius: 8px;
+      padding: 0.5rem;
+      cursor: pointer;
+      transition: transform 0.12s, border-color 0.12s;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      position: relative;
+    }
+
+    .token-card:hover {
+      border-color: var(--glow-cyan);
+      transform: translateY(-1px);
+    }
+
+    .token-card.selected {
+      border-color: var(--glow-cyan);
+      box-shadow: 0 0 0 1px var(--glow-cyan), 0 0 14px rgba(56, 189, 248, 0.22);
+      background: rgba(18, 78, 120, 0.42);
+    }
+
+    .thumb-wrap {
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      background: var(--dk-gray);
+      border-radius: 5px;
+      overflow: hidden;
+      position: relative;
+      border: 1px solid rgba(207, 219, 213, 0.12);
+    }
+
+    .thumb-canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      image-rendering: pixelated;
+    }
+
+    .card-badge-top {
+      position: absolute;
+      top: 4px;
+      left: 4px;
+      right: 4px;
+      display: flex;
+      justify-content: space-between;
+      pointer-events: none;
+    }
+
+    .micro-tag {
+      font-size: 0.62rem;
+      padding: 1px 5px;
+      border-radius: 4px;
+      background: rgba(20, 33, 61, 0.88);
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      color: var(--glow-cyan);
+    }
+
+    .micro-tag.sim {
+      border-color: var(--glow-purple);
+      color: var(--glow-purple);
+    }
+
+    .card-title {
+      font-size: 0.74rem;
+      font-weight: 600;
+      color: var(--lt-gray);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .card-sub {
+      font-size: 0.66rem;
+      color: var(--gray);
+      display: flex;
+      justify-content: space-between;
+    }
+
+    /* Fast Image & Token Viewer (Right Column) */
+    .viewer-panel {
+      position: sticky;
+      top: 3.8rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .viewer-stage {
+      width: 100%;
+      height: 310px;
+      background: var(--dk-gray);
+      border: 1px solid var(--dk-blue2);
+      border-radius: 8px;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+      cursor: grab;
+    }
+
+    .viewer-stage:active {
+      cursor: grabbing;
+    }
+
+    .viewer-media {
+      max-width: 100%;
+      max-height: 100%;
+      transform-origin: center center;
+      transition: transform 0.06s ease-out;
+    }
+
+    .pixelated {
+      image-rendering: pixelated;
+    }
+
+    .viewer-hud {
+      position: absolute;
+      bottom: 8px;
+      left: 8px;
+      right: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      pointer-events: none;
+    }
+
+    .viewer-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* 25 KB Byte-Map Bar */
+    .bytemap-box {
+      background: var(--dk-gray);
+      border: 1px solid var(--dk-blue2);
+      border-radius: 7px;
+      padding: 0.6rem;
+    }
+
+    .bytemap-bar {
+      height: 12px;
+      width: 100%;
+      background: rgba(20, 33, 61, 0.8);
+      border-radius: 999px;
+      overflow: hidden;
+      display: flex;
+      margin: 0.4rem 0;
+      border: 1px solid rgba(207, 219, 213, 0.15);
+    }
+
+    .bm-seg-s1 { background: var(--glow-rose); }
+    .bm-seg-vq { background: var(--glow-purple); }
+    .bm-seg-s2 { background: var(--glow-cyan); }
+    .bm-seg-s3 { background: var(--dk-orange); }
+
+    .bytemap-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.65rem;
+      font-size: 0.68rem;
+      color: var(--gray);
+    }
+
+    .kv-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.45rem;
+      font-size: 0.72rem;
+    }
+
+    .kv-item {
+      background: var(--dk-gray);
+      border: 1px solid rgba(18, 78, 120, 0.7);
+      border-radius: 6px;
+      padding: 0.4rem 0.55rem;
+    }
+
+    .kv-label {
+      font-size: 0.63rem;
+      color: var(--gray);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .kv-val {
+      color: var(--lt-gray);
+      font-weight: 600;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .ocr-box {
+      background: var(--dk-gray);
+      border: 1px solid rgba(18, 78, 120, 0.7);
+      border-radius: 6px;
+      padding: 0.55rem;
+      font-size: 0.73rem;
+      color: var(--gray);
+      max-height: 92px;
+      overflow-y: auto;
+    }
+  </style>
 </head>
 <body>
+  <header>
+    <div class="header-row">
+      <div class="brand">
+        <div class="brand-mark mono">GF</div>
+        <div>
+          <div class="brand-title">Tiny<span>Token</span> <span class="mono" style="font-size:0.72rem;color:var(--gray);font-weight:500;">v2 • GF(2⁸) + VQ + SHARK</span></div>
+        </div>
+      </div>
 
-Index
+      <div class="telemetry-strip mono">
+        <span class="pill pill-emerald" title="Bun Native ZIP Central Directory Engine">
+          <span class="dot" style="background:var(--glow-emerald)"></span>
+          <span id="stat-status">LIVE BUN</span>
+        </span>
+        <span class="pill pill-cyan" id="stat-tokens">0 TOKENS</span>
+        <span class="pill pill-orange" id="stat-boot">BOOT: -- ms</span>
+        <span class="pill pill-orange" id="stat-search">SEARCH: -- ms</span>
+        <span class="pill pill-purple" id="stat-vq">VQ RAM: -- KB</span>
+        <span class="pill pill-rose" id="stat-snark">SHARK/RS: 100%</span>
+      </div>
+    </div>
+  </header>
 
-   
+  <main class="workspace">
+    <!-- Left Column: Search & Instant VQ Neural Grid -->
+    <section class="panel">
+      <div class="toolbar">
+        <input
+          id="search-input"
+          class="search-input mono"
+          type="text"
+          placeholder="Search 25KB tokens by OCR text, filename, or ID (e.g. d.jpg, SHARK, PBIN, page)..."
+          autocomplete="off"
+        />
+        <button id="btn-clear-sim" class="btn btn-purple mono" style="display:none;" title="Exit VQ ADC similarity mode">
+          × Clear VQ Similar
+        </button>
+        <button id="btn-rebuild-25" class="btn mono" title="Rebuild ZIP index with 25 tokens">
+          ⚡ Index 25
+        </button>
+        <button id="btn-rebuild-500" class="btn mono" title="Stress-test ZIP index with 500 tokens">
+          🚀 Bench 500
+        </button>
+      </div>
+
+      <div id="token-grid" class="token-grid"></div>
+    </section>
+
+    <!-- Right Column: Sparse Fast Image & Token Byte-Map Viewer -->
+    <aside class="panel viewer-panel">
+      <div class="viewer-controls">
+        <div style="display:flex;gap:0.35rem;flex-wrap:wrap;">
+          <button id="mode-preview" class="btn btn-active mono">Sect III Preview</button>
+          <button id="mode-vq" class="btn mono">VQ 16×16 (256B)</button>
+          <button id="mode-full" class="btn mono">Full-Res Source</button>
+        </div>
+        <div style="display:flex;gap:0.3rem;">
+          <button id="zoom-out" class="btn mono" title="Zoom Out">−</button>
+          <button id="zoom-reset" class="btn mono" title="Reset Zoom (1x)">1x</button>
+          <button id="zoom-in" class="btn mono" title="Zoom In">+</button>
+          <button id="toggle-pixel" class="btn mono" title="Toggle Crisp Pixelated Rendering"> Crisp</button>
+        </div>
+      </div>
+
+      <div id="viewer-stage" class="viewer-stage">
+        <img id="viewer-img" class="viewer-media" alt="Token Preview" style="display:none;" />
+        <canvas id="viewer-vq-canvas" width="16" height="16" class="viewer-media pixelated" style="width:240px;height:240px;display:none;"></canvas>
+        <div class="viewer-hud mono">
+          <span id="viewer-dim-badge" class="pill pill-cyan">-- × --</span>
+          <span id="viewer-slice-badge" class="pill pill-orange">SLICE: -- ms</span>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:0.4rem;flex-wrap:wrap;justify-content:space-between;">
+        <button id="btn-find-similar" class="btn btn-purple mono">
+          ◈ Find Visually Similar (VQ ADC)
+        </button>
+        <button id="btn-homomorphic" class="btn btn-rose mono" title="Apply blind GF(2^8) linear state mask directly on raw 25KB token slice">
+          ⊕ GF(2⁸) Homomorphic Mask
+        </button>
+      </div>
+
+      <!-- 25 KB Token Byte-Map Bar -->
+      <div class="bytemap-box">
+        <div style="display:flex;justify-content:space-between;font-size:0.72rem;" class="mono">
+          <span style="color:var(--lt-gray);font-weight:600;">25 KB TOKEN ENVELOPE BYTE-MAP</span>
+          <span id="bm-total" style="color:var(--dk-orange);">0 / 25,600 B</span>
+        </div>
+        <div class="bytemap-bar">
+          <div id="bm-s1" class="bm-seg-s1" style="width:15%" title="Section I: Header + 256B SHARK + 384B RS Parity"></div>
+          <div id="bm-vq" class="bm-seg-vq" style="width:8%" title="Section I: 256B VQ 16x16 Codebook Grid"></div>
+          <div id="bm-s2" class="bm-seg-s2" style="width:22%" title="Section II: QuickLZ Metadata & OCR"></div>
+          <div id="bm-s3" class="bm-seg-s3" style="width:55%" title="Section III: 220x220 Preview Image"></div>
+        </div>
+        <div class="bytemap-legend mono">
+          <span><b style="color:var(--glow-rose)">■</b> Hdr+SHARK+RS: <span id="lbl-s1">768B</span></span>
+          <span><b style="color:var(--glow-purple)">■</b> VQ Grid: <span id="lbl-vq">256B</span></span>
+          <span><b style="color:var(--glow-cyan)">■</b> Meta/OCR: <span id="lbl-s2">0B</span></span>
+          <span><b style="color:var(--dk-orange)">■</b> Preview: <span id="lbl-s3">0B</span></span>
+        </div>
+      </div>
+
+      <!-- Cryptographic & Galois Telemetry Readout -->
+      <div class="kv-grid mono">
+        <div class="kv-item">
+          <div class="kv-label">Token ID / Page</div>
+          <div id="kv-id" class="kv-val">—</div>
+        </div>
+        <div class="kv-item">
+          <div class="kv-label">GF(2⁸) RS Parity (384B)</div>
+          <div id="kv-rs" class="kv-val" style="color:var(--glow-emerald);">—</div>
+        </div>
+        <div class="kv-item">
+          <div class="kv-label">SHARK/SNARK Attestation</div>
+          <div id="kv-snark" class="kv-val" style="color:var(--glow-rose);">—</div>
+        </div>
+        <div class="kv-item">
+          <div class="kv-label">ZIP Slice Offset / CRC32</div>
+          <div id="kv-zip" class="kv-val" style="color:var(--dk-orange);">—</div>
+        </div>
+        <div class="kv-item">
+          <div class="kv-label">SHA-256 Merkle Root</div>
+          <div id="kv-merkle" class="kv-val" style="color:var(--glow-cyan);">—</div>
+        </div>
+        <div class="kv-item">
+          <div class="kv-label">Homomorphic GF(2⁸) Tag</div>
+          <div id="kv-homo" class="kv-val" style="color:var(--glow-purple);">—</div>
+        </div>
+      </div>
+
+      <div>
+        <div class="kv-label mono" style="margin-bottom:0.25rem;">Extracted OCR & Asset Metadata Layer (Section II)</div>
+        <div id="ocr-readout" class="ocr-box mono">Select a token to inspect its 25 KB binary slice, VQ 16×16 neural codebook, and SHARK attestation proof.</div>
+      </div>
+    </aside>
+  </main>
+
+  <script>
+    let codebook = [];
+    let currentHits = [];
+    let selectedTokenId = null;
+    let currentTokenDetail = null;
+    let viewerMode = 'preview'; // 'preview' | 'vq' | 'full'
+    let zoomLevel = 1;
+    let panX = 0;
+    let panY = 0;
+    let isDragging = false;
+    let dragStartX = 0;
+    let dragStartY = 0;
+    let crispPixelated = false;
+    let activeSimilarTo = '';
+
+    const elGrid = document.getElementById('token-grid');
+    const elSearch = document.getElementById('search-input');
+    const elViewerImg = document.getElementById('viewer-img');
+    const elViewerCanvas = document.getElementById('viewer-vq-canvas');
+
+    // Render 256-byte (512 hex chars) 16x16 VQ grid onto a 16x16 canvas in < 0.05ms
+    function renderVqHexToCanvas(vqHex, canvas) {
+      if (!canvas || !vqHex || codebook.length === 0) return;
+      const ctx = canvas.getContext('2d');
+      const imgData = ctx.createImageData(16, 16);
+      const data = imgData.data;
+      for (let i = 0; i < 256; i++) {
+        const idx = parseInt(vqHex.slice(i * 2, i * 2 + 2), 16) || 0;
+        const c = codebook[idx] || { r: 20, g: 33, b: 61 };
+        const p = i * 4;
+        data[p] = c.r;
+        data[p + 1] = c.g;
+        data[p + 2] = c.b;
+        data[p + 3] = 255;
+      }
+      ctx.putImageData(imgData, 0, 0);
+    }
+
+    async function loadStatsAndCodebook() {
+      const [statsRes, cbRes] = await Promise.all([
+        fetch('/api/stats').then(r => r.json()),
+        codebook.length ? Promise.resolve({ centroids: codebook }) : fetch('/api/codebook').then(r => r.json())
+      ]);
+
+      if (cbRes.centroids) codebook = cbRes.centroids;
+      if (statsRes.success) {
+        document.getElementById('stat-tokens').textContent =
+          `${statsRes.tokenCount} TOKENS (${(statsRes.archiveSizeBytes / 1024).toFixed(0)} KB ZIP)`;
+        document.getElementById('stat-boot').textContent =
+          `BOOT: ${statsRes.bootIndexTimeMs} ms`;
+        document.getElementById('stat-vq').textContent =
+          `VQ RAM: ${(statsRes.vqRamFootprintBytes / 1024).toFixed(1)} KB`;
+        document.getElementById('stat-snark').textContent =
+          `SHARK/RS: ${statsRes.snarkVerifiedCount}/${statsRes.tokenCount}`;
+      }
+    }
+
+    async function runSearch() {
+      const q = elSearch.value.trim();
+      const params = new URLSearchParams({ q, limit: '80' });
+      if (activeSimilarTo) {
+        params.set('mode', 'vq');
+        params.set('similarTo', activeSimilarTo);
+      }
+      const res = await fetch(`/api/search?${params.toString()}`).then(r => r.json());
+      if (!res.success) return;
+
+      document.getElementById('stat-search').textContent =
+        `${res.mode === 'vq-adc' ? 'VQ-ADC' : 'SEARCH'}: ${res.searchTimeMs} ms`;
+
+      currentHits = res.hits || [];
+      renderGrid();
+
+      if (currentHits.length > 0 && (!selectedTokenId || !currentHits.some(h => h.id === selectedTokenId))) {
+        selectToken(currentHits[0].id);
+      }
+    }
+
+    function renderGrid() {
+      elGrid.innerHTML = '';
+      for (const hit of currentHits) {
+        const card = document.createElement('div');
+        card.className = 'token-card' + (hit.id === selectedTokenId ? ' selected' : '');
+        card.onclick = () => selectToken(hit.id);
+
+        const simBadge = hit.similarityScore !== undefined
+          ? `<span class="micro-tag sim mono">${hit.similarityScore}% VQ</span>`
+          : `<span class="micro-tag mono">${hit.previewFormat}</span>`;
+
+        card.innerHTML = `
+          <div class="thumb-wrap">
+            <canvas class="thumb-canvas" width="16" height="16"></canvas>
+            <div class="card-badge-top">
+              ${simBadge}
+              <span class="micro-tag mono">P.${hit.page}</span>
+            </div>
+          </div>
+          <div class="card-title mono" title="${hit.filename}">${hit.filename}</div>
+          <div class="card-sub mono">
+            <span>${hit.width}×${hit.height}</span>
+            <span style="color:var(--dk-orange)">${(hit.tokenSize / 1024).toFixed(1)}KB</span>
+          </div>
+        `;
+
+        const canvas = card.querySelector('canvas');
+        renderVqHexToCanvas(hit.vqHex, canvas);
+        elGrid.appendChild(card);
+      }
+    }
+
+    async function selectToken(id) {
+      selectedTokenId = id;
+      for (const [idx, hit] of currentHits.entries()) {
+        const card = elGrid.children[idx];
+        if (card) card.classList.toggle('selected', hit.id === id);
+      }
+
+      const res = await fetch(`/api/token/${encodeURIComponent(id)}`).then(r => r.json());
+      if (!res.success) return;
+
+      currentTokenDetail = res.token;
+      const t = res.token;
+      const tel = res.telemetry;
+
+      // Update Viewer HUD
+      document.getElementById('viewer-dim-badge').textContent =
+        `${t.width}×${t.height} • ${t.previewFormat} • ${(t.originalFileSize / 1024).toFixed(1)} KB orig`;
+      document.getElementById('viewer-slice-badge').textContent =
+        `SLICE: ${tel.sliceExtractTimeMs} ms | VERIFY: ${tel.rsAndSnarkVerifyTimeMs} ms`;
+
+      // Update 25 KB Byte-Map Bar
+      const bm = t.byteMap;
+      const total = bm.totalTokenBytes || 1;
+      document.getElementById('bm-total').textContent =
+        `${bm.totalTokenBytes.toLocaleString()} / 25,600 B (${((bm.totalTokenBytes / 25600) * 100).toFixed(1)}%)`;
+      document.getElementById('bm-s1').style.width = `${Math.max(6, ((768) / total) * 100)}%`;
+      document.getElementById('bm-vq').style.width = `${Math.max(5, ((256) / total) * 100)}%`;
+      document.getElementById('bm-s2').style.width = `${Math.max(8, (bm.section2MetaBytes / total) * 100)}%`;
+      document.getElementById('bm-s3').style.width = `${Math.max(10, (bm.section3PreviewBytes / total) * 100)}%`;
+
+      document.getElementById('lbl-s2').textContent = `${bm.section2MetaBytes}B`;
+      document.getElementById('lbl-s3').textContent = `${bm.section3PreviewBytes}B`;
+
+      // Update Cryptographic & Galois Readouts
+      document.getElementById('kv-id').textContent = `${t.id} (P.${t.page}/${t.metadata.totalPages})`;
+      document.getElementById('kv-rs').textContent =
+        t.rsParityValid ? `VALID (${t.rsCorrectedErrors} healed)` : 'CORRUPTED';
+      document.getElementById('kv-snark').textContent =
+        t.snarkAttestation.valid
+          ? `VERIFIED (${t.snarkAttestation.verifiedInUs} µs • P(α)=0x${t.snarkAttestation.gfPolynomialEval.toString(16).toUpperCase()})`
+          : 'INVALID';
+      document.getElementById('kv-zip').textContent =
+        `@${tel.zipDataOffset} • CRC ${tel.zipCrc32Hex}`;
+      document.getElementById('kv-merkle').textContent = t.merkleRootHex.slice(0, 24) + '…';
+      document.getElementById('kv-homo').textContent =
+        `${t.homomorphicTagHex} ${t.flagLabels.homomorphicMasked ? '(MASKED)' : '(CLEAN)'}`;
+
+      document.getElementById('ocr-readout').textContent =
+        `${t.metadata.ocrText}\n\n[Header Hex 0..63]: ${t.headerHexPreview}`;
+
+      updateViewerStage();
+    }
+
+    function updateViewerStage() {
+      if (!currentTokenDetail) return;
+      renderVqHexToCanvas(currentTokenDetail.vqHex, elViewerCanvas);
+
+      if (viewerMode === 'vq') {
+        elViewerImg.style.display = 'none';
+        elViewerCanvas.style.display = 'block';
+      } else if (viewerMode === 'full') {
+        elViewerCanvas.style.display = 'none';
+        elViewerImg.style.display = 'block';
+        elViewerImg.src = currentTokenDetail.metadata.sourcePath;
+      } else {
+        elViewerCanvas.style.display = 'none';
+        elViewerImg.style.display = 'block';
+        elViewerImg.src = currentTokenDetail.previewUrl;
+      }
+      applyZoomTransform();
+    }
+
+    function applyZoomTransform() {
+      const transform = `translate(${panX}px, ${panY}px) scale(${zoomLevel})`;
+      elViewerImg.style.transform = transform;
+      elViewerCanvas.style.transform = transform;
+      elViewerImg.classList.toggle('pixelated', crispPixelated);
+    }
+
+    function setViewerMode(mode) {
+      viewerMode = mode;
+      document.getElementById('mode-preview').classList.toggle('btn-active', mode === 'preview');
+      document.getElementById('mode-vq').classList.toggle('btn-active', mode === 'vq');
+      document.getElementById('mode-full').classList.toggle('btn-active', mode === 'full');
+      updateViewerStage();
+    }
+
+    // Event bindings
+    document.getElementById('mode-preview').onclick = () => setViewerMode('preview');
+    document.getElementById('mode-vq').onclick = () => setViewerMode('vq');
+    document.getElementById('mode-full').onclick = () => setViewerMode('full');
+
+    document.getElementById('zoom-in').onclick = () => { zoomLevel = Math.min(8, zoomLevel * 1.4); applyZoomTransform(); };
+    document.getElementById('zoom-out').onclick = () => { zoomLevel = Math.max(0.5, zoomLevel / 1.4); applyZoomTransform(); };
+    document.getElementById('zoom-reset').onclick = () => { zoomLevel = 1; panX = 0; panY = 0; applyZoomTransform(); };
+    document.getElementById('toggle-pixel').onclick = (e) => {
+      crispPixelated = !crispPixelated;
+      e.currentTarget.classList.toggle('btn-active', crispPixelated);
+      applyZoomTransform();
+    };
+
+    // Mouse wheel zoom & drag pan on viewer stage
+    const stage = document.getElementById('viewer-stage');
+    stage.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      zoomLevel = e.deltaY < 0 ? Math.min(8, zoomLevel * 1.15) : Math.max(0.5, zoomLevel / 1.15);
+      applyZoomTransform();
+    }, { passive: false });
+
+    stage.addEventListener('mousedown', (e) => {
+      isDragging = true;
+      dragStartX = e.clientX - panX;
+      dragStartY = e.clientY - panY;
+    });
+    window.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      panX = e.clientX - dragStartX;
+      panY = e.clientY - dragStartY;
+      applyZoomTransform();
+    });
+    window.addEventListener('mouseup', () => { isDragging = false; });
+
+    // Search input & VQ Similarity
+    elSearch.addEventListener('input', () => runSearch());
+
+    document.getElementById('btn-find-similar').onclick = () => {
+      if (!selectedTokenId) return;
+      activeSimilarTo = selectedTokenId;
+      document.getElementById('btn-clear-sim').style.display = 'inline-flex';
+      document.getElementById('btn-clear-sim').textContent = `× VQ Similar: ${selectedTokenId.slice(0, 12)}`;
+      runSearch();
+    };
+
+    document.getElementById('btn-clear-sim').onclick = () => {
+      activeSimilarTo = '';
+      document.getElementById('btn-clear-sim').style.display = 'none';
+      runSearch();
+    };
+
+    // Homomorphic GF(2^8) state mutation
+    document.getElementById('btn-homomorphic').onclick = async () => {
+      if (!selectedTokenId) return;
+      await fetch(`/api/token/${encodeURIComponent(selectedTokenId)}/mutate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scalar: 0x5a })
+      });
+      await selectToken(selectedTokenId);
+    };
+
+    // Live Index Rebuild / Benchmark buttons
+    async function triggerRebuild(syntheticCount) {
+      document.getElementById('stat-status').textContent = `INDEXING ${syntheticCount}...`;
+      await fetch('/api/index/rebuild', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ syntheticCount })
+      });
+      document.getElementById('stat-status').textContent = 'LIVE BUN';
+      await loadStatsAndCodebook();
+      await runSearch();
+    }
+
+    document.getElementById('btn-rebuild-25').onclick = () => triggerRebuild(24);
+    document.getElementById('btn-rebuild-500').onclick = () => triggerRebuild(500);
+
+    // Keyboard navigation (Left/Right arrows)
+    window.addEventListener('keydown', (e) => {
+      if (document.activeElement === elSearch) return;
+      if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+        const idx = currentHits.findIndex(h => h.id === selectedTokenId);
+        if (idx !== -1) {
+          const nextIdx = e.key === 'ArrowRight'
+            ? (idx + 1) % currentHits.length
+            : (idx - 1 + currentHits.length) % currentHits.length;
+          selectToken(currentHits[nextIdx].id);
+        }
+      }
+    });
+
+    (async () => {
+      await loadStatsAndCodebook();
+      await runSearch();
+    })();
+  </script>
 </body>
 </html>

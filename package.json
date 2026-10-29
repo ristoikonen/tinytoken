@@ -1,7 +1,7 @@
 {
-  "name": "chatandbun",
-  "version": "1.0.0",
-  "description": "API with AI chat powered by Bun, TypeScript, and Gemini API",
+  "name": "tinytoken",
+  "version": "2.0.0",
+  "description": "High-Speed 25KB GF(2^8) Reed-Solomon, VQ 16x16 & SHARK/SNARK Compressed Token Indexer and Fast Image Viewer on Bun",
   "main": "server.ts",
   "module": "server.ts",
   "type": "module",
@@ -9,7 +9,8 @@
   "scripts": {
     "dev": "bun --hot server.ts",
     "start": "bun run server.ts",
-    "build:windows": "bun build --compile --target=bun-windows-x64 ./server.ts --outfile ./bunbase.exe"
+    "test": "bun test",
+    "build:windows": "bun build --compile --target=bun-windows-x64 ./server.ts --outfile ./tinytoken.exe"
   },
   "devDependencies": {
     "@types/bun": "latest"
