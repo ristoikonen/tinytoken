@@ -29,11 +29,7 @@ function sha256Bytes(data: Uint8Array): Uint8Array {
 }
 
 export function bytesToHex(bytes: Uint8Array): string {
-  let out = "";
-  for (let i = 0; i < bytes.length; i++) {
-    out += (bytes[i] ?? 0).toString(16).padStart(2, "0");
-  }
-  return out;
+  return bytes.toHex();
 }
 
 export interface AttestationInputs {
@@ -127,7 +123,7 @@ export function verifySnarkAttestationStub(
   merkleRoot: Uint8Array,
   vqIndices: Uint8Array,
 ): SnarkAttestationInfo {
-  const t0 = performance.now();
+  const t0Ns = Bun.nanoseconds();
 
   if (
     snarkStub.length !== 256 ||
@@ -144,7 +140,7 @@ export function verifySnarkAttestationStub(
       ocrWitnessHashHex: "",
       vqCommitmentHex: "",
       gfPolynomialEval: 0,
-      verifiedInUs: Math.round((performance.now() - t0) * 1000),
+      verifiedInUs: Math.round((Bun.nanoseconds() - t0Ns) / 1000),
     };
   }
 
@@ -202,7 +198,7 @@ export function verifySnarkAttestationStub(
     }
   }
 
-  const verifiedInUs = Math.max(1, Math.round((performance.now() - t0) * 1000));
+  const verifiedInUs = Math.max(1, Math.round((Bun.nanoseconds() - t0Ns) / 1000));
 
   return {
     protocol: "SHARK-GF28-Groth16Stub-v2",

@@ -2,7 +2,9 @@ import { z } from "zod";
 
 const ipSchema = z.string().min(1, "IP cannot be empty");
 
-
+/**
+ * Generates an anonymized HMAC-SHA256 IP hash using Bun's native CryptoHasher & Uint8Array.fromHex.
+ */
 export async function generateIPHash(ip: string): Promise<string> {
   const keyHex = Bun.env.IP_HMAC_KEY_HEX;
 
@@ -10,28 +12,12 @@ export async function generateIPHash(ip: string): Promise<string> {
     throw new Error("IP_HMAC_KEY_HEX must be a 64-character hex-encoded HMAC key.");
   }
 
-  const keyBytes = new Uint8Array(32);
-  for (let i = 0; i < keyBytes.length; i++) {
-    keyBytes[i] = Number.parseInt(keyHex.slice(i * 2, i * 2 + 2), 16);
-  }
+  const keyBytes = Uint8Array.fromHex(keyHex);
+  const hmac = new Bun.CryptoHasher("sha256", keyBytes);
+  hmac.update(ipSchema.parse(ip));
+  const hashHex = hmac.digest("hex");
 
-  const key = await crypto.subtle.importKey(
-    "raw",
-    keyBytes,
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
-  const mac = await crypto.subtle.sign(
-    "HMAC",
-    key,
-    new TextEncoder().encode(ipSchema.parse(ip)),
-  );
-  const hashHex = Array.from(new Uint8Array(mac))
-    .map((byte) => byte.toString(16).padStart(2, "0"))
-    .join("");
-
-  return `anon_${hashHex.substring(0, 24)}`;
+  return `anon_${hashHex.slice(0, 24)}`;
 }
 
 export interface EncryptedIp {
@@ -61,23 +47,10 @@ export function getEncryptionKeyBytes(keyVersion: string): Uint8Array<ArrayBuffe
     throw new Error(`${versionedKeyName} must be a 64-character hex-encoded AES-256 key.`);
   }
 
-  const keyBytes = new Uint8Array(new ArrayBuffer(32));
-  const keyHexPairs = keyHex.match(/.{2}/g)!;
-  for (const [i, pair] of keyHexPairs.entries()) {
-    keyBytes[i] = Number.parseInt(pair, 16);
-  }
-  return keyBytes;
+  return Uint8Array.fromHex(keyHex);
 }
 
-function toBase64(bytes: Uint8Array): string {
-  let binary = "";
-  for (const byte of bytes) {
-    binary += String.fromCharCode(byte);
-  }
-  return btoa(binary);
-}
-
-/** Encrypts an IP address; retain nonce and ciphertext together to decrypt later. */
+/** Encrypts an IP address using WebCrypto AES-GCM and Bun native Uint8Array.prototype.toBase64(). */
 export async function encryptIP(ip: string): Promise<EncryptedIp> {
   const plaintext = ipSchema.parse(ip);
   const configuredKeyVersion = Bun.env.IP_ENCRYPTION_KEY_VERSION;
@@ -104,8 +77,8 @@ export async function encryptIP(ip: string): Promise<EncryptedIp> {
   return {
     algorithm: "AES-256-GCM",
     keyVersion,
-    nonce: toBase64(nonce),
-    ciphertext: toBase64(new Uint8Array(ciphertext)),
+    nonce: nonce.toBase64(),
+    ciphertext: new Uint8Array(ciphertext).toBase64(),
   };
 }
 
@@ -123,14 +96,11 @@ export async function decryptIP(
     false,
     ["decrypt"],
   );
-  const nonce = Uint8Array.from(atob(nonceBase64), (char) => char.charCodeAt(0));
+  const nonce = Uint8Array.fromBase64(nonceBase64);
   if (nonce.length !== 12) {
     throw new Error("AES-GCM nonce must be 12 bytes.");
   }
-  const ciphertext = Uint8Array.from(
-    atob(ciphertextBase64),
-    (char) => char.charCodeAt(0),
-  );
+  const ciphertext = Uint8Array.fromBase64(ciphertextBase64);
   const plaintext = await crypto.subtle.decrypt(
     { name: "AES-GCM", iv: nonce },
     key,

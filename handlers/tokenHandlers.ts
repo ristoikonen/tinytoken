@@ -11,6 +11,7 @@ import type { Win11TokenPipeline } from "../utils/indexer";
 import { errorResponse, jsonResponse } from "../utils/response";
 import { decodeBinaryToken } from "../utils/tokenCodec";
 import { VQ_CODEBOOK, vqGridToHex } from "../utils/vqCodebook";
+import type { VqInvertedIndexEngine } from "../utils/vqInvertedIndex";
 import type { CompressedTokenSearchEngine } from "../utils/zipEngine";
 
 export class TokenApiHandlers {
@@ -18,6 +19,7 @@ export class TokenApiHandlers {
     private engine: CompressedTokenSearchEngine,
     private pipeline: Win11TokenPipeline,
     private imageDir = "./images",
+    private invertedIndex?: VqInvertedIndexEngine,
   ) {}
 
   /**
@@ -269,6 +271,9 @@ export class TokenApiHandlers {
 
     const buildRes = await this.pipeline.buildTokenArchive(syntheticCount);
     await this.engine.buildIndex();
+    if (this.invertedIndex) {
+      await this.invertedIndex.syncTokens(this.engine.getAllEntries());
+    }
 
     return jsonResponse({
       success: true,
@@ -276,6 +281,54 @@ export class TokenApiHandlers {
       archiveBytes: buildRes.archiveBytes,
       buildElapsedMs: buildRes.elapsedMs,
       bootIndexTimeMs: this.engine.lastBootIndexMs,
+    });
+  }
+
+  /**
+   * GET /api/search/pattern?tokens=42,85,128&threshold=0.5
+   * Or GET /api/search/pattern?similarTo=tok_00001_HectorDoor.png&threshold=0.5
+   * Queries the LibSQL / Turso Discrete VQ Codebook Inverted Index via set intersection.
+   */
+  public async handlePatternSearch(url: URL): Promise<Response> {
+    if (!this.invertedIndex) {
+      return errorResponse("VQ Inverted Index is not initialized", 503);
+    }
+
+    const t0 = performance.now();
+    const threshold = Number(url.searchParams.get("threshold") ?? 0.5);
+    const limit = Math.min(250, Math.max(1, Number(url.searchParams.get("limit") ?? 50)));
+    const similarTo = url.searchParams.get("similarTo") ?? "";
+    const tokensParam = url.searchParams.get("tokens") ?? "";
+
+    let queryTokens: number[] = [];
+    if (similarTo) {
+      const target = this.engine.getEntry(similarTo);
+      if (!target) {
+        return errorResponse(`Token '${similarTo}' not found`, 404);
+      }
+      queryTokens = Array.from(target.vqIndices);
+    } else if (tokensParam) {
+      queryTokens = tokensParam
+        .split(",")
+        .map((s) => Number.parseInt(s.trim(), 10))
+        .filter((n) => !Number.isNaN(n));
+    }
+
+    const matches = await this.invertedIndex.findImagesByTokenPattern(
+      queryTokens,
+      threshold,
+      limit,
+    );
+    const elapsedMs = Math.round((performance.now() - t0) * 1000) / 1000;
+
+    return jsonResponse({
+      success: true,
+      mode: "vq-inverted-index-sql",
+      threshold,
+      uniqueQueryCentroids: new Set(queryTokens).size,
+      searchTimeMs: elapsedMs,
+      count: matches.length,
+      matches,
     });
   }
 }

@@ -184,19 +184,15 @@ export function adcDistanceToSimilarityPct(adcDist: number): number {
 }
 
 export function vqGridToHex(vqGrid: Uint8Array): string {
-  let hex = "";
-  for (let i = 0; i < vqGrid.length; i++) {
-    hex += (vqGrid[i] ?? 0).toString(16).padStart(2, "0");
-  }
-  return hex;
+  return vqGrid.toHex();
 }
 
-export function hexToVqGrid(hex: string): Uint8Array {
-  const grid = new Uint8Array(256);
+export function hexToVqGrid(hex: string): Uint8Array<ArrayBuffer> {
   const clean = hex.trim();
-  for (let i = 0; i < 256 && i * 2 + 1 < clean.length; i++) {
-    grid[i] = Number.parseInt(clean.slice(i * 2, i * 2 + 2), 16) || 0;
-  }
+  const parsed = Uint8Array.fromHex(clean.slice(0, 512));
+  if (parsed.length === 256) return parsed;
+  const grid = new Uint8Array(256);
+  grid.set(parsed.subarray(0, 256));
   return grid;
 }
 

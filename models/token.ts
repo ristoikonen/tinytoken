@@ -55,6 +55,11 @@ export interface TokenMetadataPayload {
   createdAt: string;
   ocrText: string;
   tags?: string[];
+  environmentClass?: string;
+  geoCoordinates?: {
+    latitude: number;
+    longitude: number;
+  };
 }
 
 export interface SnarkAttestationInfo {

@@ -282,3 +282,63 @@ export function decodeBinaryToken(rawToken: Uint8Array): DecodedToken {
   };
 }
 
+/**
+ * Automated Pipeline Synthesis Tool:
+ * Generates a spec-compliant, cryptographically attested 25 KB (`25,600` bytes max) `.token` buffer
+ * with real GF(2^8) Reed-Solomon parity, 256B SHARK/SNARK provenance stub, 256B VQ 16x16 grid,
+ * and Canberra locale/geo metadata for boundary and pipeline testing.
+ */
+export function generateMockTinyTokenBuffer(
+  tokenId = "testimg000000000",
+  environmentClass = "grassland_synthetic",
+): Uint8Array<ArrayBuffer> {
+  const vqIndices = new Uint8Array(VQ_GRID_BYTES);
+  for (let i = 0; i < VQ_GRID_BYTES; i++) {
+    vqIndices[i] = (i * 3 + 7) & 0xff;
+  }
+
+  // Simulate a 2,000-byte JPEG preview frame (SOI 0xFFD8 ... EOI 0xFFD9)
+  const mockPreview = new Uint8Array(2000);
+  mockPreview[0] = 0xff;
+  mockPreview[1] = 0xd8;
+  for (let i = 2; i < mockPreview.length - 2; i++) {
+    mockPreview[i] = (i * 19 + 0x5a) & 0xff;
+  }
+  mockPreview[mockPreview.length - 2] = 0xff;
+  mockPreview[mockPreview.length - 1] = 0xd9;
+
+  const metadata: TokenMetadataPayload = {
+    id: tokenId,
+    filename: `${tokenId}.jpg`,
+    sourcePath: `/api/token/${encodeURIComponent(tokenId)}/preview`,
+    mimeType: "image/jpeg",
+    page: 1,
+    totalPages: 1,
+    width: 1024,
+    height: 768,
+    colorDepth: 24,
+    createdAt: new Date(1793345600 * 1000).toISOString(),
+    ocrText: `Automated Pipeline Asset Synthesis Engine • Class: ${environmentClass} • Canberra Locale (-35.1764, 149.1311)`,
+    tags: ["synthetic", environmentClass, "canberra"],
+    environmentClass,
+    geoCoordinates: {
+      latitude: -35.1764,
+      longitude: 149.1311,
+    },
+  };
+
+  return encodeBinaryToken({
+    originalFileSize: 1024 * 768 * 3,
+    width: 1024,
+    height: 768,
+    page: 1,
+    previewFormat: PreviewFormat.JPEG,
+    shardBlockId: 999,
+    shardIndex: 4,
+    vqIndices,
+    metadata,
+    previewBytes: mockPreview,
+  });
+}
+
+

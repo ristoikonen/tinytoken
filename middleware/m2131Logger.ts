@@ -1,12 +1,14 @@
 import type { BunRequest } from "bun";
-import { isIP } from "node:net";
 import { createClient } from "@libsql/client";
+import { z } from "zod";
 import { encryptIP, generateIPHash } from "../utils/hash";
 import { errorResponse } from "../utils/response";
 
+const ipAddressValidator = z.union([z.ipv4(), z.ipv6()]);
+
 const db = createClient({
-    url: Bun.env.TURSO_DATABASE_URL || "file:local.db",
-    authToken: Bun.env.TURSO_AUTH_TOKEN,
+  url: Bun.env.TURSO_DATABASE_URL || "file:local.db",
+  authToken: Bun.env.TURSO_AUTH_TOKEN,
 });
 
 export interface M2131LogRecord {
@@ -86,7 +88,6 @@ async function saveLogToDb(
     );
     if (requireEncryptedStorage) {
       throw new Error("Failed to persist telemetry with encrypted IP.", { cause: dbError });
-
     }
   }
 }
@@ -121,12 +122,11 @@ export async function handleM2131Telemetry(
   options: M2131TelemetryOptions,
 ): Promise<Response> {
   const storeRecoverableIp = options.storeRecoverableIp ?? false;
-  const start = performance.now();
-  // Leverage Bun's native global crypto Web API for secure correlation tracking
+  const startNs = Bun.nanoseconds();
   const correlationId = req.headers.get("x-correlation-id") || crypto.randomUUID();
 
   const rawIp = options.getClientIp(req);
-  if (!rawIp || isIP(rawIp) === 0) {
+  if (!rawIp || !ipAddressValidator.safeParse(rawIp).success) {
     console.error("Unable to determine a valid client IP from the connection.");
     return errorResponse("Client IP is unavailable.", 503);
   }
@@ -155,14 +155,13 @@ export async function handleM2131Telemetry(
   }
 
   const userAgent = req.headers.get("user-agent") || "unknown";
-
   const url = new URL(req.url);
 
   let response: Response;
   try {
     response = await next(req);
   } catch (error) {
-    const durationMs = Math.round((performance.now() - start) * 1000) / 1000;
+    const durationMs = Math.round((Bun.nanoseconds() - startNs) / 1_000) / 1_000;
     const errorRecord: M2131LogRecord = {
       timestamp: new Date().toISOString(),
       correlationId,
@@ -176,14 +175,14 @@ export async function handleM2131Telemetry(
       clientIpCiphertext,
       encryptionKeyVersion,
     };
-    
+
     console.error(formatM2131Log(errorRecord));
     await saveLogToDb(errorRecord, storeRecoverableIp);
-    
+
     throw error;
   }
 
-  const durationMs = Math.round((performance.now() - start) * 1000) / 1000;
+  const durationMs = Math.round((Bun.nanoseconds() - startNs) / 1_000) / 1_000;
   const logRecord: M2131LogRecord = {
     timestamp: new Date().toISOString(),
     correlationId,
@@ -198,7 +197,7 @@ export async function handleM2131Telemetry(
     encryptionKeyVersion,
   };
 
-  console.log('LOG:' + formatM2131Log(logRecord));
+  console.log("LOG:" + formatM2131Log(logRecord));
   await saveLogToDb(logRecord, storeRecoverableIp);
 
   const newHeaders = new Headers(response.headers);

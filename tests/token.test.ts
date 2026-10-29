@@ -16,12 +16,17 @@ import {
 import { sniffImageHeader } from "../utils/imagePreview";
 import { Win11TokenPipeline } from "../utils/indexer";
 import { QuickLZ } from "../utils/quicklz";
-import { decodeBinaryToken, encodeBinaryToken } from "../utils/tokenCodec";
+import {
+  decodeBinaryToken,
+  encodeBinaryToken,
+  generateMockTinyTokenBuffer,
+} from "../utils/tokenCodec";
 import {
   computeVqAdcDistance,
   decodeVqGridToRgba,
   encodeBytesToVqGrid,
 } from "../utils/vqCodebook";
+import { VqInvertedIndexEngine } from "../utils/vqInvertedIndex";
 import { CompressedTokenSearchEngine } from "../utils/zipEngine";
 
 describe("TinyToken GF(2^8) + VQ + SHARK/SNARK Pipeline", () => {
@@ -171,6 +176,34 @@ describe("TinyToken GF(2^8) + VQ + SHARK/SNARK Pipeline", () => {
     const decoded = decodeBinaryToken(rawSlice!);
     expect(decoded.id).toBe(firstId);
     expect(decoded.snarkAttestation.valid).toBe(true);
+
+    // Verify Turso / LibSQL VQ Inverted Index Engine set-intersection search
+    const invIndex = new VqInvertedIndexEngine("file::memory:");
+    await invIndex.syncTokens(engine.getAllEntries());
+
+    const targetEntry = engine.getEntry(firstId)!;
+    // Pass the full 256-element VQ array (with duplicates) to verify deduplicated HAVING threshold
+    const patternMatches = await invIndex.findImagesByTokenPattern(
+      Array.from(targetEntry.vqIndices),
+      0.75,
+      10,
+    );
+    expect(patternMatches.length).toBeGreaterThan(0);
+    expect(patternMatches[0]!.id).toBe(firstId);
+    invIndex.close();
+  });
+
+  test("generateMockTinyTokenBuffer creates a valid 25KB Canberra synthetic token that decodes cleanly", () => {
+    const mockBuf = generateMockTinyTokenBuffer("canberra_grass_01", "grassland_synthetic");
+    const decoded = decodeBinaryToken(mockBuf);
+
+    expect(decoded.id).toBe("canberra_grass_01");
+    expect(decoded.magic).toBe("GF28");
+    expect(decoded.rsParityValid).toBe(true);
+    expect(decoded.snarkAttestation.valid).toBe(true);
+    expect(decoded.metadata.environmentClass).toBe("grassland_synthetic");
+    expect(decoded.metadata.geoCoordinates?.latitude).toBeCloseTo(-35.1764, 4);
+    expect(decoded.metadata.geoCoordinates?.longitude).toBeCloseTo(149.1311, 4);
   });
 });
 
