@@ -20,8 +20,10 @@
   },
   "dependencies": {
     "@google/genai": "^2.27.0",
+    "@huggingface/transformers": "^4.3.2",
     "@libsql/client": "^0.18.0",
     "google-logging-utils": "^2.0.1",
+    "onnxruntime-node": "^1.31.1",
     "sharp": "^0.35.5",
     "zod": "^4.6.5"
   }
