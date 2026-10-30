@@ -75,6 +75,9 @@ export function encodeBinaryToken(input: EncodeTokenInput): Uint8Array<ArrayBuff
   if (input.metadata.totalPages > 1) {
     flags |= TokenFlags.MULTI_PAGE_DOC;
   }
+  if (input.metadata.dinoEmbeddingHex) {
+    flags |= TokenFlags.HAS_DINO_EMBEDDING;
+  }
 
   if (input.compressMetadata !== false && rawMetaBytes.length > 128) {
     const compressed = QuickLZ.compress(rawMetaBytes);

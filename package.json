@@ -22,6 +22,7 @@
     "@google/genai": "^2.27.0",
     "@libsql/client": "^0.18.0",
     "google-logging-utils": "^2.0.1",
+    "sharp": "^0.35.5",
     "zod": "^4.6.5"
   }
 }

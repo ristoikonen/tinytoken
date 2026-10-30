@@ -25,6 +25,38 @@ export function jsonResponse<T>(
   });
 }
 
+export function corsResponse(
+  status = 204,
+  allowOrigin = "*",
+): Response {
+  const headers: Record<string, string> = {
+    "Access-Control-Allow-Origin": allowOrigin,
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, X-Session-ID, X-Correlation-ID",
+  }
+
+  return new Response(null, {
+    status,
+    headers,
+  });
+}
+
+export function fileResponse(
+  status = 204,
+  fileType = "",
+): Response {
+  const headers: Record<string, string> = {
+    "Content-Type": fileType,
+    "Cache-Control": "public, max-age=3600",
+
+  }
+
+  return new Response(null, {
+    status,
+    headers,
+  });
+}
+
 /**
  * Creates a standardized error JSON Response.
  */

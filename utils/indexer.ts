@@ -1,24 +1,20 @@
 /**
  * Native Bun Directory Scanner & Custom 25 KB Tokenizer (utils/indexer.ts)
  *
- * Implements `Win11TokenPipeline` using 100% Bun native I/O (`Bun.Glob`, `Bun.file`, `Bun.write`, `Bun.inflateSync`).
+ * Implements `Win11TokenPipeline` using 100% Bun native I/O (`Bun.Glob`, `Bun.file`, `Bun.write`, `Bun.inflateSync`)
+ * + `sharp` WebP rasterization and DINOv2 ViT-14 384B semantic embeddings.
  * Scans both `sourceDirectory` (`./images`) and `documentDirectory` (`./documents`), generates 25 KB `GF28` V2 tokens
- * with 256B SNARK/SHARK provenance proofs, 256B VQ 16x16 neural grids, and 384B GF(2^8) RS parity,
- * and packs them into `./data/tokens.zip`.
+ * with 256B SNARK/SHARK provenance proofs, 256B VQ 16x16 neural grids, 384B DINOv2 embeddings,
+ * 384B GF(2^8) RS parity, and lean WebP raster previews, packing them into `./data/tokens.zip`.
  */
 
 import {
-  PreviewFormat,
   type TokenMetadataPayload,
   type ZipTokenIndexEntry,
 } from "../models/token";
-import {
-  buildCompactPreviewPayload,
-  sniffImageHeader,
-  type ImageHeaderInfo,
-} from "./imagePreview";
+import { dinoEmbeddingToHex } from "./dinoEmbedding";
+import { rasterizeAssetToWebpAndTensors } from "./imagePreview";
 import { decodeBinaryToken, encodeBinaryToken } from "./tokenCodec";
-import { encodeBytesToVqGrid } from "./vqCodebook";
 import { writeNativeTokenZipArchive } from "./zipEngine";
 
 export interface IndexerConfig {
@@ -109,6 +105,47 @@ export class Win11TokenPipeline {
     filename: string,
     ext: string,
   ): ExtractedDocumentInfo {
+    if (ext === ".docx") {
+      // Native Bun ZIP local-header scan for `word/document.xml`
+      const view = new DataView(rawBytes.buffer, rawBytes.byteOffset, rawBytes.byteLength);
+      let ptr = 0;
+      let docxText = "";
+      let pageEstimate = 1;
+      while (ptr + 30 < rawBytes.length && view.getUint32(ptr, true) === 0x04034b50) {
+        const method = view.getUint16(ptr + 8, true);
+        const compSize = view.getUint32(ptr + 18, true);
+        const nameLen = view.getUint16(ptr + 26, true);
+        const extraLen = view.getUint16(ptr + 28, true);
+        const entryName = new TextDecoder().decode(rawBytes.subarray(ptr + 30, ptr + 30 + nameLen));
+        const dataStart = ptr + 30 + nameLen + extraLen;
+        if (entryName === "word/document.xml" && dataStart + compSize <= rawBytes.length) {
+          try {
+            const slice = rawBytes.subarray(dataStart, dataStart + compSize);
+            const xmlBytes = method === 8 ? Bun.inflateSync(new Uint8Array(slice)) : slice;
+            const xmlStr = new TextDecoder().decode(xmlBytes);
+            pageEstimate = Math.max(1, (xmlStr.match(/<w:lastRenderedPageBreak\b/g) || []).length + 1);
+            docxText = xmlStr
+              .replace(/<[^>]+>/g, " ")
+              .replace(/[^\x20-\x7E]+/g, " ")
+              .replace(/\s+/g, " ")
+              .trim()
+              .slice(0, 450);
+          } catch {
+            // fallback below
+          }
+          break;
+        }
+        if (compSize === 0) break;
+        ptr = dataStart + compSize;
+      }
+      return {
+        totalPages: pageEstimate,
+        width: 1240,
+        height: 1754,
+        extractedText: docxText || `DOCX Document asset: ${filename}`,
+      };
+    }
+
     if (ext !== ".pdf") {
       const textPreview = new TextDecoder("utf-8", { fatal: false })
         .decode(rawBytes.subarray(0, 4096))
@@ -124,7 +161,6 @@ export class Win11TokenPipeline {
       };
     }
 
-    // Decode first and last 256 KB in Latin1 for fast structural parsing even on 10 MB+ PDFs
     const headLen = Math.min(rawBytes.length, 512 * 1024);
     const headText = new TextDecoder("latin1").decode(rawBytes.subarray(0, headLen));
     const fullText =
@@ -136,7 +172,6 @@ export class Win11TokenPipeline {
             rawBytes.subarray(Math.max(headLen, rawBytes.length - 512 * 1024)),
           );
 
-    // 1. Count `/Type /Page` occurrences (excluding `/Type /Pages`)
     const pageMatches = fullText.match(/\/Type\s*\/Page\b/g);
     let totalPages = pageMatches ? pageMatches.length : 1;
     const countMatch = fullText.match(/\/Type\s*\/Pages\b[\s\S]{0,200}?\/Count\s+(\d+)/);
@@ -145,7 +180,6 @@ export class Win11TokenPipeline {
       if (parsedCount > totalPages) totalPages = parsedCount;
     }
 
-    // 2. Parse `/MediaBox [x0 y0 x1 y1]` and convert points (1/72 in) to 150 DPI pixel dimensions
     let width = 1240;
     let height = 1754;
     const mediaBox = headText.match(
@@ -160,7 +194,6 @@ export class Win11TokenPipeline {
       }
     }
 
-    // 3. Extract readable text strings from FlateDecode streams using `Bun.inflateSync`
     const snippets: string[] = [];
     const titleMatch = headText.match(/\/Title\s*\(([^()\\]{3,120})\)/);
     if (titleMatch?.[1]) snippets.push(titleMatch[1]);
@@ -214,7 +247,10 @@ export class Win11TokenPipeline {
   }
 
   /**
-   * Tokenizes a single image file from `sourceDirectory` (`./images`).
+   * Tokenizes a single image or SVG file from `sourceDirectory` (`./images`), generating:
+   * - Lean 220x220 WebP raster preview (Section III)
+   * - True decoded 16x16 RGB VQ codebook grid (Section I, 256B)
+   * - 384B Int8 DINOv2 ViT-14 semantic embedding (Section II)
    */
   public async tokenizeImageFile(
     fullPath: string,
@@ -227,51 +263,46 @@ export class Win11TokenPipeline {
     const filename = fullPath.split("/").pop() ?? "asset.bin";
     const dotIdx = filename.lastIndexOf(".");
     const ext = dotIdx !== -1 ? filename.slice(dotIdx).toLowerCase() : "";
-    const headerInfo = sniffImageHeader(rawBytes, ext);
 
     const id = `tok_${String(tokenCounter).padStart(5, "0")}_${filename.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
     const entryName = `${id}.token`;
-    const vqIndices = encodeBytesToVqGrid(rawBytes, headerInfo.width, headerInfo.height, tokenCounter);
 
-    const { previewBytes, previewFormat } = buildCompactPreviewPayload(
-      rawBytes,
-      headerInfo,
-      vqIndices,
-      filename,
-      1,
-    );
+    const bundle = await rasterizeAssetToWebpAndTensors(rawBytes, ext, filename, 1, 1);
+    const dinoEmbeddingHex = dinoEmbeddingToHex(bundle.dinoEmbedding);
 
     const createdAt = new Date(bunFile.lastModified || Date.now()).toISOString();
+    const svgTextNote = bundle.svgExtractedText ? ` | SVG Text: ${bundle.svgExtractedText}` : "";
     const ocrText =
-      `Image Asset: ${filename} | Dimensions: ${headerInfo.width}x${headerInfo.height} (${headerInfo.colorDepth}-bit ${ext.replace(".", "").toUpperCase()}) | ` +
-      `Indexed via TinyToken GF(2^8) Reed-Solomon + 16x16 VQ Neural Thumbnail + 256B SHARK/SNARK Attestation. Source path: ${fullPath}`;
+      `Image Asset: ${filename} | Dimensions: ${bundle.width}x${bundle.height} (${bundle.colorDepth}-bit ${ext.replace(".", "").toUpperCase()} -> 220x220 WebP ${bundle.previewBytes.length}B)` +
+      `${svgTextNote} | DINOv2-384B + 16x16 VQ + 256B SHARK/SNARK. Source path: ${fullPath}`;
 
     const metadata: TokenMetadataPayload = {
       id,
       filename,
       sourcePath: `/api/image/${encodeURIComponent(filename)}`,
-      mimeType: bunFile.type || headerInfo.mimeType,
+      mimeType: bunFile.type || (ext === ".svg" ? "image/svg+xml" : "image/jpeg"),
       page: 1,
       totalPages: 1,
-      width: headerInfo.width,
-      height: headerInfo.height,
-      colorDepth: headerInfo.colorDepth,
+      width: bundle.width,
+      height: bundle.height,
+      colorDepth: bundle.colorDepth,
       createdAt,
       ocrText,
-      tags: ["local-image", ext.replace(".", ""), "verified"],
+      dinoEmbeddingHex,
+      tags: ["local-image", ext.replace(".", ""), "dinov2-384b", "webp-preview", "verified"],
     };
 
     const tokenBytes = encodeBinaryToken({
       originalFileSize: rawBytes.length,
-      width: headerInfo.width,
-      height: headerInfo.height,
+      width: bundle.width,
+      height: bundle.height,
       page: 1,
-      previewFormat,
+      previewFormat: bundle.previewFormat,
       shardBlockId: Math.floor((tokenCounter - 1) / 64),
       shardIndex: (tokenCounter - 1) % 64,
-      vqIndices,
+      vqIndices: bundle.vqIndices,
       metadata,
-      previewBytes,
+      previewBytes: bundle.previewBytes,
     });
 
     const decoded = decodeBinaryToken(tokenBytes);
@@ -286,22 +317,24 @@ export class Win11TokenPipeline {
         mimeType: metadata.mimeType,
         page: 1,
         totalPages: 1,
-        width: headerInfo.width,
-        height: headerInfo.height,
+        width: bundle.width,
+        height: bundle.height,
         originalFileSize: rawBytes.length,
-        previewFormat,
+        previewFormat: bundle.previewFormat,
         flags: decoded.flags,
         ocrText,
         createdAt,
         merkleRootHex: decoded.merkleRootHex,
         snarkVerified: decoded.snarkAttestation.valid,
-        vqIndices,
+        vqIndices: bundle.vqIndices,
+        dinoEmbedding: bundle.dinoEmbedding,
       },
     };
   }
 
   /**
-   * Tokenizes a single document file from `documentDirectory` (`./documents`).
+   * Tokenizes a single document file from `documentDirectory` (`./documents`) with WebP cover preview,
+   * 16x16 VQ grid, and 384B DINOv2 embedding.
    */
   public async tokenizeDocumentFile(
     fullPath: string,
@@ -319,22 +352,19 @@ export class Win11TokenPipeline {
     const id = `tok_${String(tokenCounter).padStart(5, "0")}_${filename.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
     const entryName = `${id}.token`;
 
-    const vqIndices = encodeBytesToVqGrid(rawBytes, docInfo.width, docInfo.height, tokenCounter);
-    const headerInfo: ImageHeaderInfo = {
-      width: docInfo.width,
-      height: docInfo.height,
-      colorDepth: 24,
-      format: PreviewFormat.SVG,
-      mimeType: "application/pdf",
-    };
-
-    const { previewBytes, previewFormat } = buildCompactPreviewPayload(
-      new Uint8Array(0),
-      headerInfo,
-      vqIndices,
+    const bundle = await rasterizeAssetToWebpAndTensors(
+      rawBytes,
+      ext,
       filename,
       1,
+      docInfo.totalPages,
+      {
+        width: docInfo.width,
+        height: docInfo.height,
+        excerpt: docInfo.extractedText,
+      },
     );
+    const dinoEmbeddingHex = dinoEmbeddingToHex(bundle.dinoEmbedding);
 
     const createdAt = new Date(bunFile.lastModified || Date.now()).toISOString();
     const snippetPart = docInfo.extractedText ? ` | Excerpt: ${docInfo.extractedText}` : "";
@@ -354,7 +384,8 @@ export class Win11TokenPipeline {
       colorDepth: 24,
       createdAt,
       ocrText,
-      tags: ["local-document", ext.replace(".", ""), `${docInfo.totalPages}-pages`, "verified"],
+      dinoEmbeddingHex,
+      tags: ["local-document", ext.replace(".", ""), `${docInfo.totalPages}-pages`, "dinov2-384b", "verified"],
     };
 
     const tokenBytes = encodeBinaryToken({
@@ -362,12 +393,12 @@ export class Win11TokenPipeline {
       width: docInfo.width,
       height: docInfo.height,
       page: 1,
-      previewFormat,
+      previewFormat: bundle.previewFormat,
       shardBlockId: Math.floor((tokenCounter - 1) / 64),
       shardIndex: (tokenCounter - 1) % 64,
-      vqIndices,
+      vqIndices: bundle.vqIndices,
       metadata,
-      previewBytes,
+      previewBytes: bundle.previewBytes,
     });
 
     const decoded = decodeBinaryToken(tokenBytes);
@@ -385,13 +416,14 @@ export class Win11TokenPipeline {
         width: docInfo.width,
         height: docInfo.height,
         originalFileSize: rawBytes.length,
-        previewFormat,
+        previewFormat: bundle.previewFormat,
         flags: decoded.flags,
         ocrText,
         createdAt,
         merkleRootHex: decoded.merkleRootHex,
         snarkVerified: decoded.snarkAttestation.valid,
-        vqIndices,
+        vqIndices: bundle.vqIndices,
+        dinoEmbedding: bundle.dinoEmbedding,
       },
     };
   }
@@ -424,7 +456,6 @@ export class Win11TokenPipeline {
     let imageTokens = 0;
     let documentTokens = 0;
 
-    // 1. Tokenize existing images from `sourceDirectory` (`./images`)
     for (const fullPath of imagePaths) {
       const item = await this.tokenizeImageFile(fullPath, ++tokenCounter);
       if (item) {
@@ -433,7 +464,6 @@ export class Win11TokenPipeline {
       }
     }
 
-    // 2. Tokenize existing documents from `documentDirectory` (`./documents`)
     for (const fullPath of documentPaths) {
       const item = await this.tokenizeDocumentFile(fullPath, ++tokenCounter);
       if (item) {

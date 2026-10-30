@@ -25,11 +25,12 @@ export const RS_PARITY_BYTES = 384; // 640..1023 (3x128B Reed-Solomon parity ove
 
 export enum TokenFlags {
   NONE = 0,
-  HAS_VQ_GRID = 1 << 0,       // 0x01: 16x16 VQ neural thumbnail present
-  SNARK_ATTESTED = 1 << 1,    // 0x02: 256B SNARK/SHARK provenance stub verified
-  QUICKLZ_COMPRESSED = 1 << 2,// 0x04: Section II metadata is QuickLZ compressed
-  HOMOMORPHIC_MASKED = 1 << 3,// 0x08: GF(2^8) homomorphic redaction/watermark applied
-  MULTI_PAGE_DOC = 1 << 4,    // 0x10: Token represents a page from a multi-page document
+  HAS_VQ_GRID = 1 << 0,        // 0x01: 16x16 VQ neural thumbnail present
+  SNARK_ATTESTED = 1 << 1,     // 0x02: 256B SNARK/SHARK provenance stub verified
+  QUICKLZ_COMPRESSED = 1 << 2, // 0x04: Section II metadata is QuickLZ compressed
+  HOMOMORPHIC_MASKED = 1 << 3, // 0x08: GF(2^8) homomorphic redaction/watermark applied
+  MULTI_PAGE_DOC = 1 << 4,     // 0x10: Token represents a page from a multi-page document
+  HAS_DINO_EMBEDDING = 1 << 5, // 0x20: 384-byte DINOv2 ViT-14 Int8 semantic embedding present
 }
 
 export enum PreviewFormat {
@@ -54,6 +55,7 @@ export interface TokenMetadataPayload {
   colorDepth: number;
   createdAt: string;
   ocrText: string;
+  dinoEmbeddingHex?: string; // 384-byte (768 hex chars) Int8 DINOv2 ViT-14 semantic embedding
   tags?: string[];
   environmentClass?: string;
   geoCoordinates?: {
@@ -133,6 +135,7 @@ export interface ZipTokenIndexEntry {
   merkleRootHex: string;
   snarkVerified: boolean;
   vqIndices: Uint8Array; // 256 bytes kept in RAM for 0ms neural preview & ADC search
+  dinoEmbedding?: Int8Array; // 384 bytes kept in RAM for sub-ms DINOv2 semantic similarity
 }
 
 export interface SearchHitDTO {
@@ -153,7 +156,8 @@ export interface SearchHitDTO {
   merkleRootHex: string;
   snarkVerified: boolean;
   vqHex: string; // 512-char hex of 256-byte VQ 16x16 grid
-  similarityScore?: number; // 0..100% when using VQ ADC similarity search
+  similarityScore?: number; // 0..100% hybrid DINOv2 + VQ similarity score
+  dinoSimilarity?: number; // 0..100% DINOv2 ViT-14 semantic cosine score
   adcDistance?: number;
 }
 

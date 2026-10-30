@@ -4,6 +4,7 @@ import { Win11TokenPipeline } from "./utils/indexer";
 import { errorResponse } from "./utils/response";
 import { VqInvertedIndexEngine } from "./utils/vqInvertedIndex";
 import { CompressedTokenSearchEngine } from "./utils/zipEngine";
+import { corsResponse } from "./utils/response";
 
 const IMAGE_DIR = "./images";
 const DOCUMENT_DIR = "./documents";
@@ -65,14 +66,15 @@ const server = serve({
     const path = url.pathname;
 
     if (req.method === "OPTIONS") {
-      return new Response(null, {
-        status: 204,
-        headers: {
-          "Access-Control-Allow-Origin": "*",
-          "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-          "Access-Control-Allow-Headers": "Content-Type, X-Session-ID, X-Correlation-ID",
-        },
-      });
+      return corsResponse();
+      // return new Response(null, {
+      //   status: 204,
+      //   headers: {
+      //     "Access-Control-Allow-Origin": "*",
+      //     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+      //     "Access-Control-Allow-Headers": "Content-Type, X-Session-ID, X-Correlation-ID",
+      //   },
+      // });
     }
 
     // Dynamic token & image routes

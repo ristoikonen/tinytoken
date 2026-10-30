@@ -517,7 +517,7 @@
 
       <div style="display:flex;gap:0.4rem;flex-wrap:wrap;justify-content:space-between;">
         <button id="btn-find-similar" class="btn btn-purple mono">
-          ◈ Find Visually Similar (VQ ADC)
+          ◈ Find Visually Similar (DINOv2 + VQ)
         </button>
         <button id="btn-homomorphic" class="btn btn-rose mono" title="Apply blind GF(2^8) linear state mask directly on raw 25KB token slice">
           ⊕ GF(2⁸) Homomorphic Mask
@@ -666,7 +666,7 @@
         card.onclick = () => selectToken(hit.id);
 
         const simBadge = hit.similarityScore !== undefined
-          ? `<span class="micro-tag sim mono">${hit.similarityScore}% VQ</span>`
+          ? `<span class="micro-tag sim mono">${hit.similarityScore}% DINO+VQ</span>`
           : `<span class="micro-tag mono">${hit.previewFormat}</span>`;
 
         card.innerHTML = `

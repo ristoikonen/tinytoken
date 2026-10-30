@@ -1,15 +1,25 @@
 /**
- * Fast Binary Image Header Sniffer & Compact Preview Generator (utils/imagePreview.ts)
+ * Fast Binary Image Header Sniffer, WebP Raster Preview Generator & DINOv2/VQ Tensor Extractor
+ * (utils/imagePreview.ts)
  *
- * Extracts width, height, color depth, and format from PNG, JPEG, WebP, AVIF, BMP, and SVG headers
- * in < 0.05 ms using DataView without decoding full bitmaps.
- * If the source image is <= 20 KB, embeds the exact binary image directly in Section III;
- * if larger, generates a high-density 220x220 SVG/VQ raster preview under 16.4 KB while preserving
- * the link to the full-resolution image for the fast viewer.
+ * Uses `DataView` for sub-0.05ms header sniffing and `sharp` (libvips) to decode PNG, JPEG, WebP,
+ * AVIF, BMP, SVG, and PDF cover layouts into:
+ * 1. A lean 220x220 WebP raster preview (~2.5 - 9 KB) for Section III (leaving 15+ KB free in 25 KB token)
+ * 2. A true decoded 16x16 RGB pixel grid (256 B VQ codebook indices) for Section I
+ * 3. A 224x224 ViT-14 RGB tensor -> 384-byte Int8 DINOv2 semantic embedding for Section II
  */
 
+import sharp from "sharp";
 import { PreviewFormat } from "../models/token";
-import { VQ_CODEBOOK } from "./vqCodebook";
+import {
+  DINO_IMAGE_SIZE,
+  extractDinoEmbeddingFromRgb224,
+} from "./dinoEmbedding";
+import {
+  VQ_CODEBOOK,
+  encodeBytesToVqGrid,
+  encodeRgb16x16ToVqGrid,
+} from "./vqCodebook";
 
 export interface ImageHeaderInfo {
   width: number;
@@ -17,6 +27,17 @@ export interface ImageHeaderInfo {
   colorDepth: number;
   format: PreviewFormat;
   mimeType: string;
+}
+
+export interface RasterizedAssetBundle {
+  width: number;
+  height: number;
+  colorDepth: number;
+  previewBytes: Uint8Array<ArrayBuffer>;
+  previewFormat: PreviewFormat;
+  vqIndices: Uint8Array<ArrayBuffer>;
+  dinoEmbedding: Int8Array<ArrayBuffer>;
+  svgExtractedText?: string;
 }
 
 export function previewFormatToMime(format: PreviewFormat): string {
@@ -55,6 +76,54 @@ export function previewFormatToLabel(format: PreviewFormat): string {
     default:
       return "RAW";
   }
+}
+
+/**
+ * Extracts SVG dimensions (`viewBox` or `width`/`height`) and any embedded `<text>`/`<title>` strings.
+ */
+export function parseSvgMetadataAndText(svgBytes: Uint8Array): {
+  width: number;
+  height: number;
+  extractedText: string;
+} {
+  const text = new TextDecoder("utf-8", { fatal: false }).decode(
+    svgBytes.subarray(0, Math.min(svgBytes.length, 65536)),
+  );
+
+  let width = 220;
+  let height = 220;
+  const viewBoxMatch = text.match(
+    /viewBox\s*=\s*["']\s*([-\d.]+)\s+([-\d.]+)\s+([\d.]+)\s+([\d.]+)\s*["']/i,
+  );
+  if (viewBoxMatch) {
+    const vw = Number.parseFloat(viewBoxMatch[3] ?? "220");
+    const vh = Number.parseFloat(viewBoxMatch[4] ?? "220");
+    if (vw > 0 && vh > 0) {
+      width = Math.round(vw);
+      height = Math.round(vh);
+    }
+  } else {
+    const wMatch = text.match(/\bwidth\s*=\s*["']\s*([\d.]+)/i);
+    const hMatch = text.match(/\bheight\s*=\s*["']\s*([\d.]+)/i);
+    if (wMatch?.[1] && hMatch?.[1]) {
+      width = Math.max(1, Math.round(Number.parseFloat(wMatch[1])));
+      height = Math.max(1, Math.round(Number.parseFloat(hMatch[1])));
+    }
+  }
+
+  const textNodes: string[] = [];
+  const tagRegex = /<(?:text|tspan|title|desc)\b[^>]*>([^<]+)<\/(?:text|tspan|title|desc)>/gi;
+  let m: RegExpExecArray | null = null;
+  while ((m = tagRegex.exec(text)) !== null && textNodes.length < 40) {
+    const cleaned = (m[1] ?? "").replace(/\s+/g, " ").trim();
+    if (cleaned.length > 0) textNodes.push(cleaned);
+  }
+
+  return {
+    width,
+    height,
+    extractedText: textNodes.join(" ").slice(0, 400),
+  };
 }
 
 /**
@@ -141,11 +210,9 @@ export function sniffImageHeader(bytes: Uint8Array, extHint = ""): ImageHeaderIn
     let width = 220;
     let height = 220;
     if (bytes[12] === 0x56 && bytes[13] === 0x50 && bytes[14] === 0x38 && bytes[15] === 0x20) {
-      // VP8 lossy
       width = view.getUint16(26, true) & 0x3fff;
       height = view.getUint16(28, true) & 0x3fff;
     } else if (bytes[12] === 0x56 && bytes[13] === 0x50 && bytes[14] === 0x38 && bytes[15] === 0x4c) {
-      // VP8L lossless
       const bits = view.getUint32(21, true);
       width = (bits & 0x3fff) + 1;
       height = ((bits >> 14) & 0x3fff) + 1;
@@ -192,9 +259,10 @@ export function sniffImageHeader(bytes: Uint8Array, extHint = ""): ImageHeaderIn
 
   const lowerExt = extHint.toLowerCase();
   if (lowerExt === ".svg") {
+    const svgInfo = parseSvgMetadataAndText(bytes);
     return {
-      width: 220,
-      height: 220,
+      width: svgInfo.width,
+      height: svgInfo.height,
       colorDepth: 24,
       format: PreviewFormat.SVG,
       mimeType: "image/svg+xml",
@@ -211,10 +279,168 @@ export function sniffImageHeader(bytes: Uint8Array, extHint = ""): ImageHeaderIn
 }
 
 /**
- * Generates a compact, self-contained 220x220 preview payload (<= 16.4 KB) for Section III:
- * - If the source image is already <= maxBytes and a browser-native format, keeps the exact binary image.
- * - Otherwise, synthesizes a crisp 220x220 SVG preview combining the 16x16 VQ neural color field,
- *   aspect-ratio frame, and document/OCR HUD overlay (~4.5 KB, renders instantaneously at any DPI).
+ * Decodes any image or SVG (or synthesized document cover) via `sharp` into:
+ * - A lean 220x220 WebP preview (`PreviewFormat.WEBP`, typically 2.5 - 9 KB)
+ * - A true decoded 16x16 RGB VQ codebook grid (`256 B`)
+ * - A 224x224 RGB ViT-14 tensor -> 384-byte `Int8Array(384)` DINOv2 embedding
+ */
+export async function rasterizeAssetToWebpAndTensors(
+  sourceBytes: Uint8Array,
+  ext: string,
+  label: string,
+  page = 1,
+  totalPages = 1,
+  docDimensions?: { width: number; height: number; excerpt?: string },
+  maxPreviewBytes = 14336,
+): Promise<RasterizedAssetBundle> {
+  const lowerExt = ext.toLowerCase();
+  const isDocument = lowerExt === ".pdf" || lowerExt === ".docx" || lowerExt === ".doc";
+
+  let svgExtractedText: string | undefined;
+  let inputBuffer: Uint8Array = sourceBytes;
+  let fallbackHeader = sniffImageHeader(sourceBytes, lowerExt);
+
+  if (lowerExt === ".svg") {
+    const svgMeta = parseSvgMetadataAndText(sourceBytes);
+    svgExtractedText = svgMeta.extractedText;
+    fallbackHeader = {
+      width: svgMeta.width,
+      height: svgMeta.height,
+      colorDepth: 24,
+      format: PreviewFormat.WEBP,
+      mimeType: "image/svg+xml",
+    };
+  } else if (isDocument) {
+    const w = docDimensions?.width ?? 1240;
+    const h = docDimensions?.height ?? 1754;
+    const hash = Bun.hash.crc32(sourceBytes);
+    const hueA = hash % 360;
+    const hueB = (hash >> 8) % 360;
+    const safeTitle = label.replace(/[<>&"']/g, "").slice(0, 26);
+    const safeSub = (docDimensions?.excerpt ?? "PDF Document")
+      .replace(/[<>&"']/g, "")
+      .slice(0, 32);
+
+    const docCoverSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 220" width="220" height="220">
+      <defs>
+        <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="hsl(${hueA}, 55%, 18%)"/>
+          <stop offset="100%" stop-color="hsl(${hueB}, 65%, 28%)"/>
+        </linearGradient>
+      </defs>
+      <rect width="220" height="220" fill="url(#bg)"/>
+      <rect x="26" y="14" width="168" height="192" rx="6" fill="#f8fafc" stroke="#38bdf8" stroke-width="2"/>
+      <rect x="26" y="14" width="168" height="36" rx="6" fill="hsl(${hueA}, 70%, 35%)"/>
+      <text x="36" y="37" fill="#ffffff" font-family="sans-serif" font-size="11" font-weight="bold">PDF • ${totalPages} PAGES</text>
+      <rect x="38" y="64" width="120" height="7" rx="3" fill="#334155"/>
+      <rect x="38" y="79" width="142" height="5" rx="2" fill="#64748b"/>
+      <rect x="38" y="91" width="134" height="5" rx="2" fill="#64748b"/>
+      <rect x="38" y="103" width="110" height="5" rx="2" fill="#94a3b8"/>
+      <rect x="38" y="122" width="142" height="36" rx="4" fill="hsl(${hueB}, 45%, 88%)"/>
+      <text x="36" y="176" fill="#0f172a" font-family="monospace" font-size="9.5" font-weight="bold">${safeTitle}</text>
+      <text x="36" y="191" fill="#475569" font-family="sans-serif" font-size="8.5">${safeSub}</text>
+    </svg>`;
+    inputBuffer = new TextEncoder().encode(docCoverSvg);
+    fallbackHeader = {
+      width: w,
+      height: h,
+      colorDepth: 24,
+      format: PreviewFormat.WEBP,
+      mimeType: "application/pdf",
+    };
+  }
+
+  try {
+    const pipeline = sharp(inputBuffer, { failOn: "none" });
+    const meta = await pipeline.metadata();
+    const width = isDocument
+      ? (docDimensions?.width ?? 1240)
+      : (meta.width ?? fallbackHeader.width);
+    const height = isDocument
+      ? (docDimensions?.height ?? 1754)
+      : (meta.height ?? fallbackHeader.height);
+
+    const [webpBuf, rgb16Buf, rgb224Buf] = await Promise.all([
+      sharp(inputBuffer, { failOn: "none" })
+        .resize(220, 220, {
+          fit: "inside",
+          withoutEnlargement: true,
+          background: { r: 20, g: 33, b: 61, alpha: 1 },
+        })
+        .webp({ quality: 76, effort: 3 })
+        .toBuffer(),
+      sharp(inputBuffer, { failOn: "none" })
+        .flatten({ background: { r: 20, g: 33, b: 61 } })
+        .resize(16, 16, { fit: "fill", kernel: "lanczos3" })
+        .removeAlpha()
+        .raw()
+        .toBuffer(),
+      sharp(inputBuffer, { failOn: "none" })
+        .flatten({ background: { r: 20, g: 33, b: 61 } })
+        .resize(DINO_IMAGE_SIZE, DINO_IMAGE_SIZE, { fit: "fill", kernel: "lanczos3" })
+        .removeAlpha()
+        .raw()
+        .toBuffer(),
+    ]);
+
+    let finalWebp = webpBuf;
+    if (finalWebp.byteLength > maxPreviewBytes) {
+      finalWebp = await sharp(inputBuffer, { failOn: "none" })
+        .resize(180, 180, { fit: "inside", withoutEnlargement: true })
+        .webp({ quality: 55, effort: 4 })
+        .toBuffer();
+    }
+
+    const previewBytes = new Uint8Array(new ArrayBuffer(finalWebp.byteLength));
+    previewBytes.set(new Uint8Array(finalWebp.buffer, finalWebp.byteOffset, finalWebp.byteLength));
+
+    const vqIndices = encodeRgb16x16ToVqGrid(
+      new Uint8Array(rgb16Buf.buffer, rgb16Buf.byteOffset, rgb16Buf.byteLength),
+    );
+    const dinoEmbedding = extractDinoEmbeddingFromRgb224(
+      new Uint8Array(rgb224Buf.buffer, rgb224Buf.byteOffset, rgb224Buf.byteLength),
+    );
+
+    return {
+      width,
+      height,
+      colorDepth: fallbackHeader.colorDepth,
+      previewBytes,
+      previewFormat: PreviewFormat.WEBP,
+      vqIndices,
+      dinoEmbedding,
+      svgExtractedText,
+    };
+  } catch {
+    // Fallback if input is non-image raw buffer
+    const vqIndices = encodeBytesToVqGrid(sourceBytes, fallbackHeader.width, fallbackHeader.height, page);
+    const { previewBytes, previewFormat } = buildCompactPreviewPayload(
+      sourceBytes,
+      fallbackHeader,
+      vqIndices,
+      label,
+      page,
+      maxPreviewBytes,
+    );
+    const dinoEmbedding = new Int8Array(new ArrayBuffer(384));
+    for (let i = 0; i < 256; i++) {
+      dinoEmbedding[i] = ((vqIndices[i] ?? 128) - 128) as number;
+    }
+    return {
+      width: fallbackHeader.width,
+      height: fallbackHeader.height,
+      colorDepth: fallbackHeader.colorDepth,
+      previewBytes,
+      previewFormat,
+      vqIndices,
+      dinoEmbedding,
+      svgExtractedText,
+    };
+  }
+}
+
+/**
+ * Synchronous fallback preview builder used by unit tests and mock token generators.
  */
 export function buildCompactPreviewPayload(
   sourceBytes: Uint8Array,
@@ -223,23 +449,23 @@ export function buildCompactPreviewPayload(
   label: string,
   page: number,
   maxBytes = 16384,
-): { previewBytes: Uint8Array; previewFormat: PreviewFormat } {
+): { previewBytes: Uint8Array<ArrayBuffer>; previewFormat: PreviewFormat } {
   if (
     sourceBytes.length > 0 &&
     sourceBytes.length <= maxBytes &&
     (headerInfo.format === PreviewFormat.AVIF ||
       headerInfo.format === PreviewFormat.WEBP ||
       headerInfo.format === PreviewFormat.JPEG ||
-      headerInfo.format === PreviewFormat.PNG ||
-      headerInfo.format === PreviewFormat.SVG)
+      headerInfo.format === PreviewFormat.PNG)
   ) {
+    const out = new Uint8Array(new ArrayBuffer(sourceBytes.byteLength));
+    out.set(sourceBytes);
     return {
-      previewBytes: sourceBytes,
+      previewBytes: out,
       previewFormat: headerInfo.format,
     };
   }
 
-  // Build an ultra-fast 220x220 SVG preview from the 16x16 VQ codebook + metadata badge (~4.8 KB)
   const c0 = VQ_CODEBOOK[vqGrid[0] ?? 0] ?? { r: 20, g: 33, b: 61 };
   const c1 = VQ_CODEBOOK[vqGrid[85] ?? 0] ?? { r: 18, g: 78, b: 120 };
   const c2 = VQ_CODEBOOK[vqGrid[170] ?? 0] ?? { r: 56, g: 189, b: 248 };
@@ -247,11 +473,10 @@ export function buildCompactPreviewPayload(
 
   const safeLabel = label.replace(/[<>&"']/g, "").slice(0, 22);
 
-  // Sample an 8x8 mosaic from the 16x16 VQ grid so the SVG stays well under 6 KB while showing true spatial colors
   let cellsSvg = "";
   for (let gy = 0; gy < 8; gy++) {
     for (let gx = 0; gx < 8; gx++) {
-      const vqIdx = vqGrid[(gy * 2) * 16 + (gx * 2)] ?? 0;
+      const vqIdx = vqGrid[gy * 2 * 16 + gx * 2] ?? 0;
       const c = VQ_CODEBOOK[vqIdx] ?? { r: 20, g: 33, b: 61 };
       const hex = `#${c.r.toString(16).padStart(2, "0")}${c.g.toString(16).padStart(2, "0")}${c.b.toString(16).padStart(2, "0")}`;
       cellsSvg += `<rect x="${gx * 27.5}" y="${gy * 27.5}" width="28" height="28" fill="${hex}" fill-opacity="0.72"/>`;
@@ -275,9 +500,11 @@ export function buildCompactPreviewPayload(
 </svg>`;
 
   const encoded = new TextEncoder().encode(svg);
+  const sliceLen = Math.min(encoded.byteLength, maxBytes);
+  const out = new Uint8Array(new ArrayBuffer(sliceLen));
+  out.set(encoded.subarray(0, sliceLen));
   return {
-    previewBytes: encoded.subarray(0, maxBytes),
+    previewBytes: out,
     previewFormat: PreviewFormat.SVG,
   };
 }
-

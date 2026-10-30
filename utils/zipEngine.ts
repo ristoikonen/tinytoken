@@ -17,12 +17,13 @@ import {
   type SearchHitDTO,
   type ZipTokenIndexEntry,
 } from "../models/token";
+import { dinoEmbeddingToHex, hexToDinoEmbedding } from "./dinoEmbedding";
 import { crc32 } from "./galois";
 import { previewFormatToLabel } from "./imagePreview";
 import { decodeBinaryToken } from "./tokenCodec";
 import {
   adcDistanceToSimilarityPct,
-  computeVqAdcDistance,
+  computeHybridVisualSimilarity,
   hexToVqGrid,
   vqGridToHex,
 } from "./vqCodebook";
@@ -62,6 +63,7 @@ interface SerializedManifestEntry {
   merkleRootHex: string;
   snarkVerified: boolean;
   vqHex: string;
+  dinoHex?: string;
 }
 
 /**
@@ -188,6 +190,9 @@ export async function writeNativeTokenZipArchive(
       merkleRootHex: item.meta.merkleRootHex,
       snarkVerified: item.meta.snarkVerified,
       vqHex: vqGridToHex(item.meta.vqIndices),
+      ...(item.meta.dinoEmbedding
+        ? { dinoHex: dinoEmbeddingToHex(item.meta.dinoEmbedding) }
+        : {}),
     });
   }
 
@@ -386,6 +391,7 @@ export class CompressedTokenSearchEngine {
           merkleRootHex: item.merkleRootHex,
           snarkVerified: item.snarkVerified,
           vqIndices: hexToVqGrid(item.vqHex),
+          ...(item.dinoHex ? { dinoEmbedding: hexToDinoEmbedding(item.dinoHex) } : {}),
         };
         this.metadataIndex.set(entry.id, entry);
         this.metadataIndex.set(entry.entryName, entry);
@@ -425,6 +431,9 @@ export class CompressedTokenSearchEngine {
           merkleRootHex: decoded.merkleRootHex,
           snarkVerified: decoded.snarkAttestation.valid,
           vqIndices: decoded.vqIndices,
+          ...(decoded.metadata.dinoEmbeddingHex
+            ? { dinoEmbedding: hexToDinoEmbedding(decoded.metadata.dinoEmbeddingHex) }
+            : {}),
         };
         this.metadataIndex.set(entry.id, entry);
         this.metadataIndex.set(entry.entryName, entry);
@@ -457,8 +466,8 @@ export class CompressedTokenSearchEngine {
   }
 
   /**
-   * Sub-millisecond Asymmetric Distance Computation (ADC) Vector Quantization similarity search.
-   * Ranks all indexed tokens by perceptual/latent distance to `targetId` (or a 256-byte VQ query vector).
+   * Sub-millisecond Hybrid DINOv2 (384B ViT-14 Int8) + VQ (256B 16x16 ADC) visual similarity search.
+   * Ranks all indexed tokens by semantic DINOv2 cosine + perceptual VQ distance to `targetId`.
    */
   public searchSimilarVQ(
     targetIdOrVqGrid: string | Uint8Array,
@@ -466,16 +475,26 @@ export class CompressedTokenSearchEngine {
     limit = 50,
   ): SearchHitDTO[] {
     let queryGrid: Uint8Array;
+    let queryDino: Int8Array | undefined;
+    let targetId = "";
+
     if (typeof targetIdOrVqGrid === "string") {
       const targetEntry = this.metadataIndex.get(targetIdOrVqGrid);
       if (!targetEntry) return [];
+      targetId = targetEntry.id;
       queryGrid = targetEntry.vqIndices;
+      queryDino = targetEntry.dinoEmbedding;
     } else {
       queryGrid = targetIdOrVqGrid;
     }
 
     const lowerFilter = textFilter.trim().toLowerCase();
-    const scored: Array<{ entry: ZipTokenIndexEntry; dist: number }> = [];
+    const scored: Array<{
+      entry: ZipTokenIndexEntry;
+      similarityScore: number;
+      adcDistance: number;
+      dinoSimilarity: number;
+    }> = [];
 
     for (const item of this.metadataStore) {
       if (
@@ -485,17 +504,43 @@ export class CompressedTokenSearchEngine {
       ) {
         continue;
       }
-      const dist = computeVqAdcDistance(queryGrid, item.vqIndices);
-      scored.push({ entry: item, dist });
+
+      if (targetId && item.id === targetId) {
+        scored.push({
+          entry: item,
+          similarityScore: 100,
+          adcDistance: 0,
+          dinoSimilarity: 100,
+        });
+        continue;
+      }
+
+      const sim = computeHybridVisualSimilarity(
+        queryGrid,
+        item.vqIndices,
+        queryDino,
+        item.dinoEmbedding,
+      );
+      scored.push({
+        entry: item,
+        similarityScore: sim.similarityScore,
+        adcDistance: sim.adcDistance,
+        dinoSimilarity: sim.dinoSimilarityPct,
+      });
     }
 
-    scored.sort((a, b) => a.dist - b.dist);
-    return scored.slice(0, limit).map(({ entry, dist }) =>
-      this.toSearchHitDTO(entry, dist),
+    scored.sort((a, b) => b.similarityScore - a.similarityScore || a.adcDistance - b.adcDistance);
+    return scored.slice(0, limit).map(({ entry, similarityScore, adcDistance, dinoSimilarity }) =>
+      this.toSearchHitDTO(entry, adcDistance, similarityScore, dinoSimilarity),
     );
   }
 
-  private toSearchHitDTO(entry: ZipTokenIndexEntry, adcDist?: number): SearchHitDTO {
+  private toSearchHitDTO(
+    entry: ZipTokenIndexEntry,
+    adcDist?: number,
+    similarityScore?: number,
+    dinoSimilarity?: number,
+  ): SearchHitDTO {
     return {
       id: entry.id,
       filename: entry.filename,
@@ -517,7 +562,8 @@ export class CompressedTokenSearchEngine {
       ...(adcDist !== undefined
         ? {
             adcDistance: adcDist,
-            similarityScore: adcDistanceToSimilarityPct(adcDist),
+            similarityScore: similarityScore ?? adcDistanceToSimilarityPct(adcDist),
+            ...(dinoSimilarity !== undefined ? { dinoSimilarity } : {}),
           }
         : {}),
     };

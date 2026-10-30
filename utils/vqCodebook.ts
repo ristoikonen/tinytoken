@@ -1,14 +1,14 @@
 /**
- * Vector Quantization (VQ) 16x16 Latent Codebook & Asymmetric Distance Computation (ADC) Engine
+ * Vector Quantization (VQ) 16x16 Latent Codebook & Hybrid DINOv2 + ADC Similarity Engine
  *
  * Maps any image or document page into a 256-byte (16x16) discrete codebook grid over GF(2^8) (0..255).
  * Dual Purpose:
- * 1. Neural Micro-Thumbnail: Reconstructs a 16x16 RGB color grid in < 0.01 ms with zero disk I/O.
- * 2. Asymmetric Distance Computation (ADC): Precalculates a 256x256 centroid distance LUT to rank
- *    21,000 tokens by visual/structural similarity in < 0.5 ms using integer lookups.
+ * 1. Neural Micro-Thumbnail: Reconstructs a true 16x16 RGB color grid in < 0.01 ms with zero disk I/O.
+ * 2. Hybrid DINOv2 + Asymmetric Distance Computation (ADC): Combines 384-byte DINOv2 ViT-14 semantic
+ *    embeddings with the 256x256 VQ centroid distance LUT to rank tokens in microseconds.
  */
 
-import { gfAdd, gfMul } from "./galois";
+import { computeDinoCosineSimilarity } from "./dinoEmbedding";
 
 export interface VqCentroidRGB {
   r: number;
@@ -69,7 +69,6 @@ export const VQ_DISTANCE_LUT = new Uint16Array(256 * 256);
  * Quantizes an (R, G, B) triplet to its nearest GF(2^8) codebook index (0..255) in O(1) time.
  */
 export function quantizeRgbToCentroid(r: number, g: number, b: number): number {
-  // Check near-greyscale paper/ink anchors first for crisp document scans
   if (Math.abs(r - g) < 8 && Math.abs(g - b) < 8) {
     if (r < 10) return 252;
     if (r > 246) return 255;
@@ -81,30 +80,48 @@ export function quantizeRgbToCentroid(r: number, g: number, b: number): number {
 }
 
 /**
- * Generates a 256-byte (16x16) VQ latent grid from raw image/file bytes and image metadata.
- * Extracts deterministic spatial entropy & color features across 256 strided windows of the payload.
+ * Encodes a true decoded `16x16x3` (768-byte) RGB pixel buffer directly into a 256-byte VQ grid.
+ * Produces faithful miniature `<canvas>` thumbnails and distortion-free spatial color ADC distances.
+ */
+export function encodeRgb16x16ToVqGrid(rgb16x16: Uint8Array): Uint8Array<ArrayBuffer> {
+  const vqGrid = new Uint8Array(new ArrayBuffer(256));
+  if (rgb16x16.length < 256 * 3) {
+    return encodeBytesToVqGrid(rgb16x16);
+  }
+
+  for (let cell = 0; cell < 256; cell++) {
+    const p = cell * 3;
+    const r = rgb16x16[p] ?? 0;
+    const g = rgb16x16[p + 1] ?? 0;
+    const b = rgb16x16[p + 2] ?? 0;
+    vqGrid[cell] = quantizeRgbToCentroid(r, g, b);
+  }
+  return vqGrid;
+}
+
+/**
+ * Fallback deterministic 256-byte (16x16) VQ encoder when raw un-decoded buffers are provided directly.
  */
 export function encodeBytesToVqGrid(
   fileBytes: Uint8Array,
-  width = 220,
-  height = 220,
-  seedSalt = 0,
-): Uint8Array {
-  const vqGrid = new Uint8Array(256);
+  _width = 220,
+  _height = 220,
+  _seedSalt = 0,
+): Uint8Array<ArrayBuffer> {
+  const vqGrid = new Uint8Array(new ArrayBuffer(256));
   const len = fileBytes.length;
   if (len === 0) return vqGrid;
 
-  // Skip fixed container headers (e.g. first 128 bytes of JPEG/PNG) when sampling visual payload entropy
-  const payloadStart = Math.min(128, Math.floor(len * 0.05));
+  if (len === 256 * 3) {
+    return encodeRgb16x16ToVqGrid(fileBytes);
+  }
+
+  const payloadStart = len > 512 ? Math.min(128, Math.floor(len * 0.05)) : 0;
   const usableLen = Math.max(1, len - payloadStart);
 
   for (let cell = 0; cell < 256; cell++) {
-    const gx = cell & 15;
-    const gy = cell >> 4;
-
-    // Sample window inside the payload proportional to cell (gx, gy)
     const winStart = payloadStart + Math.floor((cell / 256) * usableLen);
-    const winSize = Math.min(64, Math.max(8, Math.floor(usableLen / 256)));
+    const winSize = Math.min(48, Math.max(3, Math.floor(usableLen / 256)));
 
     let accR = 0;
     let accG = 0;
@@ -112,32 +129,16 @@ export function encodeBytesToVqGrid(
     let count = 0;
 
     for (let k = 0; k < winSize; k += 3) {
-      const b0 = fileBytes[(winStart + k) % len] ?? 0;
-      const b1 = fileBytes[(winStart + k + 1) % len] ?? 0;
-      const b2 = fileBytes[(winStart + k + 2) % len] ?? 0;
-
-      // Mix with spatial coordinate harmonic in GF(2^8) for smooth 2D structural gradient representation
-      accR += gfAdd(b0, gfMul(gx + 1, 17));
-      accG += gfAdd(b1, gfMul(gy + 1, 23));
-      accB += gfAdd(b2, gfMul((gx ^ gy) + 1 + (seedSalt & 0x0f), 31));
+      accR += fileBytes[(winStart + k) % len] ?? 0;
+      accG += fileBytes[(winStart + k + 1) % len] ?? 0;
+      accB += fileBytes[(winStart + k + 2) % len] ?? 0;
       count++;
     }
 
     const r = Math.round(accR / Math.max(1, count));
     const g = Math.round(accG / Math.max(1, count));
     const b = Math.round(accB / Math.max(1, count));
-
-    // Blend subtle aspect-ratio & radial vignette structure so thumbnails are visually distinct and faithful
-    const normX = (gx - 7.5) / 8;
-    const normY = (gy - 7.5) / 8;
-    const radial = Math.max(0.4, 1 - 0.35 * (normX * normX + normY * normY));
-    const aspectBias = ((width * 31 + height * 17) & 0x3f) - 32;
-
-    const finalR = Math.min(255, Math.max(0, Math.round(r * radial + aspectBias * 0.5)));
-    const finalG = Math.min(255, Math.max(0, Math.round(g * radial)));
-    const finalB = Math.min(255, Math.max(0, Math.round(b * radial - aspectBias * 0.5)));
-
-    vqGrid[cell] = quantizeRgbToCentroid(finalR, finalG, finalB);
+    vqGrid[cell] = quantizeRgbToCentroid(r, g, b);
   }
 
   return vqGrid;
@@ -175,12 +176,53 @@ export function computeVqAdcDistance(queryGrid: Uint8Array, candidateGrid: Uint8
 }
 
 /**
- * Converts raw ADC distance into a normalized 0..100% similarity score.
+ * Converts raw ADC distance into a normalized 0..100% spatial color similarity score.
  */
 export function adcDistanceToSimilarityPct(adcDist: number): number {
-  // Max theoretical perceptual squared distance across 256 cells is ~256 * 25000 = 6,400,000
-  const norm = Math.max(0, 1 - adcDist / 2_800_000);
+  const norm = Math.max(0, 1 - adcDist / 3_200_000);
   return Math.round(norm * 1000) / 10;
+}
+
+/**
+ * Hybrid DINOv2 (384B ViT-14 Int8) + 16x16 VQ Perceptual Color-Layout Similarity.
+ * Combines 80% semantic DINOv2 cosine similarity with 20% VQ spatial palette similarity.
+ */
+export function computeHybridVisualSimilarity(
+  queryVq: Uint8Array,
+  candidateVq: Uint8Array,
+  queryDino?: Int8Array,
+  candidateDino?: Int8Array,
+): {
+  similarityScore: number;
+  adcDistance: number;
+  dinoSimilarityPct: number;
+} {
+  const adcDistance = computeVqAdcDistance(queryVq, candidateVq);
+  if (adcDistance === 0 && (!queryDino || !candidateDino)) {
+    return { similarityScore: 100, adcDistance: 0, dinoSimilarityPct: 100 };
+  }
+
+  const vqSim01 = Math.max(0, 1 - adcDistance / 3_200_000);
+
+  if (queryDino && candidateDino && queryDino.length > 0 && candidateDino.length > 0) {
+    const cosine = computeDinoCosineSimilarity(queryDino, candidateDino);
+    if (cosine >= 0.9999 && adcDistance === 0) {
+      return { similarityScore: 100, adcDistance: 0, dinoSimilarityPct: 100 };
+    }
+    const dinoSim01 = Math.max(0, Math.min(1, cosine));
+    const hybrid01 = dinoSim01 * 0.8 + vqSim01 * 0.2;
+    return {
+      similarityScore: Math.round(hybrid01 * 1000) / 10,
+      adcDistance,
+      dinoSimilarityPct: Math.round(dinoSim01 * 1000) / 10,
+    };
+  }
+
+  return {
+    similarityScore: Math.round(vqSim01 * 1000) / 10,
+    adcDistance,
+    dinoSimilarityPct: Math.round(vqSim01 * 1000) / 10,
+  };
 }
 
 export function vqGridToHex(vqGrid: Uint8Array): string {
@@ -191,8 +233,7 @@ export function hexToVqGrid(hex: string): Uint8Array<ArrayBuffer> {
   const clean = hex.trim();
   const parsed = Uint8Array.fromHex(clean.slice(0, 512));
   if (parsed.length === 256) return parsed;
-  const grid = new Uint8Array(256);
+  const grid = new Uint8Array(new ArrayBuffer(256));
   grid.set(parsed.subarray(0, 256));
   return grid;
 }
-

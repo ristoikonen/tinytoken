@@ -13,6 +13,7 @@ import { decodeBinaryToken } from "../utils/tokenCodec";
 import { VQ_CODEBOOK, vqGridToHex } from "../utils/vqCodebook";
 import type { VqInvertedIndexEngine } from "../utils/vqInvertedIndex";
 import type { CompressedTokenSearchEngine } from "../utils/zipEngine";
+import { fileResponse } from "../utils/response";
 
 export class TokenApiHandlers {
   constructor(
@@ -21,7 +22,7 @@ export class TokenApiHandlers {
     private imageDir = "./images",
     private invertedIndex?: VqInvertedIndexEngine,
     private documentDir = "./documents",
-  ) {}
+  ) { }
 
   /**
    * GET /api/stats
@@ -37,16 +38,18 @@ export class TokenApiHandlers {
     }
 
     const vqRamBytes = entries.length * 256;
+    const dinoRamBytes = entries.length * 384;
 
     return jsonResponse({
       success: true,
-      engine: "TinyToken GF(2^8) + VQ-16x16 + SHARK/SNARK v2",
+      engine: "TinyToken GF(2^8) + DINOv2-384B + VQ-16x16 + SHARK/SNARK v2",
       tokenCount: entries.length,
       snarkVerifiedCount,
       archivePath: this.engine.getZipFilePath(),
       archiveSizeBytes: this.engine.archiveSizeBytes,
       totalTokenUncompressedBytes,
       vqRamFootprintBytes: vqRamBytes,
+      dinoRamFootprintBytes: dinoRamBytes,
       bootIndexTimeMs: this.engine.lastBootIndexMs,
       codebookSize: VQ_CODEBOOK.length,
     });
@@ -137,6 +140,7 @@ export class TokenApiHandlers {
           quicklzCompressed: (decoded.flags & TokenFlags.QUICKLZ_COMPRESSED) !== 0,
           homomorphicMasked: (decoded.flags & TokenFlags.HOMOMORPHIC_MASKED) !== 0,
           multiPageDoc: (decoded.flags & TokenFlags.MULTI_PAGE_DOC) !== 0,
+          hasDinoEmbedding: (decoded.flags & TokenFlags.HAS_DINO_EMBEDDING) !== 0,
         },
         uuidHex: decoded.uuidHex,
         originalFileSize: decoded.originalFileSize,
@@ -221,14 +225,7 @@ export class TokenApiHandlers {
     if (!(await file.exists())) {
       return errorResponse(`Image '${safeName}' not found`, 404);
     }
-
-    return new Response(file, {
-      status: 200,
-      headers: {
-        "Content-Type": file.type || "image/jpeg",
-        "Cache-Control": "public, max-age=3600",
-      },
-    });
+    return fileResponse(200, (file.type || "image/jpeg"));
   }
 
   /**
@@ -247,13 +244,14 @@ export class TokenApiHandlers {
       return errorResponse(`Document '${safeName}' not found`, 404);
     }
 
-    return new Response(file, {
-      status: 200,
-      headers: {
-        "Content-Type": file.type || "application/pdf",
-        "Cache-Control": "public, max-age=3600",
-      },
-    });
+    return fileResponse(200, (file.type || "application/pdf"));
+    // return new Response(file, {
+    //   status: 200,
+    //   headers: {
+    //     "Content-Type": file.type || "application/pdf",
+    //     "Cache-Control": "public, max-age=3600",
+    //   },
+    // });
   }
 
   /**
