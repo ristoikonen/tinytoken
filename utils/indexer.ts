@@ -1,11 +1,11 @@
 /**
  * Native Bun Directory Scanner & Custom 25 KB Tokenizer (utils/indexer.ts)
  *
- * Implements `Win11TokenPipeline` using 100% Bun native I/O (`Bun.Glob`, `Bun.file`, `Bun.write`, `Bun.inflateSync`)
- * + `sharp` WebP rasterization and DINOv2 ViT-14 384B semantic embeddings.
- * Scans both `sourceDirectory` (`./images`) and `documentDirectory` (`./documents`), generates 25 KB `GF28` V2 tokens
- * with 256B SNARK/SHARK provenance proofs, 256B VQ 16x16 neural grids, 384B DINOv2 embeddings,
- * 384B GF(2^8) RS parity, and lean WebP raster previews, packing them into `./data/tokens.zip`.
+ * Implements `Win11TokenPipeline` using:
+ * - Bun native I/O (`Bun.Glob`, `Bun.file`, `Bun.write`, `Bun.inflateSync`)
+ * - Real Meta/Xenova DINOv2 ViT-S/14 ONNX (`q8`) 384-byte `[CLS]` embeddings (`EmbeddingModelId.DINOV2_VIT_S14_Q8 = 0x02`)
+ * - Google Chrome PDFium WASM (`@hyzyla/pdfium`) for real multi-page PDF rasterization & clean Unicode text extraction
+ * - `sharp` for 320px `smartSubsample` WebP previews and true 16x16 RGB VQ codebook grids
  */
 
 import {
@@ -14,6 +14,7 @@ import {
 } from "../models/token";
 import { dinoEmbeddingToHex } from "./dinoEmbedding";
 import { rasterizeAssetToWebpAndTensors } from "./imagePreview";
+import { renderPdfPagesWithPdfium } from "./pdfEngine";
 import { decodeBinaryToken, encodeBinaryToken } from "./tokenCodec";
 import { writeNativeTokenZipArchive } from "./zipEngine";
 
@@ -23,6 +24,7 @@ export interface IndexerConfig {
   outputZipPath: string;
   allowedExtensions: string[];
   maxTokenSizeKb: number;
+  maxPagesPerDocument?: number;
 }
 
 export type ArchiveTokenItem = {
@@ -97,8 +99,7 @@ export class Win11TokenPipeline {
   }
 
   /**
-   * Extracts PDF page count, MediaBox dimensions (scaled to 150 DPI), and readable text snippets
-   * from PDF binary streams using native `Bun.inflateSync`.
+   * Extracts DOCX (`word/document.xml`) or plain-text document info using native `Bun.inflateSync`.
    */
   public extractDocumentInfo(
     rawBytes: Uint8Array,
@@ -106,7 +107,6 @@ export class Win11TokenPipeline {
     ext: string,
   ): ExtractedDocumentInfo {
     if (ext === ".docx") {
-      // Native Bun ZIP local-header scan for `word/document.xml`
       const view = new DataView(rawBytes.buffer, rawBytes.byteOffset, rawBytes.byteLength);
       let ptr = 0;
       let docxText = "";
@@ -129,7 +129,7 @@ export class Win11TokenPipeline {
               .replace(/[^\x20-\x7E]+/g, " ")
               .replace(/\s+/g, " ")
               .trim()
-              .slice(0, 450);
+              .slice(0, 1200);
           } catch {
             // fallback below
           }
@@ -146,111 +146,25 @@ export class Win11TokenPipeline {
       };
     }
 
-    if (ext !== ".pdf") {
-      const textPreview = new TextDecoder("utf-8", { fatal: false })
-        .decode(rawBytes.subarray(0, 4096))
-        .replace(/[^\x20-\x7E]+/g, " ")
-        .replace(/\s+/g, " ")
-        .trim()
-        .slice(0, 600);
-      return {
-        totalPages: 1,
-        width: 1240,
-        height: 1754,
-        extractedText: textPreview || `Document asset: ${filename}`,
-      };
-    }
-
-    const headLen = Math.min(rawBytes.length, 512 * 1024);
-    const headText = new TextDecoder("latin1").decode(rawBytes.subarray(0, headLen));
-    const fullText =
-      rawBytes.length <= 2 * 1024 * 1024
-        ? new TextDecoder("latin1").decode(rawBytes)
-        : headText +
-          "\n" +
-          new TextDecoder("latin1").decode(
-            rawBytes.subarray(Math.max(headLen, rawBytes.length - 512 * 1024)),
-          );
-
-    const pageMatches = fullText.match(/\/Type\s*\/Page\b/g);
-    let totalPages = pageMatches ? pageMatches.length : 1;
-    const countMatch = fullText.match(/\/Type\s*\/Pages\b[\s\S]{0,200}?\/Count\s+(\d+)/);
-    if (countMatch?.[1]) {
-      const parsedCount = Number.parseInt(countMatch[1], 10);
-      if (parsedCount > totalPages) totalPages = parsedCount;
-    }
-
-    let width = 1240;
-    let height = 1754;
-    const mediaBox = headText.match(
-      /\/MediaBox\s*\[\s*([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s*\]/,
-    );
-    if (mediaBox) {
-      const wPt = Number.parseFloat(mediaBox[3] ?? "595.32") - Number.parseFloat(mediaBox[1] ?? "0");
-      const hPt = Number.parseFloat(mediaBox[4] ?? "841.92") - Number.parseFloat(mediaBox[2] ?? "0");
-      if (wPt > 0 && hPt > 0) {
-        width = Math.round((wPt / 72) * 150);
-        height = Math.round((hPt / 72) * 150);
-      }
-    }
-
-    const snippets: string[] = [];
-    const titleMatch = headText.match(/\/Title\s*\(([^()\\]{3,120})\)/);
-    if (titleMatch?.[1]) snippets.push(titleMatch[1]);
-
-    const streamRegex = /stream\r?\n/g;
-    let match: RegExpExecArray | null = null;
-    let streamsInspected = 0;
-
-    while ((match = streamRegex.exec(headText)) !== null && streamsInspected < 25) {
-      const start = match.index + match[0].length;
-      const end = headText.indexOf("endstream", start);
-      if (end === -1 || end - start > 128 * 1024) continue;
-
-      const slice = rawBytes.subarray(start, end);
-      if (slice.length > 6 && slice[0] === 0x78) {
-        try {
-          const inflated = Bun.inflateSync(new Uint8Array(slice.subarray(2)));
-          const str = new TextDecoder("latin1").decode(inflated);
-          const textLiterals = str.match(/\(([\x20-\x7E]{2,120})\)/g);
-          if (textLiterals) {
-            const cleaned = textLiterals
-              .map((lit) => lit.slice(1, -1))
-              .filter((lit) => /[a-zA-Z]{2,}/.test(lit) && !/^en-[A-Z]{2}$/.test(lit))
-              .join(" ");
-            if (cleaned.length > 0) {
-              snippets.push(cleaned);
-              streamsInspected++;
-            }
-          }
-        } catch {
-          // Non-deflate or encrypted stream; skip
-        }
-      }
-      if (snippets.join(" ").length >= 450) break;
-    }
-
-    const cleanSnippet = snippets
-      .join(" ")
-      .replace(/\\[nrt()\\]/g, " ")
+    const textPreview = new TextDecoder("utf-8", { fatal: false })
+      .decode(rawBytes.subarray(0, 4096))
       .replace(/[^\x20-\x7E]+/g, " ")
       .replace(/\s+/g, " ")
       .trim()
-      .slice(0, 450);
-
+      .slice(0, 800);
     return {
-      totalPages: Math.max(1, totalPages),
-      width,
-      height,
-      extractedText: cleanSnippet,
+      totalPages: 1,
+      width: 1240,
+      height: 1754,
+      extractedText: textPreview || `Document asset: ${filename}`,
     };
   }
 
   /**
    * Tokenizes a single image or SVG file from `sourceDirectory` (`./images`), generating:
-   * - Lean 220x220 WebP raster preview (Section III)
+   * - Lean 320x320 WebP raster preview (Section III)
    * - True decoded 16x16 RGB VQ codebook grid (Section I, 256B)
-   * - 384B Int8 DINOv2 ViT-14 semantic embedding (Section II)
+   * - Real 384B Int8 `Xenova/dinov2-small` ViT-S/14 CLS semantic embedding (Section II, modelId=0x02)
    */
   public async tokenizeImageFile(
     fullPath: string,
@@ -274,7 +188,7 @@ export class Win11TokenPipeline {
     const svgTextNote = bundle.svgExtractedText ? ` | SVG Text: ${bundle.svgExtractedText}` : "";
     const ocrText =
       `Image Asset: ${filename} | Dimensions: ${bundle.width}x${bundle.height} (${bundle.colorDepth}-bit ${ext.replace(".", "").toUpperCase()} -> 320x320 WebP ${bundle.previewBytes.length}B)` +
-      `${svgTextNote} | DINOv2-384B + 16x16 VQ + 256B SHARK/SNARK. Source path: ${fullPath}`;
+      `${svgTextNote} | DINOv2-ViT-S14-384B + 16x16 VQ + 256B SHARK/SNARK. Source path: ${fullPath}`;
 
     const metadata: TokenMetadataPayload = {
       id,
@@ -289,7 +203,7 @@ export class Win11TokenPipeline {
       createdAt,
       ocrText,
       dinoEmbeddingHex,
-      tags: ["local-image", ext.replace(".", ""), "dinov2-384b", "webp-preview", "verified"],
+      tags: ["local-image", ext.replace(".", ""), "dinov2-vit-s14", "webp-preview", "verified"],
     };
 
     const tokenBytes = encodeBinaryToken({
@@ -300,6 +214,7 @@ export class Win11TokenPipeline {
       previewFormat: bundle.previewFormat,
       shardBlockId: Math.floor((tokenCounter - 1) / 64),
       shardIndex: (tokenCounter - 1) % 64,
+      embeddingModelId: bundle.embeddingModelId,
       vqIndices: bundle.vqIndices,
       metadata,
       previewBytes: bundle.previewBytes,
@@ -328,28 +243,122 @@ export class Win11TokenPipeline {
         snarkVerified: decoded.snarkAttestation.valid,
         vqIndices: bundle.vqIndices,
         dinoEmbedding: bundle.dinoEmbedding,
+        embeddingModelId: bundle.embeddingModelId,
       },
     };
   }
 
   /**
-   * Tokenizes a single document file from `documentDirectory` (`./documents`) with WebP cover preview,
-   * 16x16 VQ grid, and 384B DINOv2 embedding.
+   * Tokenizes a document file from `documentDirectory` (`./documents`):
+   * - For `.pdf` files: uses `@hyzyla/pdfium` (`renderPdfPagesWithPdfium`) to render real portrait
+   *   page bitmaps to 320x452 WebP, extract clean Unicode text via `page.getText()`, and emit
+   *   multi-page tokens (`P.1..P.N`).
+   * - For `.docx` files: extracts `word/document.xml` text and renders a clean cover preview.
    */
   public async tokenizeDocumentFile(
     fullPath: string,
-    tokenCounter: number,
-  ): Promise<ArchiveTokenItem | null> {
+    startTokenCounter: number,
+  ): Promise<ArchiveTokenItem[]> {
     const bunFile = Bun.file(fullPath);
-    if (!(await bunFile.exists())) return null;
+    if (!(await bunFile.exists())) return [];
 
     const rawBytes = new Uint8Array(await bunFile.arrayBuffer());
     const filename = fullPath.split("/").pop() ?? "document.pdf";
     const dotIdx = filename.lastIndexOf(".");
     const ext = dotIdx !== -1 ? filename.slice(dotIdx).toLowerCase() : ".pdf";
+    const createdAt = new Date(bunFile.lastModified || Date.now()).toISOString();
+    const maxPagesPerDoc = this.config.maxPagesPerDocument ?? 3;
+
+    if (ext === ".pdf") {
+      try {
+        const pageBundles = await renderPdfPagesWithPdfium(rawBytes, maxPagesPerDoc);
+        const items: ArchiveTokenItem[] = [];
+        let counter = startTokenCounter;
+
+        for (const pg of pageBundles) {
+          const seq = counter++;
+          const safeFile = filename.replace(/[^a-zA-Z0-9._-]/g, "_");
+          const id = `tok_${String(seq).padStart(5, "0")}_p${pg.page}_${safeFile}`;
+          const entryName = `${id}.token`;
+          const dinoEmbeddingHex = dinoEmbeddingToHex(pg.dinoEmbedding);
+
+          const snippetPart = pg.extractedText ? ` | Page Text: ${pg.extractedText}` : "";
+          const ocrText =
+            `PDF Page ${pg.page}/${pg.totalPages}: ${filename} (${(rawBytes.length / 1024).toFixed(1)} KB, ${pg.width}x${pg.height}px)` +
+            `${snippetPart}`;
+
+          const metadata: TokenMetadataPayload = {
+            id,
+            filename,
+            sourcePath: `/api/document/${encodeURIComponent(filename)}#page=${pg.page}`,
+            mimeType: "application/pdf",
+            page: pg.page,
+            totalPages: pg.totalPages,
+            width: pg.width,
+            height: pg.height,
+            colorDepth: 24,
+            createdAt,
+            ocrText,
+            dinoEmbeddingHex,
+            tags: [
+              "local-document",
+              "pdf",
+              `page-${pg.page}-of-${pg.totalPages}`,
+              "pdfium-rendered",
+              "dinov2-vit-s14",
+              "verified",
+            ],
+          };
+
+          const tokenBytes = encodeBinaryToken({
+            originalFileSize: rawBytes.length,
+            width: pg.width,
+            height: pg.height,
+            page: pg.page,
+            previewFormat: pg.previewFormat,
+            shardBlockId: Math.floor((seq - 1) / 64),
+            shardIndex: (seq - 1) % 64,
+            embeddingModelId: pg.embeddingModelId,
+            vqIndices: pg.vqIndices,
+            metadata,
+            previewBytes: pg.previewBytes,
+          });
+
+          const decoded = decodeBinaryToken(tokenBytes);
+          items.push({
+            entryName,
+            tokenBytes,
+            meta: {
+              id,
+              entryName,
+              filename,
+              sourcePath: metadata.sourcePath,
+              mimeType: metadata.mimeType,
+              page: pg.page,
+              totalPages: pg.totalPages,
+              width: pg.width,
+              height: pg.height,
+              originalFileSize: rawBytes.length,
+              previewFormat: pg.previewFormat,
+              flags: decoded.flags,
+              ocrText,
+              createdAt,
+              merkleRootHex: decoded.merkleRootHex,
+              snarkVerified: decoded.snarkAttestation.valid,
+              vqIndices: pg.vqIndices,
+              dinoEmbedding: pg.dinoEmbedding,
+              embeddingModelId: pg.embeddingModelId,
+            },
+          });
+        }
+        return items;
+      } catch (err) {
+        console.warn(`PDFium fallback for ${filename}:`, err);
+      }
+    }
 
     const docInfo = this.extractDocumentInfo(rawBytes, filename, ext);
-    const id = `tok_${String(tokenCounter).padStart(5, "0")}_${filename.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+    const id = `tok_${String(startTokenCounter).padStart(5, "0")}_${filename.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
     const entryName = `${id}.token`;
 
     const bundle = await rasterizeAssetToWebpAndTensors(
@@ -366,7 +375,6 @@ export class Win11TokenPipeline {
     );
     const dinoEmbeddingHex = dinoEmbeddingToHex(bundle.dinoEmbedding);
 
-    const createdAt = new Date(bunFile.lastModified || Date.now()).toISOString();
     const snippetPart = docInfo.extractedText ? ` | Excerpt: ${docInfo.extractedText}` : "";
     const ocrText =
       `Document: ${filename} (${docInfo.totalPages} pages, ${(rawBytes.length / 1024).toFixed(1)} KB, ${docInfo.width}x${docInfo.height}px @ 150 DPI)` +
@@ -385,7 +393,7 @@ export class Win11TokenPipeline {
       createdAt,
       ocrText,
       dinoEmbeddingHex,
-      tags: ["local-document", ext.replace(".", ""), `${docInfo.totalPages}-pages`, "dinov2-384b", "verified"],
+      tags: ["local-document", ext.replace(".", ""), `${docInfo.totalPages}-pages`, "dinov2-vit-s14", "verified"],
     };
 
     const tokenBytes = encodeBinaryToken({
@@ -394,38 +402,42 @@ export class Win11TokenPipeline {
       height: docInfo.height,
       page: 1,
       previewFormat: bundle.previewFormat,
-      shardBlockId: Math.floor((tokenCounter - 1) / 64),
-      shardIndex: (tokenCounter - 1) % 64,
+      shardBlockId: Math.floor((startTokenCounter - 1) / 64),
+      shardIndex: (startTokenCounter - 1) % 64,
+      embeddingModelId: bundle.embeddingModelId,
       vqIndices: bundle.vqIndices,
       metadata,
       previewBytes: bundle.previewBytes,
     });
 
     const decoded = decodeBinaryToken(tokenBytes);
-    return {
-      entryName,
-      tokenBytes,
-      meta: {
-        id,
+    return [
+      {
         entryName,
-        filename,
-        sourcePath: metadata.sourcePath,
-        mimeType: metadata.mimeType,
-        page: 1,
-        totalPages: docInfo.totalPages,
-        width: docInfo.width,
-        height: docInfo.height,
-        originalFileSize: rawBytes.length,
-        previewFormat: bundle.previewFormat,
-        flags: decoded.flags,
-        ocrText,
-        createdAt,
-        merkleRootHex: decoded.merkleRootHex,
-        snarkVerified: decoded.snarkAttestation.valid,
-        vqIndices: bundle.vqIndices,
-        dinoEmbedding: bundle.dinoEmbedding,
+        tokenBytes,
+        meta: {
+          id,
+          entryName,
+          filename,
+          sourcePath: metadata.sourcePath,
+          mimeType: metadata.mimeType,
+          page: 1,
+          totalPages: docInfo.totalPages,
+          width: docInfo.width,
+          height: docInfo.height,
+          originalFileSize: rawBytes.length,
+          previewFormat: bundle.previewFormat,
+          flags: decoded.flags,
+          ocrText,
+          createdAt,
+          merkleRootHex: decoded.merkleRootHex,
+          snarkVerified: decoded.snarkAttestation.valid,
+          vqIndices: bundle.vqIndices,
+          dinoEmbedding: bundle.dinoEmbedding,
+          embeddingModelId: bundle.embeddingModelId,
+        },
       },
-    };
+    ];
   }
 
   /**
@@ -465,9 +477,10 @@ export class Win11TokenPipeline {
     }
 
     for (const fullPath of documentPaths) {
-      const item = await this.tokenizeDocumentFile(fullPath, ++tokenCounter);
-      if (item) {
+      const items = await this.tokenizeDocumentFile(fullPath, tokenCounter + 1);
+      for (const item of items) {
         archiveItems.push(item);
+        tokenCounter++;
         documentTokens++;
       }
     }

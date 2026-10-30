@@ -10,10 +10,10 @@
  */
 
 import sharp from "sharp";
-import { PreviewFormat } from "../models/token";
+import { EmbeddingModelId, PreviewFormat } from "../models/token";
 import {
-  DINO_IMAGE_SIZE,
-  extractDinoEmbeddingFromRgb224,
+  extractColorHogFallbackFromRgb224,
+  extractRealDinoV2Embedding,
 } from "./dinoEmbedding";
 import {
   VQ_CODEBOOK,
@@ -37,6 +37,7 @@ export interface RasterizedAssetBundle {
   previewFormat: PreviewFormat;
   vqIndices: Uint8Array<ArrayBuffer>;
   dinoEmbedding: Int8Array<ArrayBuffer>;
+  embeddingModelId: EmbeddingModelId;
   svgExtractedText?: string;
 }
 
@@ -360,7 +361,7 @@ export async function rasterizeAssetToWebpAndTensors(
       ? (docDimensions?.height ?? 1754)
       : (meta.height ?? fallbackHeader.height);
 
-    const [webpBuf, rgb16Buf, rgb224Buf] = await Promise.all([
+    const [webpBuf, rgb16Buf, dinoRgbResult] = await Promise.all([
       sharp(inputBuffer, { failOn: "none" })
         .resize(320, 320, {
           fit: "inside",
@@ -376,11 +377,11 @@ export async function rasterizeAssetToWebpAndTensors(
         .raw()
         .toBuffer(),
       sharp(inputBuffer, { failOn: "none" })
-        .flatten({ background: { r: 20, g: 33, b: 61 } })
-        .resize(DINO_IMAGE_SIZE, DINO_IMAGE_SIZE, { fit: "fill", kernel: "lanczos3" })
+        .flatten({ background: { r: 255, g: 255, b: 255 } })
+        .resize(384, 384, { fit: "inside", withoutEnlargement: true, kernel: "lanczos3" })
         .removeAlpha()
         .raw()
-        .toBuffer(),
+        .toBuffer({ resolveWithObject: true }),
     ]);
     let finalWebp = webpBuf;
     if (finalWebp.byteLength > maxPreviewBytes) {
@@ -396,8 +397,14 @@ export async function rasterizeAssetToWebpAndTensors(
     const vqIndices = encodeRgb16x16ToVqGrid(
       new Uint8Array(rgb16Buf.buffer, rgb16Buf.byteOffset, rgb16Buf.byteLength),
     );
-    const dinoEmbedding = extractDinoEmbeddingFromRgb224(
-      new Uint8Array(rgb224Buf.buffer, rgb224Buf.byteOffset, rgb224Buf.byteLength),
+    const dinoRes = await extractRealDinoV2Embedding(
+      new Uint8Array(
+        dinoRgbResult.data.buffer,
+        dinoRgbResult.data.byteOffset,
+        dinoRgbResult.data.byteLength,
+      ),
+      dinoRgbResult.info.width,
+      dinoRgbResult.info.height,
     );
 
     return {
@@ -407,7 +414,8 @@ export async function rasterizeAssetToWebpAndTensors(
       previewBytes,
       previewFormat: PreviewFormat.WEBP,
       vqIndices,
-      dinoEmbedding,
+      dinoEmbedding: dinoRes.embedding,
+      embeddingModelId: dinoRes.modelId,
       svgExtractedText,
     };
   } catch {
@@ -421,10 +429,7 @@ export async function rasterizeAssetToWebpAndTensors(
       page,
       maxPreviewBytes,
     );
-    const dinoEmbedding = new Int8Array(new ArrayBuffer(384));
-    for (let i = 0; i < 256; i++) {
-      dinoEmbedding[i] = ((vqIndices[i] ?? 128) - 128) as number;
-    }
+    const dinoEmbedding = extractColorHogFallbackFromRgb224(sourceBytes);
     return {
       width: fallbackHeader.width,
       height: fallbackHeader.height,
@@ -433,6 +438,7 @@ export async function rasterizeAssetToWebpAndTensors(
       previewFormat,
       vqIndices,
       dinoEmbedding,
+      embeddingModelId: EmbeddingModelId.COLOR_HOG_FALLBACK,
       svgExtractedText,
     };
   }

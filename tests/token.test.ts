@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
+  EmbeddingModelId,
   MAX_TOKEN_BYTES,
   PreviewFormat,
   SECTION1_HEADER_BYTES,
@@ -146,11 +147,12 @@ describe("TinyToken GF(2^8) + VQ + SHARK/SNARK Pipeline", () => {
       outputZipPath: testZipPath,
       allowedExtensions: [".jpg", ".jpeg", ".png", ".webp", ".svg", ".pdf", ".docx"],
       maxTokenSizeKb: 25,
+      maxPagesPerDocument: 2,
     });
 
     const buildRes = await pipeline.buildTokenArchive();
     expect(buildRes.imageTokens).toBeGreaterThan(0);
-    expect(buildRes.documentTokens).toBeGreaterThan(0);
+    expect(buildRes.documentTokens).toBeGreaterThanOrEqual(5);
     expect(buildRes.totalTokens).toBe(buildRes.imageTokens + buildRes.documentTokens);
 
     const engine = new CompressedTokenSearchEngine(testZipPath);
@@ -159,8 +161,8 @@ describe("TinyToken GF(2^8) + VQ + SHARK/SNARK Pipeline", () => {
     expect(engine.getCount()).toBe(buildRes.totalTokens);
     expect(engine.lastBootIndexMs).toBeLessThan(500);
 
-    const docHits = engine.searchOCR("Document:", 10);
-    expect(docHits.length).toBe(buildRes.documentTokens);
+    const docHits = engine.searchOCR("PDF Page", 20);
+    expect(docHits.length).toBeGreaterThan(0);
 
     const firstId = docHits[0]!.id;
     const vqHits = engine.searchSimilarVQ(firstId, "", 5);
@@ -178,11 +180,15 @@ describe("TinyToken GF(2^8) + VQ + SHARK/SNARK Pipeline", () => {
     const decoded = decodeBinaryToken(rawSlice!);
     expect(decoded.id).toBe(firstId);
     expect(decoded.snarkAttestation.valid).toBe(true);
+    expect(decoded.embeddingModelId).toBe(EmbeddingModelId.DINOV2_VIT_S14_Q8);
     expect(decoded.metadata.sourcePath.startsWith("/api/document/")).toBe(true);
 
-    // Verify native bun:sqlite VQ Inverted Index Engine set-intersection search
+    // Verify native bun:sqlite VQ Inverted Index Engine + FTS5 full-text search
     const invIndex = new VqInvertedIndexEngine("file::memory:");
     await invIndex.syncTokens(engine.getAllEntries());
+
+    const ftsMatches = invIndex.searchFts5("Australian Governance", 10);
+    expect(ftsMatches.length).toBeGreaterThan(0);
 
     const targetEntry = engine.getEntry(firstId)!;
     // Pass the full 256-element VQ array (with duplicates) to verify deduplicated HAVING threshold

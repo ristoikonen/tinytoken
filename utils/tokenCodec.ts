@@ -7,6 +7,7 @@
  */
 
 import {
+  EmbeddingModelId,
   MAX_TOKEN_BYTES,
   PreviewFormat,
   RS_PARITY_BYTES,
@@ -41,6 +42,7 @@ export interface EncodeTokenInput {
   previewFormat: PreviewFormat;
   shardBlockId?: number;
   shardIndex?: number;
+  embeddingModelId?: EmbeddingModelId;
   vqIndices: Uint8Array; // 256 bytes
   metadata: TokenMetadataPayload;
   previewBytes: Uint8Array;
@@ -159,6 +161,10 @@ export function encodeBinaryToken(input: EncodeTokenInput): Uint8Array<ArrayBuff
   view.setUint16(86, Math.floor(now / 0x100000000) & 0xffff, true);
   // 88: Homomorphic GF(2^8) state tag byte
   tokenBuffer[88] = 0x01;
+  // 89: Embedding Model ID byte (0x01 = Color/HOG fallback, 0x02 = DINOv2 ViT-S/14 ONNX q8)
+  tokenBuffer[89] =
+    input.embeddingModelId ??
+    (input.metadata.dinoEmbeddingHex ? EmbeddingModelId.DINOV2_VIT_S14_Q8 : EmbeddingModelId.NONE);
 
   // 128..383: 256-Byte SNARK/SHARK Provenance Attestation Stub
   tokenBuffer.set(snarkStub, SNARK_STUB_OFFSET);
@@ -224,6 +230,7 @@ export function decodeBinaryToken(rawToken: Uint8Array): DecodedToken {
   const tsHigh = view.getUint16(86, true);
   const timestampMs = tsHigh * 0x100000000 + tsLow;
   const homomorphicTag = healedHeader[88] ?? 0;
+  const embeddingModelId = (healedHeader[89] ?? 0) as EmbeddingModelId;
 
   const snarkStub = new Uint8Array(healedHeader.subarray(SNARK_STUB_OFFSET, SNARK_STUB_OFFSET + SNARK_STUB_BYTES));
   const vqIndices = new Uint8Array(healedHeader.subarray(VQ_GRID_OFFSET, VQ_GRID_OFFSET + VQ_GRID_BYTES));
@@ -266,6 +273,7 @@ export function decodeBinaryToken(rawToken: Uint8Array): DecodedToken {
     shardIndex,
     timestampMs,
     homomorphicTag,
+    embeddingModelId,
     snarkStub,
     snarkAttestation,
     vqIndices,

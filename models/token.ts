@@ -43,6 +43,12 @@ export enum PreviewFormat {
   SVG = 6,
 }
 
+export enum EmbeddingModelId {
+  NONE = 0x00,
+  COLOR_HOG_FALLBACK = 0x01, // Synchronous 384B Color/HOG fallback descriptor
+  DINOV2_VIT_S14_Q8 = 0x02,  // Real Meta/Xenova DINOv2 ViT-S/14 ONNX (384-dim CLS int8)
+}
+
 export interface TokenMetadataPayload {
   id: string;
   filename: string;
@@ -93,6 +99,7 @@ export interface DecodedToken {
   shardIndex: number;
   timestampMs: number;
   homomorphicTag: number;
+  embeddingModelId: EmbeddingModelId;
   snarkStub: Uint8Array;
   snarkAttestation: SnarkAttestationInfo;
   vqIndices: Uint8Array; // 256 bytes (16x16 codebook indices)
@@ -136,6 +143,7 @@ export interface ZipTokenIndexEntry {
   snarkVerified: boolean;
   vqIndices: Uint8Array; // 256 bytes kept in RAM for 0ms neural preview & ADC search
   dinoEmbedding?: Int8Array; // 384 bytes kept in RAM for sub-ms DINOv2 semantic similarity
+  embeddingModelId?: EmbeddingModelId;
 }
 
 export interface SearchHitDTO {

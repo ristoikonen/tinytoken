@@ -13,6 +13,7 @@
  */
 
 import {
+  EmbeddingModelId,
   PreviewFormat,
   type SearchHitDTO,
   type ZipTokenIndexEntry,
@@ -64,6 +65,7 @@ interface SerializedManifestEntry {
   snarkVerified: boolean;
   vqHex: string;
   dinoHex?: string;
+  embeddingModelId?: EmbeddingModelId;
 }
 
 /**
@@ -192,6 +194,9 @@ export async function writeNativeTokenZipArchive(
       vqHex: vqGridToHex(item.meta.vqIndices),
       ...(item.meta.dinoEmbedding
         ? { dinoHex: dinoEmbeddingToHex(item.meta.dinoEmbedding) }
+        : {}),
+      ...(item.meta.embeddingModelId !== undefined
+        ? { embeddingModelId: item.meta.embeddingModelId }
         : {}),
     });
   }
@@ -392,6 +397,9 @@ export class CompressedTokenSearchEngine {
           snarkVerified: item.snarkVerified,
           vqIndices: hexToVqGrid(item.vqHex),
           ...(item.dinoHex ? { dinoEmbedding: hexToDinoEmbedding(item.dinoHex) } : {}),
+          ...(item.embeddingModelId !== undefined
+            ? { embeddingModelId: item.embeddingModelId }
+            : {}),
         };
         this.metadataIndex.set(entry.id, entry);
         this.metadataIndex.set(entry.entryName, entry);
@@ -434,6 +442,7 @@ export class CompressedTokenSearchEngine {
           ...(decoded.metadata.dinoEmbeddingHex
             ? { dinoEmbedding: hexToDinoEmbedding(decoded.metadata.dinoEmbeddingHex) }
             : {}),
+          embeddingModelId: decoded.embeddingModelId,
         };
         this.metadataIndex.set(entry.id, entry);
         this.metadataIndex.set(entry.entryName, entry);
@@ -476,6 +485,7 @@ export class CompressedTokenSearchEngine {
   ): SearchHitDTO[] {
     let queryGrid: Uint8Array;
     let queryDino: Int8Array | undefined;
+    let queryModelId: EmbeddingModelId | undefined;
     let targetId = "";
 
     if (typeof targetIdOrVqGrid === "string") {
@@ -484,6 +494,7 @@ export class CompressedTokenSearchEngine {
       targetId = targetEntry.id;
       queryGrid = targetEntry.vqIndices;
       queryDino = targetEntry.dinoEmbedding;
+      queryModelId = targetEntry.embeddingModelId;
     } else {
       queryGrid = targetIdOrVqGrid;
     }
@@ -520,6 +531,8 @@ export class CompressedTokenSearchEngine {
         item.vqIndices,
         queryDino,
         item.dinoEmbedding,
+        queryModelId,
+        item.embeddingModelId,
       );
       scored.push({
         entry: item,

@@ -76,10 +76,28 @@ export class TokenApiHandlers {
     const mode = url.searchParams.get("mode") ?? (similarTo ? "vq" : "ocr");
     const limit = Math.min(250, Math.max(1, Number(url.searchParams.get("limit") ?? 60)));
 
-    const hits =
-      mode === "vq" && similarTo
-        ? this.engine.searchSimilarVQ(similarTo, q, limit)
-        : this.engine.searchOCR(q, limit);
+    let hits;
+    if (mode === "vq" && similarTo) {
+      hits = this.engine.searchSimilarVQ(similarTo, q, limit);
+    } else if (q.trim() && this.invertedIndex) {
+      const ftsIds = this.invertedIndex.searchFts5(q, limit);
+      if (ftsIds.length > 0) {
+        const ftsHits = this.engine
+          .searchOCR("", 500)
+          .filter((h) => ftsIds.includes(h.id))
+          .sort((a, b) => ftsIds.indexOf(a.id) - ftsIds.indexOf(b.id));
+        const subHits = this.engine.searchOCR(q, limit);
+        const seen = new Set(ftsHits.map((h) => h.id));
+        for (const sh of subHits) {
+          if (!seen.has(sh.id)) ftsHits.push(sh);
+        }
+        hits = ftsHits.slice(0, limit);
+      } else {
+        hits = this.engine.searchOCR(q, limit);
+      }
+    } else {
+      hits = this.engine.searchOCR(q, limit);
+    }
 
     const elapsedMs = Math.round((performance.now() - t0) * 1000) / 1000;
 
@@ -154,6 +172,7 @@ export class TokenApiHandlers {
         shardBlockId: decoded.shardBlockId,
         shardIndex: decoded.shardIndex,
         homomorphicTagHex: `0x${decoded.homomorphicTag.toString(16).padStart(2, "0").toUpperCase()}`,
+        embeddingModelId: decoded.embeddingModelId,
         rsParityValid: decoded.rsParityValid,
         rsCorrectedErrors: decoded.rsCorrectedErrors,
         snarkAttestation: decoded.snarkAttestation,

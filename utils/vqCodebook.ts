@@ -184,14 +184,16 @@ export function adcDistanceToSimilarityPct(adcDist: number): number {
 }
 
 /**
- * Hybrid DINOv2 (384B ViT-14 Int8) + 16x16 VQ Perceptual Color-Layout Similarity.
- * Combines 80% semantic DINOv2 cosine similarity with 20% VQ spatial palette similarity.
+ * Hybrid DINOv2 (384B ViT-S/14 Int8) + 16x16 VQ Perceptual Color-Layout Similarity.
+ * Combines 90% semantic DINOv2 cosine similarity with 10% VQ spatial palette similarity.
  */
 export function computeHybridVisualSimilarity(
   queryVq: Uint8Array,
   candidateVq: Uint8Array,
   queryDino?: Int8Array,
   candidateDino?: Int8Array,
+  queryModelId?: number,
+  candidateModelId?: number,
 ): {
   similarityScore: number;
   adcDistance: number;
@@ -203,14 +205,24 @@ export function computeHybridVisualSimilarity(
   }
 
   const vqSim01 = Math.max(0, 1 - adcDistance / 3_200_000);
+  const modelsCompatible =
+    queryModelId === undefined ||
+    candidateModelId === undefined ||
+    queryModelId === candidateModelId;
 
-  if (queryDino && candidateDino && queryDino.length > 0 && candidateDino.length > 0) {
+  if (
+    modelsCompatible &&
+    queryDino &&
+    candidateDino &&
+    queryDino.length > 0 &&
+    candidateDino.length > 0
+  ) {
     const cosine = computeDinoCosineSimilarity(queryDino, candidateDino);
     if (cosine >= 0.9999 && adcDistance === 0) {
       return { similarityScore: 100, adcDistance: 0, dinoSimilarityPct: 100 };
     }
     const dinoSim01 = Math.max(0, Math.min(1, cosine));
-    const hybrid01 = dinoSim01 * 0.8 + vqSim01 * 0.2;
+    const hybrid01 = dinoSim01 * 0.9 + vqSim01 * 0.1;
     return {
       similarityScore: Math.round(hybrid01 * 1000) / 10,
       adcDistance,

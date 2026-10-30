@@ -62,30 +62,44 @@ export class VqInvertedIndexEngine {
     this.db.run(`
       CREATE INDEX IF NOT EXISTS idx_token ON image_tokens(token_id);
     `);
+    this.db.run(`
+      CREATE VIRTUAL TABLE IF NOT EXISTS tokens_fts USING fts5(
+        id UNINDEXED,
+        filename,
+        ocr_text,
+        tokenize = 'porter unicode61'
+      );
+    `);
   }
 
   /**
-   * Synchronizes all token 16x16 VQ histograms into the native Bun SQLite Inverted Index in < 2 ms.
+   * Synchronizes all token 16x16 VQ histograms and FTS5 full-text records into native Bun SQLite in < 2 ms.
    */
   public async syncTokens(entries: ReadonlyArray<ZipTokenIndexEntry>): Promise<void> {
     const clearTokensStmt = this.db.prepare("DELETE FROM image_tokens");
     const clearImagesStmt = this.db.prepare("DELETE FROM images");
+    const clearFtsStmt = this.db.prepare("DELETE FROM tokens_fts");
     const insertImageStmt = this.db.prepare(
       "INSERT INTO images (id, r2_url, inferred_label) VALUES (?, ?, ?)",
     );
     const insertTokenStmt = this.db.prepare(
       "INSERT INTO image_tokens (token_id, image_id, frequency) VALUES (?, ?, ?)",
     );
+    const insertFtsStmt = this.db.prepare(
+      "INSERT INTO tokens_fts (id, filename, ocr_text) VALUES (?, ?, ?)",
+    );
 
     const runSyncTransaction = this.db.transaction(
       (items: ReadonlyArray<ZipTokenIndexEntry>) => {
         clearTokensStmt.run();
         clearImagesStmt.run();
+        clearFtsStmt.run();
 
         const freqMap = new Uint16Array(256);
         for (const entry of items) {
           const inferredLabel = entry.filename.replace(/\.[^.]+$/, "");
           insertImageStmt.run(entry.id, entry.sourcePath, inferredLabel);
+          insertFtsStmt.run(entry.id, entry.filename, entry.ocrText);
 
           freqMap.fill(0);
           for (let i = 0; i < entry.vqIndices.length; i++) {
@@ -153,6 +167,29 @@ export class VqInvertedIndexEngine {
       overlappingTokens: row.overlapping_tokens,
       weightedFrequency: row.weighted_frequency,
     }));
+  }
+
+  /**
+   * Ranked BM25 full-text search via native `bun:sqlite` FTS5 (`porter unicode61` stemmer).
+   */
+  public searchFts5(query: string, limit = 50): string[] {
+    const cleaned = query
+      .replace(/[^\w\s-]/g, " ")
+      .trim()
+      .split(/\s+/)
+      .filter((w) => w.length > 0)
+      .map((w) => `"${w}"*`)
+      .join(" OR ");
+    if (!cleaned) return [];
+
+    try {
+      const stmt = this.db.query<{ id: string }, [string, number]>(
+        "SELECT id FROM tokens_fts WHERE tokens_fts MATCH ? ORDER BY bm25(tokens_fts, 5.0, 1.0) LIMIT ?",
+      );
+      return stmt.all(cleaned, limit).map((r) => r.id);
+    } catch {
+      return [];
+    }
   }
 
   public close(): void {
