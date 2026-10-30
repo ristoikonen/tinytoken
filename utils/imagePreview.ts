@@ -321,24 +321,24 @@ export async function rasterizeAssetToWebpAndTensors(
       .replace(/[<>&"']/g, "")
       .slice(0, 32);
 
-    const docCoverSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 220" width="220" height="220">
+    const docCoverSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320" width="320" height="320">
       <defs>
         <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
           <stop offset="0%" stop-color="hsl(${hueA}, 55%, 18%)"/>
           <stop offset="100%" stop-color="hsl(${hueB}, 65%, 28%)"/>
         </linearGradient>
       </defs>
-      <rect width="220" height="220" fill="url(#bg)"/>
-      <rect x="26" y="14" width="168" height="192" rx="6" fill="#f8fafc" stroke="#38bdf8" stroke-width="2"/>
-      <rect x="26" y="14" width="168" height="36" rx="6" fill="hsl(${hueA}, 70%, 35%)"/>
-      <text x="36" y="37" fill="#ffffff" font-family="sans-serif" font-size="11" font-weight="bold">PDF • ${totalPages} PAGES</text>
-      <rect x="38" y="64" width="120" height="7" rx="3" fill="#334155"/>
-      <rect x="38" y="79" width="142" height="5" rx="2" fill="#64748b"/>
-      <rect x="38" y="91" width="134" height="5" rx="2" fill="#64748b"/>
-      <rect x="38" y="103" width="110" height="5" rx="2" fill="#94a3b8"/>
-      <rect x="38" y="122" width="142" height="36" rx="4" fill="hsl(${hueB}, 45%, 88%)"/>
-      <text x="36" y="176" fill="#0f172a" font-family="monospace" font-size="9.5" font-weight="bold">${safeTitle}</text>
-      <text x="36" y="191" fill="#475569" font-family="sans-serif" font-size="8.5">${safeSub}</text>
+      <rect width="320" height="320" fill="url(#bg)"/>
+      <rect x="38" y="20" width="244" height="280" rx="8" fill="#f8fafc" stroke="#38bdf8" stroke-width="2.5"/>
+      <rect x="38" y="20" width="244" height="52" rx="8" fill="hsl(${hueA}, 70%, 35%)"/>
+      <text x="52" y="52" fill="#ffffff" font-family="sans-serif" font-size="15" font-weight="bold">DOC • ${totalPages} PAGES</text>
+      <rect x="54" y="92" width="174" height="10" rx="4" fill="#334155"/>
+      <rect x="54" y="114" width="206" height="7" rx="3" fill="#64748b"/>
+      <rect x="54" y="132" width="194" height="7" rx="3" fill="#64748b"/>
+      <rect x="54" y="150" width="160" height="7" rx="3" fill="#94a3b8"/>
+      <rect x="54" y="178" width="206" height="52" rx="6" fill="hsl(${hueB}, 45%, 88%)"/>
+      <text x="52" y="256" fill="#0f172a" font-family="monospace" font-size="12.5" font-weight="bold">${safeTitle}</text>
+      <text x="52" y="278" fill="#475569" font-family="sans-serif" font-size="11.5">${safeSub}</text>
     </svg>`;
     inputBuffer = new TextEncoder().encode(docCoverSvg);
     fallbackHeader = {
@@ -362,12 +362,12 @@ export async function rasterizeAssetToWebpAndTensors(
 
     const [webpBuf, rgb16Buf, rgb224Buf] = await Promise.all([
       sharp(inputBuffer, { failOn: "none" })
-        .resize(220, 220, {
+        .resize(320, 320, {
           fit: "inside",
           withoutEnlargement: true,
           background: { r: 20, g: 33, b: 61, alpha: 1 },
         })
-        .webp({ quality: 76, effort: 3 })
+        .webp({ quality: 78, smartSubsample: true, effort: 4 })
         .toBuffer(),
       sharp(inputBuffer, { failOn: "none" })
         .flatten({ background: { r: 20, g: 33, b: 61 } })
@@ -382,12 +382,11 @@ export async function rasterizeAssetToWebpAndTensors(
         .raw()
         .toBuffer(),
     ]);
-
     let finalWebp = webpBuf;
     if (finalWebp.byteLength > maxPreviewBytes) {
       finalWebp = await sharp(inputBuffer, { failOn: "none" })
-        .resize(180, 180, { fit: "inside", withoutEnlargement: true })
-        .webp({ quality: 55, effort: 4 })
+        .resize(240, 240, { fit: "inside", withoutEnlargement: true })
+        .webp({ quality: 68, smartSubsample: true, effort: 4 })
         .toBuffer();
     }
 

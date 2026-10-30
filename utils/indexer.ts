@@ -273,7 +273,7 @@ export class Win11TokenPipeline {
     const createdAt = new Date(bunFile.lastModified || Date.now()).toISOString();
     const svgTextNote = bundle.svgExtractedText ? ` | SVG Text: ${bundle.svgExtractedText}` : "";
     const ocrText =
-      `Image Asset: ${filename} | Dimensions: ${bundle.width}x${bundle.height} (${bundle.colorDepth}-bit ${ext.replace(".", "").toUpperCase()} -> 220x220 WebP ${bundle.previewBytes.length}B)` +
+      `Image Asset: ${filename} | Dimensions: ${bundle.width}x${bundle.height} (${bundle.colorDepth}-bit ${ext.replace(".", "").toUpperCase()} -> 320x320 WebP ${bundle.previewBytes.length}B)` +
       `${svgTextNote} | DINOv2-384B + 16x16 VQ + 256B SHARK/SNARK. Source path: ${fullPath}`;
 
     const metadata: TokenMetadataPayload = {
