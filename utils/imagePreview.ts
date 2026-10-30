@@ -291,7 +291,7 @@ export async function rasterizeAssetToWebpAndTensors(
   page = 1,
   totalPages = 1,
   docDimensions?: { width: number; height: number; excerpt?: string },
-  maxPreviewBytes = 14336,
+  maxPreviewBytes = 16384,
 ): Promise<RasterizedAssetBundle> {
   const lowerExt = ext.toLowerCase();
   const isDocument = lowerExt === ".pdf" || lowerExt === ".docx" || lowerExt === ".doc";

@@ -37,3 +37,7 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 # Generated ZIP archives and compiled binaries
 data/
 *.exe
+
+# Data file dirs
+documents/
+images/

@@ -184,7 +184,7 @@ export class TokenApiHandlers {
       status: 200,
       headers: {
         "Content-Type": mimeType,
-        "Cache-Control": "public, max-age=3600",
+        "Cache-Control": "no-cache",
         "X-Token-Extract-Ms": extractMs,
         "X-RS-Parity-Valid": String(decoded.rsParityValid),
         "X-SNARK-Attested": String(decoded.snarkAttestation.valid),
