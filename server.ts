@@ -58,6 +58,7 @@ const server = serve({
     "/api/search/pattern": (req: BunRequest) => apiHandlers.handlePatternSearch(new URL(req.url)),
     "/api/index/rebuild": {
       POST: (req: BunRequest) => apiHandlers.handleRebuildIndex(req),
+      OPTIONS: (req: BunRequest) => corsResponse(req),
     },
   },
 
@@ -66,15 +67,7 @@ const server = serve({
     const path = url.pathname;
 
     if (req.method === "OPTIONS") {
-      return corsResponse();
-      // return new Response(null, {
-      //   status: 204,
-      //   headers: {
-      //     "Access-Control-Allow-Origin": "*",
-      //     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-      //     "Access-Control-Allow-Headers": "Content-Type, X-Session-ID, X-Correlation-ID",
-      //   },
-      // });
+      return corsResponse(req);
     }
 
     // Dynamic token & image routes

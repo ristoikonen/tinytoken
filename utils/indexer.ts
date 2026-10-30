@@ -206,7 +206,7 @@ export class Win11TokenPipeline {
       tags: ["local-image", ext.replace(".", ""), "dinov2-vit-s14", "webp-preview", "verified"],
     };
 
-    const tokenBytes = encodeBinaryToken({
+    const tokenBytes = await encodeBinaryToken({
       originalFileSize: rawBytes.length,
       width: bundle.width,
       height: bundle.height,
@@ -220,7 +220,7 @@ export class Win11TokenPipeline {
       previewBytes: bundle.previewBytes,
     });
 
-    const decoded = decodeBinaryToken(tokenBytes);
+    const decoded = await decodeBinaryToken(tokenBytes);
     return {
       entryName,
       tokenBytes,
@@ -310,7 +310,7 @@ export class Win11TokenPipeline {
             ],
           };
 
-          const tokenBytes = encodeBinaryToken({
+          const tokenBytes = await encodeBinaryToken({
             originalFileSize: rawBytes.length,
             width: pg.width,
             height: pg.height,
@@ -324,7 +324,7 @@ export class Win11TokenPipeline {
             previewBytes: pg.previewBytes,
           });
 
-          const decoded = decodeBinaryToken(tokenBytes);
+          const decoded = await decodeBinaryToken(tokenBytes);
           items.push({
             entryName,
             tokenBytes,
@@ -396,7 +396,7 @@ export class Win11TokenPipeline {
       tags: ["local-document", ext.replace(".", ""), `${docInfo.totalPages}-pages`, "dinov2-vit-s14", "verified"],
     };
 
-    const tokenBytes = encodeBinaryToken({
+    const tokenBytes = await encodeBinaryToken({
       originalFileSize: rawBytes.length,
       width: docInfo.width,
       height: docInfo.height,
@@ -410,7 +410,7 @@ export class Win11TokenPipeline {
       previewBytes: bundle.previewBytes,
     });
 
-    const decoded = decodeBinaryToken(tokenBytes);
+    const decoded = await decodeBinaryToken(tokenBytes);
     return [
       {
         entryName,

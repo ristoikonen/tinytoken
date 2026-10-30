@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { TokenApiHandlers } from "../handlers/tokenHandlers";
 import {
   EmbeddingModelId,
   MAX_TOKEN_BYTES,
@@ -9,6 +10,7 @@ import {
 } from "../models/token";
 import {
   applyHomomorphicMaskGF28,
+  encodeHeaderParity384,
   gfAdd,
   gfDiv,
   gfInv,
@@ -17,6 +19,8 @@ import {
 import { sniffImageHeader } from "../utils/imagePreview";
 import { Win11TokenPipeline } from "../utils/indexer";
 import { QuickLZ } from "../utils/quicklz";
+import { corsResponse, errorResponse, jsonResponse } from "../utils/response";
+import { generateAttestationKeyPair } from "../utils/snarkAttest";
 import {
   decodeBinaryToken,
   encodeBinaryToken,
@@ -49,7 +53,7 @@ describe("TinyToken GF(2^8) + VQ + SHARK/SNARK Pipeline", () => {
     expect(new TextDecoder().decode(decompressed)).toBe(sample);
   });
 
-  test("25 KB Binary Token encodes, verifies SHARK/SNARK attestation, and heals GF(2^8) byte corruption", () => {
+  test("25 KB Binary Token encodes, verifies Ed25519+Merkle attestation across all sections, and heals GF(2^8) byte corruption", async () => {
     const dummyImg = new Uint8Array(2048);
     for (let i = 0; i < dummyImg.length; i++) dummyImg[i] = (i * 7) & 0xff;
 
@@ -74,7 +78,7 @@ describe("TinyToken GF(2^8) + VQ + SHARK/SNARK Pipeline", () => {
       tags: ["invoice", "gf28"],
     };
 
-    const tokenBytes = encodeBinaryToken({
+    const tokenBytes = await encodeBinaryToken({
       originalFileSize: 158920,
       width: 1654,
       height: 2339,
@@ -88,33 +92,91 @@ describe("TinyToken GF(2^8) + VQ + SHARK/SNARK Pipeline", () => {
     expect(tokenBytes.length).toBeGreaterThan(SECTION1_HEADER_BYTES);
     expect(tokenBytes.length).toBeLessThanOrEqual(MAX_TOKEN_BYTES);
 
-    // 1. Nominal decode
-    const decoded = decodeBinaryToken(tokenBytes);
+    // 1. Nominal decode & full Ed25519 + 4-section verification
+    const decoded = await decodeBinaryToken(tokenBytes);
     expect(decoded.magic).toBe("GF28");
     expect(decoded.version).toBe(2);
     expect(decoded.rsParityValid).toBe(true);
     expect(decoded.rsCorrectedErrors).toBe(0);
+    expect(decoded.snarkAttestation.protocol).toBe("ED25519-MERKLE-GF28-v3");
     expect(decoded.snarkAttestation.valid).toBe(true);
+    expect(decoded.snarkAttestation.signatureVerified).toBe(true);
+    expect(decoded.snarkAttestation.trustedKeyMatch).toBe(true);
+    expect(decoded.snarkAttestation.sectionsVerified).toEqual({
+      originHeader: true,
+      vqGrid: true,
+      section2Metadata: true,
+      section3Preview: true,
+      merkleRoot: true,
+    });
     expect(decoded.metadata.ocrText).toBe(metadata.ocrText);
 
-    // 2. Corrupt 1 byte inside each of the 3 header lanes (Header, SNARK stub, VQ grid)
+    // 2. Corrupt 1 byte inside each of the 3 header lanes (Header, Ed25519 attestation block, VQ grid)
     const corrupted = new Uint8Array(tokenBytes);
     corrupted[36] = (corrupted[36] ?? 0) ^ 0x55;  // Lane 0: corrupt width
-    corrupted[250] = (corrupted[250] ?? 0) ^ 0xaa; // Lane 1: corrupt inside 256B SHARK stub
+    corrupted[250] = (corrupted[250] ?? 0) ^ 0xaa; // Lane 1: corrupt inside 256B Ed25519 block
     corrupted[500] = (corrupted[500] ?? 0) ^ 0x33; // Lane 2: corrupt inside 256B VQ grid
 
-    const healed = decodeBinaryToken(corrupted);
+    const healed = await decodeBinaryToken(corrupted);
     expect(healed.rsParityValid).toBe(true);
     expect(healed.rsCorrectedErrors).toBe(3);
     expect(healed.width).toBe(1654);
     expect(healed.snarkAttestation.valid).toBe(true);
     expect(Array.from(healed.vqIndices)).toEqual(Array.from(vqIndices));
 
-    // 3. Homomorphic GF(2^8) state transition
+    // 3. Homomorphic GF(2^8) state transition preserves Ed25519 provenance attestation
     const mutated = applyHomomorphicMaskGF28(tokenBytes, 0x5a, TokenFlags.HOMOMORPHIC_MASKED);
-    const decodedMutated = decodeBinaryToken(mutated);
+    const decodedMutated = await decodeBinaryToken(mutated);
     expect(decodedMutated.rsParityValid).toBe(true);
+    expect(decodedMutated.snarkAttestation.valid).toBe(true);
     expect((decodedMutated.flags & TokenFlags.HOMOMORPHIC_MASKED) !== 0).toBe(true);
+
+    // 4. Tamper with Section II (metaBytes) -> MUST fail section2Metadata & overall attestation
+    const tamperedMeta = new Uint8Array(tokenBytes);
+    const metaOffset = SECTION1_HEADER_BYTES + 12;
+    tamperedMeta[metaOffset] = (tamperedMeta[metaOffset] ?? 0) ^ 0xff;
+    const decodedTamperedMeta = await decodeBinaryToken(tamperedMeta);
+    expect(decodedTamperedMeta.snarkAttestation.valid).toBe(false);
+    expect(decodedTamperedMeta.snarkAttestation.sectionsVerified.section2Metadata).toBe(false);
+    expect(decodedTamperedMeta.snarkAttestation.failureReason).toBe("section2_metadata_hash_mismatch");
+
+    // 5. Tamper with Section III (previewBytes) -> MUST fail section3Preview & overall attestation
+    const tamperedPreview = new Uint8Array(tokenBytes);
+    const previewOffset = tokenBytes.length - 10;
+    tamperedPreview[previewOffset] = (tamperedPreview[previewOffset] ?? 0) ^ 0xff;
+    const decodedTamperedPreview = await decodeBinaryToken(tamperedPreview);
+    expect(decodedTamperedPreview.snarkAttestation.valid).toBe(false);
+    expect(decodedTamperedPreview.snarkAttestation.sectionsVerified.section3Preview).toBe(false);
+    expect(decodedTamperedPreview.snarkAttestation.failureReason).toBe("section3_preview_hash_mismatch");
+
+    // 6. Forgery attempt via rogue Ed25519 keypair -> MUST fail trustedKeyMatch
+    const rogueKeys = await generateAttestationKeyPair();
+    const forgedToken = await encodeBinaryToken({
+      originalFileSize: 158920,
+      width: 1654,
+      height: 2339,
+      page: 3,
+      previewFormat: PreviewFormat.AVIF,
+      vqIndices,
+      metadata: { ...metadata, ocrText: "FORGED OCR PAYLOAD BY ATTACKER" },
+      previewBytes: dummyImg,
+      signingKeys: rogueKeys,
+    });
+    const decodedForged = await decodeBinaryToken(forgedToken);
+    expect(decodedForged.rsParityValid).toBe(true);
+    expect(decodedForged.snarkAttestation.valid).toBe(false);
+    expect(decodedForged.snarkAttestation.trustedKeyMatch).toBe(false);
+    expect(decodedForged.snarkAttestation.failureReason).toBe("untrusted_signer_public_key");
+
+    // 7. Keyless hash/signature tampering (recomputing RS parity without private key) -> MUST fail Ed25519 signature
+    const sigTampered = new Uint8Array(tokenBytes);
+    sigTampered[128 + 170] = (sigTampered[128 + 170] ?? 0) ^ 0x01; // flip 1 bit in 64B Ed25519 signature
+    sigTampered.set(encodeHeaderParity384(sigTampered.subarray(0, 640)), 640); // recompute valid RS parity
+    const decodedSigTampered = await decodeBinaryToken(sigTampered);
+    expect(decodedSigTampered.rsParityValid).toBe(true);
+    expect(decodedSigTampered.snarkAttestation.valid).toBe(false);
+    expect(decodedSigTampered.snarkAttestation.signatureVerified).toBe(false);
+    expect(decodedSigTampered.snarkAttestation.failureReason).toBe("ed25519_signature_invalid");
   });
 
   test("VQ Asymmetric Distance Computation (ADC) ranks identical & similar grids accurately", () => {
@@ -177,9 +239,10 @@ describe("TinyToken GF(2^8) + VQ + SHARK/SNARK Pipeline", () => {
     expect(rawSlice).not.toBeNull();
     expect(sliceMs).toBeLessThan(50);
 
-    const decoded = decodeBinaryToken(rawSlice!);
+    const decoded = await decodeBinaryToken(rawSlice!);
     expect(decoded.id).toBe(firstId);
     expect(decoded.snarkAttestation.valid).toBe(true);
+    expect(decoded.snarkAttestation.signatureVerified).toBe(true);
     expect(decoded.embeddingModelId).toBe(EmbeddingModelId.DINOV2_VIT_S14_Q8);
     expect(decoded.metadata.sourcePath.startsWith("/api/document/")).toBe(true);
 
@@ -202,9 +265,9 @@ describe("TinyToken GF(2^8) + VQ + SHARK/SNARK Pipeline", () => {
     invIndex.close();
   });
 
-  test("generateMockTinyTokenBuffer creates a valid 25KB Canberra synthetic token that decodes cleanly", () => {
-    const mockBuf = generateMockTinyTokenBuffer("canberra_grass_01", "grassland_synthetic");
-    const decoded = decodeBinaryToken(mockBuf);
+  test("generateMockTinyTokenBuffer creates a valid 25KB Canberra synthetic token that decodes cleanly", async () => {
+    const mockBuf = await generateMockTinyTokenBuffer("canberra_grass_01", "grassland_synthetic");
+    const decoded = await decodeBinaryToken(mockBuf);
 
     expect(decoded.id).toBe("canberra_grass_01");
     expect(decoded.magic).toBe("GF28");
@@ -213,6 +276,85 @@ describe("TinyToken GF(2^8) + VQ + SHARK/SNARK Pipeline", () => {
     expect(decoded.metadata.environmentClass).toBe("grassland_synthetic");
     expect(decoded.metadata.geoCoordinates?.latitude).toBeCloseTo(-35.1764, 4);
     expect(decoded.metadata.geoCoordinates?.longitude).toBeCloseTo(149.1311, 4);
+  });
+
+  test("CORS and cross-origin POST guards block untrusted origins and CSRF attacks", async () => {
+    // 1. jsonResponse and errorResponse never emit Access-Control-Allow-Origin: *
+    const defaultJson = jsonResponse({ ok: true });
+    expect(defaultJson.headers.get("access-control-allow-origin")).toBeNull();
+    expect(defaultJson.headers.get("x-content-type-options")).toBe("nosniff");
+
+    const wildcardAttempt = jsonResponse({ ok: true }, 200, true, "*");
+    expect(wildcardAttempt.headers.get("access-control-allow-origin")).toBeNull();
+
+    const defaultErr = errorResponse("Bad request", 400);
+    expect(defaultErr.headers.get("access-control-allow-origin")).toBeNull();
+
+    // 2. corsResponse rejects cross-origin OPTIONS preflight and permits same-origin
+    const evilOptionsReq = new Request("http://localhost:3000/api/index/rebuild", {
+      method: "OPTIONS",
+      headers: { Origin: "https://evil.example" },
+    });
+    const evilPreflight = corsResponse(evilOptionsReq);
+    expect(evilPreflight.status).toBe(403);
+    expect(evilPreflight.headers.get("access-control-allow-origin")).toBeNull();
+
+    const sameOriginOptionsReq = new Request("http://localhost:3000/api/index/rebuild", {
+      method: "OPTIONS",
+      headers: { Origin: "http://localhost:3000" },
+    });
+    const okPreflight = corsResponse(sameOriginOptionsReq);
+    expect(okPreflight.status).toBe(204);
+    expect(okPreflight.headers.get("access-control-allow-origin")).toBe("http://localhost:3000");
+
+    // 3. Mutating POST endpoints reject cross-origin Origin, Sec-Fetch-Site, and no-cors form posts
+    const engine = new CompressedTokenSearchEngine("./data/test_tokens.zip");
+    const pipeline = new Win11TokenPipeline({
+      sourceDirectory: "./images",
+      documentDirectory: "./documents",
+      outputZipPath: "./data/test_tokens.zip",
+      allowedExtensions: [".png"],
+      maxTokenSizeKb: 25,
+    });
+    const handlers = new TokenApiHandlers(engine, pipeline);
+
+    const crossOriginRebuild = await handlers.handleRebuildIndex(
+      new Request("http://localhost:3000/api/index/rebuild", {
+        method: "POST",
+        headers: {
+          Origin: "https://evil.example",
+          "Content-Type": "application/json",
+        },
+        body: "{}",
+      }),
+    );
+    expect(crossOriginRebuild.status).toBe(403);
+
+    const crossSiteFetchMutate = await handlers.handleHomomorphicMutate(
+      "tok_00001_HectorDoor.png",
+      new Request("http://localhost:3000/api/token/tok_00001_HectorDoor.png/mutate", {
+        method: "POST",
+        headers: {
+          "Sec-Fetch-Site": "cross-site",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ scalar: 0x5a }),
+      }),
+    );
+    expect(crossSiteFetchMutate.status).toBe(403);
+
+    const noCorsFormPost = await handlers.handleRebuildIndex(
+      new Request("http://localhost:3000/api/index/rebuild", {
+        method: "POST",
+        headers: {
+          Origin: "http://localhost:3000",
+          "Sec-Fetch-Site": "same-origin",
+          "Content-Type": "text/plain",
+        },
+        body: "x=1",
+      }),
+    );
+    expect(noCorsFormPost.status).toBe(415);
   });
 });
 

@@ -31,6 +31,7 @@ import {
   bytesToHex,
   generateSnarkAttestationStub,
   verifySnarkAttestationStub,
+  type AuthorityAttestationKeys,
 } from "./snarkAttest";
 
 export interface EncodeTokenInput {
@@ -47,6 +48,11 @@ export interface EncodeTokenInput {
   metadata: TokenMetadataPayload;
   previewBytes: Uint8Array;
   compressMetadata?: boolean;
+  signingKeys?: AuthorityAttestationKeys;
+}
+
+export interface DecodeTokenOptions {
+  trustedPublicKeyRaw?: Uint8Array;
 }
 
 function uuidStringToBytes(uuid: string): Uint8Array {
@@ -59,9 +65,11 @@ function uuidStringToBytes(uuid: string): Uint8Array {
 }
 
 /**
- * Encodes a complete binary token guaranteed to fit within MAX_TOKEN_BYTES (25,600 bytes).
+ * Encodes and Ed25519-signs a complete binary token guaranteed to fit within MAX_TOKEN_BYTES (25,600 bytes).
  */
-export function encodeBinaryToken(input: EncodeTokenInput): Uint8Array<ArrayBuffer> {
+export async function encodeBinaryToken(
+  input: EncodeTokenInput,
+): Promise<Uint8Array<ArrayBuffer>> {
   const uuidBytes =
     input.uuidBytes && input.uuidBytes.length === 16
       ? input.uuidBytes
@@ -106,16 +114,23 @@ export function encodeBinaryToken(input: EncodeTokenInput): Uint8Array<ArrayBuff
   );
   const previewBytes = input.previewBytes.subarray(0, maxAllowedPreview);
 
-  // Generate 256B SNARK/SHARK attestation stub & 32B Merkle Root
-  const { snarkStub, merkleRoot } = generateSnarkAttestationStub({
+  const resolvedEmbeddingModelId =
+    input.embeddingModelId ??
+    (input.metadata.dinoEmbeddingHex ? EmbeddingModelId.DINOV2_VIT_S14_Q8 : EmbeddingModelId.NONE);
+
+  // Generate 256B Ed25519 + 4-Leaf SHA-256 Merkle Provenance Attestation & 32B Merkle Root
+  const { snarkStub, merkleRoot } = await generateSnarkAttestationStub({
     uuidBytes,
     originalFileSize: input.originalFileSize,
     width: input.width,
     height: input.height,
     page: input.page,
+    previewFormat: input.previewFormat,
+    embeddingModelId: resolvedEmbeddingModelId,
     vqIndices,
     metaBytes,
     previewBytes,
+    signingKeys: input.signingKeys,
   });
 
   const totalTokenSize = SECTION1_HEADER_BYTES + metaBytes.length + previewBytes.length;
@@ -162,11 +177,9 @@ export function encodeBinaryToken(input: EncodeTokenInput): Uint8Array<ArrayBuff
   // 88: Homomorphic GF(2^8) state tag byte
   tokenBuffer[88] = 0x01;
   // 89: Embedding Model ID byte (0x01 = Color/HOG fallback, 0x02 = DINOv2 ViT-S/14 ONNX q8)
-  tokenBuffer[89] =
-    input.embeddingModelId ??
-    (input.metadata.dinoEmbeddingHex ? EmbeddingModelId.DINOV2_VIT_S14_Q8 : EmbeddingModelId.NONE);
+  tokenBuffer[89] = resolvedEmbeddingModelId;
 
-  // 128..383: 256-Byte SNARK/SHARK Provenance Attestation Stub
+  // 128..383: 256-Byte Ed25519 + SHA-256 Merkle Provenance Attestation Block
   tokenBuffer.set(snarkStub, SNARK_STUB_OFFSET);
 
   // 384..639: 256-Byte VQ 16x16 Latent Codebook Grid
@@ -186,11 +199,17 @@ export function encodeBinaryToken(input: EncodeTokenInput): Uint8Array<ArrayBuff
 }
 
 /**
- * Unpacks, heals (via GF(2^8) Reed-Solomon), and verifies (via SNARK/SHARK) a 25 KB binary token.
+ * Unpacks, heals (via GF(2^8) Reed-Solomon), and cryptographically verifies (via Ed25519 + full-token
+ * SHA-256 Merkle commitments over Origin Header, VQ Grid, Section II, and Section III) a 25 KB binary token.
  */
-export function decodeBinaryToken(rawToken: Uint8Array): DecodedToken {
+export async function decodeBinaryToken(
+  rawToken: Uint8Array,
+  options?: DecodeTokenOptions,
+): Promise<DecodedToken> {
   if (rawToken.length < SECTION1_HEADER_BYTES) {
-    throw new Error(`Invalid token buffer: expected at least ${SECTION1_HEADER_BYTES} bytes, got ${rawToken.length}`);
+    throw new Error(
+      `Invalid token buffer: expected at least ${SECTION1_HEADER_BYTES} bytes, got ${rawToken.length}`,
+    );
   }
 
   // 1. Verify & heal Section I Header (0..639) using 384-byte GF(2^8) Reed-Solomon parity (640..1023)
@@ -232,28 +251,75 @@ export function decodeBinaryToken(rawToken: Uint8Array): DecodedToken {
   const homomorphicTag = healedHeader[88] ?? 0;
   const embeddingModelId = (healedHeader[89] ?? 0) as EmbeddingModelId;
 
-  const snarkStub = new Uint8Array(healedHeader.subarray(SNARK_STUB_OFFSET, SNARK_STUB_OFFSET + SNARK_STUB_BYTES));
-  const vqIndices = new Uint8Array(healedHeader.subarray(VQ_GRID_OFFSET, VQ_GRID_OFFSET + VQ_GRID_BYTES));
+  const snarkStub = new Uint8Array(
+    healedHeader.subarray(SNARK_STUB_OFFSET, SNARK_STUB_OFFSET + SNARK_STUB_BYTES),
+  );
+  const vqIndices = new Uint8Array(
+    healedHeader.subarray(VQ_GRID_OFFSET, VQ_GRID_OFFSET + VQ_GRID_BYTES),
+  );
 
-  // 2. Verify SNARK/SHARK Provenance Attestation
-  const snarkAttestation = verifySnarkAttestationStub(snarkStub, merkleRoot, vqIndices);
+  // 2. Slice Section II (Metadata & OCR) and Section III (Preview) BEFORE cryptographic verification
+  const expectedTotalBytes = SECTION1_HEADER_BYTES + metaLength + previewLength;
+  const envelopeBoundsValid = expectedTotalBytes === rawToken.length;
 
-  // 3. Unpack Section II Metadata & OCR
   const metaStart = SECTION1_HEADER_BYTES;
   const metaEnd = Math.min(rawToken.length, metaStart + metaLength);
   const rawMetaSlice = rawToken.subarray(metaStart, metaEnd);
 
-  let decodedMetaBytes = rawMetaSlice;
-  if ((flags & TokenFlags.QUICKLZ_COMPRESSED) !== 0 && rawMetaSlice.length > 0) {
-    decodedMetaBytes = QuickLZ.decompress(rawMetaSlice);
-  }
-
-  const metadata = JSON.parse(new TextDecoder().decode(decodedMetaBytes)) as TokenMetadataPayload;
-
-  // 4. Slice Section III Preview Image
   const previewStart = metaEnd;
   const previewEnd = Math.min(rawToken.length, previewStart + previewLength);
   const previewBytes = rawToken.subarray(previewStart, previewEnd);
+
+  // 3. Cryptographically verify Ed25519 signature + SHA-256 commitments over ALL sections
+  const snarkAttestation = await verifySnarkAttestationStub({
+    snarkStub,
+    merkleRoot,
+    uuidBytes,
+    originalFileSize,
+    width,
+    height,
+    page,
+    previewFormat,
+    embeddingModelId,
+    vqIndices,
+    metaBytes: rawMetaSlice,
+    previewBytes,
+    envelopeBoundsValid,
+    trustedPublicKeyRaw: options?.trustedPublicKeyRaw,
+  });
+
+  // 4. Unpack Section II Metadata & OCR (guarded if Section II was tampered/corrupted)
+  let metadata: TokenMetadataPayload;
+  try {
+    let decodedMetaBytes = rawMetaSlice;
+    if ((flags & TokenFlags.QUICKLZ_COMPRESSED) !== 0 && rawMetaSlice.length >= 9) {
+      const claimedDecompressedLen =
+        ((rawMetaSlice[1] ?? 0) |
+          ((rawMetaSlice[2] ?? 0) << 8) |
+          ((rawMetaSlice[3] ?? 0) << 16) |
+          ((rawMetaSlice[4] ?? 0) << 24)) >>>
+        0;
+      if (claimedDecompressedLen > SECTION2_MAX_META_BYTES * 8) {
+        throw new Error("Section II QuickLZ decompressed size exceeds safety limit");
+      }
+      decodedMetaBytes = QuickLZ.decompress(rawMetaSlice);
+    }
+    metadata = JSON.parse(new TextDecoder().decode(decodedMetaBytes)) as TokenMetadataPayload;
+  } catch {
+    metadata = {
+      id: `corrupted_${uuidHex.slice(0, 12)}`,
+      filename: "corrupted_metadata",
+      sourcePath: "",
+      mimeType: "application/octet-stream",
+      page,
+      totalPages: 1,
+      width,
+      height,
+      colorDepth: 24,
+      createdAt: new Date(0).toISOString(),
+      ocrText: "[CORRUPTED OR TAMPERED SECTION II METADATA]",
+    };
+  }
 
   return {
     id: metadata.id,
@@ -295,14 +361,14 @@ export function decodeBinaryToken(rawToken: Uint8Array): DecodedToken {
 
 /**
  * Automated Pipeline Synthesis Tool:
- * Generates a spec-compliant, cryptographically attested 25 KB (`25,600` bytes max) `.token` buffer
- * with real GF(2^8) Reed-Solomon parity, 256B SHARK/SNARK provenance stub, 256B VQ 16x16 grid,
+ * Generates a spec-compliant, Ed25519-signed 25 KB (`25,600` bytes max) `.token` buffer
+ * with real GF(2^8) Reed-Solomon parity, 256B Ed25519+Merkle provenance attestation, 256B VQ 16x16 grid,
  * and Canberra locale/geo metadata for boundary and pipeline testing.
  */
-export function generateMockTinyTokenBuffer(
+export async function generateMockTinyTokenBuffer(
   tokenId = "testimg000000000",
   environmentClass = "grassland_synthetic",
-): Uint8Array<ArrayBuffer> {
+): Promise<Uint8Array<ArrayBuffer>> {
   const vqIndices = new Uint8Array(VQ_GRID_BYTES);
   for (let i = 0; i < VQ_GRID_BYTES; i++) {
     vqIndices[i] = (i * 3 + 7) & 0xff;

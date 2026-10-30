@@ -8,14 +8,20 @@ import { TokenFlags } from "../models/token";
 import { applyHomomorphicMaskGF28 } from "../utils/galois";
 import { previewFormatToLabel, previewFormatToMime } from "../utils/imagePreview";
 import type { Win11TokenPipeline } from "../utils/indexer";
-import { errorResponse, jsonResponse } from "../utils/response";
+import {
+  errorResponse,
+  fileResponse,
+  jsonResponse,
+  verifySameOriginMutation,
+} from "../utils/response";
 import { decodeBinaryToken } from "../utils/tokenCodec";
 import { VQ_CODEBOOK, vqGridToHex } from "../utils/vqCodebook";
 import type { VqInvertedIndexEngine } from "../utils/vqInvertedIndex";
 import type { CompressedTokenSearchEngine } from "../utils/zipEngine";
-import { fileResponse } from "../utils/response";
 
 export class TokenApiHandlers {
+  private writeLockInProgress = false;
+
   constructor(
     private engine: CompressedTokenSearchEngine,
     private pipeline: Win11TokenPipeline,
@@ -127,7 +133,7 @@ export class TokenApiHandlers {
 
     const sliceTimeMs = Math.round((performance.now() - t0) * 1000) / 1000;
     const tDecode = performance.now();
-    const decoded = decodeBinaryToken(rawToken);
+    const decoded = await decodeBinaryToken(rawToken);
     const decodeTimeMs = Math.round((performance.now() - tDecode) * 1000) / 1000;
     const indexMeta = this.engine.getEntry(id);
 
@@ -195,7 +201,7 @@ export class TokenApiHandlers {
       return errorResponse(`Token '${id}' not found`, 404);
     }
 
-    const decoded = decodeBinaryToken(rawToken);
+    const decoded = await decodeBinaryToken(rawToken);
     const mimeType = previewFormatToMime(decoded.previewFormat);
     const extractMs = (performance.now() - t0).toFixed(3);
 
@@ -278,63 +284,87 @@ export class TokenApiHandlers {
    * Executes a blind Homomorphic State Transition in GF(2^8) on the raw 25 KB token slice.
    */
   public async handleHomomorphicMutate(id: string, req: Request): Promise<Response> {
-    const rawToken = await this.engine.extractToken(id);
-    if (!rawToken) {
-      return errorResponse(`Token '${id}' not found`, 404);
+    const forbidden = verifySameOriginMutation(req);
+    if (forbidden) return forbidden;
+
+    if (this.writeLockInProgress) {
+      return errorResponse("Another archive write or rebuild is currently in progress", 409);
     }
 
-    let scalar = 0x5a;
+    this.writeLockInProgress = true;
     try {
-      const body = (await req.json()) as { scalar?: number };
-      if (typeof body.scalar === "number") {
-        scalar = body.scalar & 0xff;
+      const rawToken = await this.engine.extractToken(id);
+      if (!rawToken) {
+        return errorResponse(`Token '${id}' not found`, 404);
       }
-    } catch {
-      // use default scalar
+
+      let scalar = 0x5a;
+      try {
+        const body = (await req.json()) as { scalar?: number };
+        if (typeof body.scalar === "number") {
+          scalar = body.scalar & 0xff;
+        }
+      } catch {
+        // use default scalar
+      }
+
+      const t0 = performance.now();
+      const mutated = applyHomomorphicMaskGF28(
+        rawToken,
+        scalar || 0x5a,
+        TokenFlags.HOMOMORPHIC_MASKED,
+      );
+      await this.engine.writeMutatedTokenInPlace(id, mutated);
+      const decoded = await decodeBinaryToken(mutated);
+      const elapsedUs = Math.round((performance.now() - t0) * 1000);
+
+      return jsonResponse({
+        success: true,
+        id: decoded.id,
+        homomorphicTimeUs: elapsedUs,
+        flags: decoded.flags,
+        homomorphicMasked: (decoded.flags & TokenFlags.HOMOMORPHIC_MASKED) !== 0,
+        homomorphicTagHex: `0x${decoded.homomorphicTag.toString(16).padStart(2, "0").toUpperCase()}`,
+        rsParityValid: decoded.rsParityValid,
+        snarkValid: decoded.snarkAttestation.valid,
+      });
+    } finally {
+      this.writeLockInProgress = false;
     }
-
-    const t0 = performance.now();
-    const mutated = applyHomomorphicMaskGF28(
-      rawToken,
-      scalar || 0x5a,
-      TokenFlags.HOMOMORPHIC_MASKED,
-    );
-    await this.engine.writeMutatedTokenInPlace(id, mutated);
-    const decoded = decodeBinaryToken(mutated);
-    const elapsedUs = Math.round((performance.now() - t0) * 1000);
-
-    return jsonResponse({
-      success: true,
-      id: decoded.id,
-      homomorphicTimeUs: elapsedUs,
-      flags: decoded.flags,
-      homomorphicMasked: (decoded.flags & TokenFlags.HOMOMORPHIC_MASKED) !== 0,
-      homomorphicTagHex: `0x${decoded.homomorphicTag.toString(16).padStart(2, "0").toUpperCase()}`,
-      rsParityValid: decoded.rsParityValid,
-      snarkValid: decoded.snarkAttestation.valid,
-    });
   }
 
   /**
    * POST /api/index/rebuild
    * Re-scans `./images` (`IMAGE_DIR`) and `./documents` (`DOCUMENT_DIR`) and rebuilds the ZIP container.
    */
-  public async handleRebuildIndex(_req?: Request): Promise<Response> {
-    const buildRes = await this.pipeline.buildTokenArchive();
-    await this.engine.buildIndex();
-    if (this.invertedIndex) {
-      await this.invertedIndex.syncTokens(this.engine.getAllEntries());
+  public async handleRebuildIndex(req?: Request): Promise<Response> {
+    const forbidden = verifySameOriginMutation(req);
+    if (forbidden) return forbidden;
+
+    if (this.writeLockInProgress) {
+      return errorResponse("Another archive write or rebuild is currently in progress", 409);
     }
 
-    return jsonResponse({
-      success: true,
-      totalTokens: buildRes.totalTokens,
-      imageTokens: buildRes.imageTokens,
-      documentTokens: buildRes.documentTokens,
-      archiveBytes: buildRes.archiveBytes,
-      buildElapsedMs: buildRes.elapsedMs,
-      bootIndexTimeMs: this.engine.lastBootIndexMs,
-    });
+    this.writeLockInProgress = true;
+    try {
+      const buildRes = await this.pipeline.buildTokenArchive();
+      await this.engine.buildIndex();
+      if (this.invertedIndex) {
+        await this.invertedIndex.syncTokens(this.engine.getAllEntries());
+      }
+
+      return jsonResponse({
+        success: true,
+        totalTokens: buildRes.totalTokens,
+        imageTokens: buildRes.imageTokens,
+        documentTokens: buildRes.documentTokens,
+        archiveBytes: buildRes.archiveBytes,
+        buildElapsedMs: buildRes.elapsedMs,
+        bootIndexTimeMs: this.engine.lastBootIndexMs,
+      });
+    } finally {
+      this.writeLockInProgress = false;
+    }
   }
 
   /**

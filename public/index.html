@@ -555,7 +555,7 @@
           <div id="kv-rs" class="kv-val" style="color:var(--glow-emerald);">—</div>
         </div>
         <div class="kv-item">
-          <div class="kv-label">SHARK/SNARK Attestation</div>
+          <div class="kv-label">Ed25519 + Merkle Attestation</div>
           <div id="kv-snark" class="kv-val" style="color:var(--glow-rose);">—</div>
         </div>
         <div class="kv-item">
@@ -729,8 +729,8 @@
         t.rsParityValid ? `VALID (${t.rsCorrectedErrors} healed)` : 'CORRUPTED';
       document.getElementById('kv-snark').textContent =
         t.snarkAttestation.valid
-          ? `VERIFIED (${t.snarkAttestation.verifiedInUs} µs • P(α)=0x${t.snarkAttestation.gfPolynomialEval.toString(16).toUpperCase()})`
-          : 'INVALID';
+          ? `ED25519 OK (${t.snarkAttestation.verifiedInUs} µs • kid:${(t.snarkAttestation.signerKeyIdHex || '').slice(0, 8)})`
+          : `INVALID (${t.snarkAttestation.failureReason || 'TAMPERED'})`;
       document.getElementById('kv-zip').textContent =
         `@${tel.zipDataOffset} • CRC ${tel.zipCrc32Hex}`;
       document.getElementById('kv-merkle').textContent = t.merkleRootHex.slice(0, 24) + '…';
@@ -857,7 +857,8 @@
       document.getElementById('stat-status').textContent = 'INDEXING...';
       await fetch('/api/index/rebuild', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
       });
       document.getElementById('stat-status').textContent = 'LIVE BUN';
       await loadStatsAndCodebook();

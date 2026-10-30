@@ -414,7 +414,7 @@ export class CompressedTokenSearchEngine {
           await file.slice(dataOffset, dataOffset + fb.compressedSize).arrayBuffer(),
         );
         const tokenBytes = fb.compressionMethod === 8 ? Bun.inflateSync(rawSlice) : rawSlice;
-        const decoded = decodeBinaryToken(tokenBytes);
+        const decoded = await decodeBinaryToken(tokenBytes);
         const entry: ZipTokenIndexEntry = {
           id: decoded.id,
           entryName: fb.entryName,
@@ -617,8 +617,9 @@ export class CompressedTokenSearchEngine {
     fullArchive.set(mutatedTokenBytes, meta.dataOffset);
     await Bun.write(this.zipFilePath, fullArchive);
 
-    const decoded = decodeBinaryToken(mutatedTokenBytes);
+    const decoded = await decodeBinaryToken(mutatedTokenBytes);
     meta.flags = decoded.flags;
+    meta.snarkVerified = decoded.snarkAttestation.valid;
     return true;
   }
 }

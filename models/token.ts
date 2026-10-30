@@ -71,14 +71,27 @@ export interface TokenMetadataPayload {
 }
 
 export interface SnarkAttestationInfo {
-  protocol: "SHARK-GF28-Groth16Stub-v2";
+  protocol: "ED25519-MERKLE-GF28-v3";
   valid: boolean;
+  signatureVerified: boolean;
+  trustedKeyMatch: boolean;
+  sectionsVerified: {
+    originHeader: boolean;
+    vqGrid: boolean;
+    section2Metadata: boolean;
+    section3Preview: boolean;
+    merkleRoot: boolean;
+  };
+  signerKeyIdHex: string;
+  signerPublicKeyHex: string;
   circuitCommitmentHex: string;
   assetOriginHashHex: string;
+  previewHashHex: string;
   ocrWitnessHashHex: string;
   vqCommitmentHex: string;
   gfPolynomialEval: number;
   verifiedInUs: number;
+  failureReason?: string;
 }
 
 export interface DecodedToken {
