@@ -1,8 +1,8 @@
 /**
  * Native Bun Directory Scanner & Custom 25 KB Tokenizer (utils/indexer.ts)
  *
- * Implements `Win11TokenPipeline` using 100% Bun native I/O (`Bun.Glob`, `Bun.file`, `Bun.write`).
- * Scans `./images` (and any configured document folders), generates 25 KB `GF28` V2 tokens
+ * Implements `Win11TokenPipeline` using 100% Bun native I/O (`Bun.Glob`, `Bun.file`, `Bun.write`, `Bun.inflateSync`).
+ * Scans both `sourceDirectory` (`./images`) and `documentDirectory` (`./documents`), generates 25 KB `GF28` V2 tokens
  * with 256B SNARK/SHARK provenance proofs, 256B VQ 16x16 neural grids, and 384B GF(2^8) RS parity,
  * and packs them into `./data/tokens.zip`.
  */
@@ -14,8 +14,8 @@ import {
 } from "../models/token";
 import {
   buildCompactPreviewPayload,
-  previewFormatToMime,
   sniffImageHeader,
+  type ImageHeaderInfo,
 } from "./imagePreview";
 import { decodeBinaryToken, encodeBinaryToken } from "./tokenCodec";
 import { encodeBytesToVqGrid } from "./vqCodebook";
@@ -23,21 +23,49 @@ import { writeNativeTokenZipArchive } from "./zipEngine";
 
 export interface IndexerConfig {
   sourceDirectory: string;
+  documentDirectory?: string;
   outputZipPath: string;
   allowedExtensions: string[];
   maxTokenSizeKb: number;
-  includeSampleMultiPageDocs?: boolean;
 }
+
+export type ArchiveTokenItem = {
+  entryName: string;
+  tokenBytes: Uint8Array<ArrayBuffer>;
+  meta: Omit<
+    ZipTokenIndexEntry,
+    | "localHeaderOffset"
+    | "dataOffset"
+    | "compressedSize"
+    | "uncompressedSize"
+    | "compressionMethod"
+    | "crc32"
+  >;
+};
+
+export interface ExtractedDocumentInfo {
+  totalPages: number;
+  width: number;
+  height: number;
+  extractedText: string;
+}
+
+const IMAGE_EXTENSIONS = new Set([".jpg", ".jpeg", ".png", ".webp", ".avif", ".bmp", ".svg"]);
+const DOCUMENT_EXTENSIONS = new Set([".pdf", ".docx", ".doc", ".txt", ".md"]);
 
 export class Win11TokenPipeline {
   constructor(private config: IndexerConfig) {}
 
   /**
-   * Scans sourceDirectory using native `Bun.Glob` (no node:fs imports).
+   * Scans a directory using native `Bun.Glob` (zero node:fs imports) and filters by allowedExtensions.
    */
-  public async scanDirectory(dir: string = this.config.sourceDirectory): Promise<string[]> {
+  public async scanDirectory(
+    dir: string = this.config.sourceDirectory,
+    filterSet?: ReadonlySet<string>,
+  ): Promise<string[]> {
     const matchedFiles: string[] = [];
-    const extSet = new Set(this.config.allowedExtensions.map((e) => e.toLowerCase()));
+    const extSet =
+      filterSet ?? new Set(this.config.allowedExtensions.map((e) => e.toLowerCase()));
 
     try {
       const glob = new Bun.Glob("**/*");
@@ -60,270 +88,358 @@ export class Win11TokenPipeline {
   }
 
   /**
-   * Tokenizes all matched files (plus optional multi-page specification reference tokens)
+   * Scans `documentDirectory` (`./documents`) for existing PDF/DOCX documents.
+   */
+  public async scanDocumentDirectory(): Promise<string[]> {
+    const docDir = this.config.documentDirectory ?? "./documents";
+    const allowedSet = new Set(
+      this.config.allowedExtensions
+        .map((e) => e.toLowerCase())
+        .filter((e) => DOCUMENT_EXTENSIONS.has(e)),
+    );
+    return this.scanDirectory(docDir, allowedSet.size > 0 ? allowedSet : DOCUMENT_EXTENSIONS);
+  }
+
+  /**
+   * Extracts PDF page count, MediaBox dimensions (scaled to 150 DPI), and readable text snippets
+   * from PDF binary streams using native `Bun.inflateSync`.
+   */
+  public extractDocumentInfo(
+    rawBytes: Uint8Array,
+    filename: string,
+    ext: string,
+  ): ExtractedDocumentInfo {
+    if (ext !== ".pdf") {
+      const textPreview = new TextDecoder("utf-8", { fatal: false })
+        .decode(rawBytes.subarray(0, 4096))
+        .replace(/[^\x20-\x7E]+/g, " ")
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, 600);
+      return {
+        totalPages: 1,
+        width: 1240,
+        height: 1754,
+        extractedText: textPreview || `Document asset: ${filename}`,
+      };
+    }
+
+    // Decode first and last 256 KB in Latin1 for fast structural parsing even on 10 MB+ PDFs
+    const headLen = Math.min(rawBytes.length, 512 * 1024);
+    const headText = new TextDecoder("latin1").decode(rawBytes.subarray(0, headLen));
+    const fullText =
+      rawBytes.length <= 2 * 1024 * 1024
+        ? new TextDecoder("latin1").decode(rawBytes)
+        : headText +
+          "\n" +
+          new TextDecoder("latin1").decode(
+            rawBytes.subarray(Math.max(headLen, rawBytes.length - 512 * 1024)),
+          );
+
+    // 1. Count `/Type /Page` occurrences (excluding `/Type /Pages`)
+    const pageMatches = fullText.match(/\/Type\s*\/Page\b/g);
+    let totalPages = pageMatches ? pageMatches.length : 1;
+    const countMatch = fullText.match(/\/Type\s*\/Pages\b[\s\S]{0,200}?\/Count\s+(\d+)/);
+    if (countMatch?.[1]) {
+      const parsedCount = Number.parseInt(countMatch[1], 10);
+      if (parsedCount > totalPages) totalPages = parsedCount;
+    }
+
+    // 2. Parse `/MediaBox [x0 y0 x1 y1]` and convert points (1/72 in) to 150 DPI pixel dimensions
+    let width = 1240;
+    let height = 1754;
+    const mediaBox = headText.match(
+      /\/MediaBox\s*\[\s*([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s*\]/,
+    );
+    if (mediaBox) {
+      const wPt = Number.parseFloat(mediaBox[3] ?? "595.32") - Number.parseFloat(mediaBox[1] ?? "0");
+      const hPt = Number.parseFloat(mediaBox[4] ?? "841.92") - Number.parseFloat(mediaBox[2] ?? "0");
+      if (wPt > 0 && hPt > 0) {
+        width = Math.round((wPt / 72) * 150);
+        height = Math.round((hPt / 72) * 150);
+      }
+    }
+
+    // 3. Extract readable text strings from FlateDecode streams using `Bun.inflateSync`
+    const snippets: string[] = [];
+    const titleMatch = headText.match(/\/Title\s*\(([^()\\]{3,120})\)/);
+    if (titleMatch?.[1]) snippets.push(titleMatch[1]);
+
+    const streamRegex = /stream\r?\n/g;
+    let match: RegExpExecArray | null = null;
+    let streamsInspected = 0;
+
+    while ((match = streamRegex.exec(headText)) !== null && streamsInspected < 25) {
+      const start = match.index + match[0].length;
+      const end = headText.indexOf("endstream", start);
+      if (end === -1 || end - start > 128 * 1024) continue;
+
+      const slice = rawBytes.subarray(start, end);
+      if (slice.length > 6 && slice[0] === 0x78) {
+        try {
+          const inflated = Bun.inflateSync(new Uint8Array(slice.subarray(2)));
+          const str = new TextDecoder("latin1").decode(inflated);
+          const textLiterals = str.match(/\(([\x20-\x7E]{2,120})\)/g);
+          if (textLiterals) {
+            const cleaned = textLiterals
+              .map((lit) => lit.slice(1, -1))
+              .filter((lit) => /[a-zA-Z]{2,}/.test(lit) && !/^en-[A-Z]{2}$/.test(lit))
+              .join(" ");
+            if (cleaned.length > 0) {
+              snippets.push(cleaned);
+              streamsInspected++;
+            }
+          }
+        } catch {
+          // Non-deflate or encrypted stream; skip
+        }
+      }
+      if (snippets.join(" ").length >= 450) break;
+    }
+
+    const cleanSnippet = snippets
+      .join(" ")
+      .replace(/\\[nrt()\\]/g, " ")
+      .replace(/[^\x20-\x7E]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 450);
+
+    return {
+      totalPages: Math.max(1, totalPages),
+      width,
+      height,
+      extractedText: cleanSnippet,
+    };
+  }
+
+  /**
+   * Tokenizes a single image file from `sourceDirectory` (`./images`).
+   */
+  public async tokenizeImageFile(
+    fullPath: string,
+    tokenCounter: number,
+  ): Promise<ArchiveTokenItem | null> {
+    const bunFile = Bun.file(fullPath);
+    if (!(await bunFile.exists())) return null;
+
+    const rawBytes = new Uint8Array(await bunFile.arrayBuffer());
+    const filename = fullPath.split("/").pop() ?? "asset.bin";
+    const dotIdx = filename.lastIndexOf(".");
+    const ext = dotIdx !== -1 ? filename.slice(dotIdx).toLowerCase() : "";
+    const headerInfo = sniffImageHeader(rawBytes, ext);
+
+    const id = `tok_${String(tokenCounter).padStart(5, "0")}_${filename.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+    const entryName = `${id}.token`;
+    const vqIndices = encodeBytesToVqGrid(rawBytes, headerInfo.width, headerInfo.height, tokenCounter);
+
+    const { previewBytes, previewFormat } = buildCompactPreviewPayload(
+      rawBytes,
+      headerInfo,
+      vqIndices,
+      filename,
+      1,
+    );
+
+    const createdAt = new Date(bunFile.lastModified || Date.now()).toISOString();
+    const ocrText =
+      `Image Asset: ${filename} | Dimensions: ${headerInfo.width}x${headerInfo.height} (${headerInfo.colorDepth}-bit ${ext.replace(".", "").toUpperCase()}) | ` +
+      `Indexed via TinyToken GF(2^8) Reed-Solomon + 16x16 VQ Neural Thumbnail + 256B SHARK/SNARK Attestation. Source path: ${fullPath}`;
+
+    const metadata: TokenMetadataPayload = {
+      id,
+      filename,
+      sourcePath: `/api/image/${encodeURIComponent(filename)}`,
+      mimeType: bunFile.type || headerInfo.mimeType,
+      page: 1,
+      totalPages: 1,
+      width: headerInfo.width,
+      height: headerInfo.height,
+      colorDepth: headerInfo.colorDepth,
+      createdAt,
+      ocrText,
+      tags: ["local-image", ext.replace(".", ""), "verified"],
+    };
+
+    const tokenBytes = encodeBinaryToken({
+      originalFileSize: rawBytes.length,
+      width: headerInfo.width,
+      height: headerInfo.height,
+      page: 1,
+      previewFormat,
+      shardBlockId: Math.floor((tokenCounter - 1) / 64),
+      shardIndex: (tokenCounter - 1) % 64,
+      vqIndices,
+      metadata,
+      previewBytes,
+    });
+
+    const decoded = decodeBinaryToken(tokenBytes);
+    return {
+      entryName,
+      tokenBytes,
+      meta: {
+        id,
+        entryName,
+        filename,
+        sourcePath: metadata.sourcePath,
+        mimeType: metadata.mimeType,
+        page: 1,
+        totalPages: 1,
+        width: headerInfo.width,
+        height: headerInfo.height,
+        originalFileSize: rawBytes.length,
+        previewFormat,
+        flags: decoded.flags,
+        ocrText,
+        createdAt,
+        merkleRootHex: decoded.merkleRootHex,
+        snarkVerified: decoded.snarkAttestation.valid,
+        vqIndices,
+      },
+    };
+  }
+
+  /**
+   * Tokenizes a single document file from `documentDirectory` (`./documents`).
+   */
+  public async tokenizeDocumentFile(
+    fullPath: string,
+    tokenCounter: number,
+  ): Promise<ArchiveTokenItem | null> {
+    const bunFile = Bun.file(fullPath);
+    if (!(await bunFile.exists())) return null;
+
+    const rawBytes = new Uint8Array(await bunFile.arrayBuffer());
+    const filename = fullPath.split("/").pop() ?? "document.pdf";
+    const dotIdx = filename.lastIndexOf(".");
+    const ext = dotIdx !== -1 ? filename.slice(dotIdx).toLowerCase() : ".pdf";
+
+    const docInfo = this.extractDocumentInfo(rawBytes, filename, ext);
+    const id = `tok_${String(tokenCounter).padStart(5, "0")}_${filename.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+    const entryName = `${id}.token`;
+
+    const vqIndices = encodeBytesToVqGrid(rawBytes, docInfo.width, docInfo.height, tokenCounter);
+    const headerInfo: ImageHeaderInfo = {
+      width: docInfo.width,
+      height: docInfo.height,
+      colorDepth: 24,
+      format: PreviewFormat.SVG,
+      mimeType: "application/pdf",
+    };
+
+    const { previewBytes, previewFormat } = buildCompactPreviewPayload(
+      new Uint8Array(0),
+      headerInfo,
+      vqIndices,
+      filename,
+      1,
+    );
+
+    const createdAt = new Date(bunFile.lastModified || Date.now()).toISOString();
+    const snippetPart = docInfo.extractedText ? ` | Excerpt: ${docInfo.extractedText}` : "";
+    const ocrText =
+      `Document: ${filename} (${docInfo.totalPages} pages, ${(rawBytes.length / 1024).toFixed(1)} KB, ${docInfo.width}x${docInfo.height}px @ 150 DPI)` +
+      `${snippetPart} | Source path: ${fullPath}`;
+
+    const metadata: TokenMetadataPayload = {
+      id,
+      filename,
+      sourcePath: `/api/document/${encodeURIComponent(filename)}`,
+      mimeType: bunFile.type || (ext === ".pdf" ? "application/pdf" : "application/octet-stream"),
+      page: 1,
+      totalPages: docInfo.totalPages,
+      width: docInfo.width,
+      height: docInfo.height,
+      colorDepth: 24,
+      createdAt,
+      ocrText,
+      tags: ["local-document", ext.replace(".", ""), `${docInfo.totalPages}-pages`, "verified"],
+    };
+
+    const tokenBytes = encodeBinaryToken({
+      originalFileSize: rawBytes.length,
+      width: docInfo.width,
+      height: docInfo.height,
+      page: 1,
+      previewFormat,
+      shardBlockId: Math.floor((tokenCounter - 1) / 64),
+      shardIndex: (tokenCounter - 1) % 64,
+      vqIndices,
+      metadata,
+      previewBytes,
+    });
+
+    const decoded = decodeBinaryToken(tokenBytes);
+    return {
+      entryName,
+      tokenBytes,
+      meta: {
+        id,
+        entryName,
+        filename,
+        sourcePath: metadata.sourcePath,
+        mimeType: metadata.mimeType,
+        page: 1,
+        totalPages: docInfo.totalPages,
+        width: docInfo.width,
+        height: docInfo.height,
+        originalFileSize: rawBytes.length,
+        previewFormat,
+        flags: decoded.flags,
+        ocrText,
+        createdAt,
+        merkleRootHex: decoded.merkleRootHex,
+        snarkVerified: decoded.snarkAttestation.valid,
+        vqIndices,
+      },
+    };
+  }
+
+  /**
+   * Tokenizes all real files in `sourceDirectory` (`./images`) and `documentDirectory` (`./documents`)
    * and writes the packed ZIP container to `outputZipPath`.
    */
-  public async buildTokenArchive(extraSyntheticCount = 12): Promise<{
+  public async buildTokenArchive(): Promise<{
     totalTokens: number;
+    imageTokens: number;
+    documentTokens: number;
     archiveBytes: number;
     elapsedMs: number;
   }> {
     const t0 = performance.now();
-    const filePaths = await this.scanDirectory();
+    const imageFilter = new Set(
+      this.config.allowedExtensions
+        .map((e) => e.toLowerCase())
+        .filter((e) => IMAGE_EXTENSIONS.has(e)),
+    );
+    const imagePaths = await this.scanDirectory(
+      this.config.sourceDirectory,
+      imageFilter.size > 0 ? imageFilter : IMAGE_EXTENSIONS,
+    );
+    const documentPaths = await this.scanDocumentDirectory();
 
-    const archiveItems: Array<{
-      entryName: string;
-      tokenBytes: Uint8Array;
-      meta: Omit<
-        ZipTokenIndexEntry,
-        | "localHeaderOffset"
-        | "dataOffset"
-        | "compressedSize"
-        | "uncompressedSize"
-        | "compressionMethod"
-        | "crc32"
-      >;
-    }> = [];
-
+    const archiveItems: ArchiveTokenItem[] = [];
     let tokenCounter = 0;
+    let imageTokens = 0;
+    let documentTokens = 0;
 
-    // 1. Tokenize real files in `./images` (e.g. d.jpg and any user-added images/docs)
-    for (const fullPath of filePaths) {
-      const bunFile = Bun.file(fullPath);
-      if (!(await bunFile.exists())) continue;
-
-      const rawBytes = new Uint8Array(await bunFile.arrayBuffer());
-      const filename = fullPath.split("/").pop() ?? "asset.bin";
-      const dotIdx = filename.lastIndexOf(".");
-      const ext = dotIdx !== -1 ? filename.slice(dotIdx).toLowerCase() : "";
-      const headerInfo = sniffImageHeader(rawBytes, ext);
-
-      const id = `tok_${String(++tokenCounter).padStart(5, "0")}_${filename.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
-      const entryName = `${id}.token`;
-      const vqIndices = encodeBytesToVqGrid(rawBytes, headerInfo.width, headerInfo.height, tokenCounter);
-
-      const { previewBytes, previewFormat } = buildCompactPreviewPayload(
-        rawBytes,
-        headerInfo,
-        vqIndices,
-        filename,
-        1,
-      );
-
-      const createdAt = new Date(bunFile.lastModified || Date.now()).toISOString();
-      const ocrText =
-        `Asset: ${filename} | Dimensions: ${headerInfo.width}x${headerInfo.height} (${headerInfo.colorDepth}-bit ${ext.replace(".", "").toUpperCase()}) | ` +
-        `Indexed via TinyToken GF(2^8) Reed-Solomon + 16x16 VQ Neural Thumbnail + 256B SHARK/SNARK Attestation. Source path: ${fullPath}`;
-
-      const metadata: TokenMetadataPayload = {
-        id,
-        filename,
-        sourcePath: `/api/image/${encodeURIComponent(filename)}`,
-        mimeType: bunFile.type || headerInfo.mimeType,
-        page: 1,
-        totalPages: 1,
-        width: headerInfo.width,
-        height: headerInfo.height,
-        colorDepth: headerInfo.colorDepth,
-        createdAt,
-        ocrText,
-        tags: ["local-image", ext.replace(".", ""), "verified"],
-      };
-
-      const tokenBytes = encodeBinaryToken({
-        originalFileSize: rawBytes.length,
-        width: headerInfo.width,
-        height: headerInfo.height,
-        page: 1,
-        previewFormat,
-        shardBlockId: Math.floor((tokenCounter - 1) / 64),
-        shardIndex: (tokenCounter - 1) % 64,
-        vqIndices,
-        metadata,
-        previewBytes,
-      });
-
-      const decoded = decodeBinaryToken(tokenBytes);
-      archiveItems.push({
-        entryName,
-        tokenBytes,
-        meta: {
-          id,
-          entryName,
-          filename,
-          sourcePath: metadata.sourcePath,
-          mimeType: metadata.mimeType,
-          page: 1,
-          totalPages: 1,
-          width: headerInfo.width,
-          height: headerInfo.height,
-          originalFileSize: rawBytes.length,
-          previewFormat,
-          flags: decoded.flags,
-          ocrText,
-          createdAt,
-          merkleRootHex: decoded.merkleRootHex,
-          snarkVerified: decoded.snarkAttestation.valid,
-          vqIndices,
-        },
-      });
+    // 1. Tokenize existing images from `sourceDirectory` (`./images`)
+    for (const fullPath of imagePaths) {
+      const item = await this.tokenizeImageFile(fullPath, ++tokenCounter);
+      if (item) {
+        archiveItems.push(item);
+        imageTokens++;
+      }
     }
 
-    // 2. Generate structured multi-page document & visual test tokens so search, VQ ADC similarity,
-    //    and multi-page filtering work out-of-the-box alongside `./images/d.jpg`
-    const sampleAssets = [
-      {
-        filename: "GF28_Token_Specification_V2.pdf",
-        page: 1,
-        totalPages: 8,
-        width: 1654,
-        height: 2339,
-        size: 482910,
-        ocr: "Compressed Token Index & Zip Search Engine Specification V2. Hybrid 25 KB token allocation: Section I 1KB Header & GF(2^8) Reed-Solomon Parity, Section II 4KB Metadata & OCR, Section III 20KB 220x220 AVIF Preview.",
-        paletteSeed: [14, 165, 233],
-      },
-      {
-        filename: "GF28_Token_Specification_V2.pdf",
-        page: 2,
-        totalPages: 8,
-        width: 1654,
-        height: 2339,
-        size: 482910,
-        ocr: "Section 3: Win11TokenPipeline & CompressedTokenSearchEngine. In-memory central directory indexing in under 500 ms for 21,000 structured assets (16,000 document page tokens + 5,000 standalone images).",
-        paletteSeed: [16, 185, 129],
-      },
-      {
-        filename: "VQ_SHARK_Neural_Attestation.pdf",
-        page: 1,
-        totalPages: 4,
-        width: 1654,
-        height: 2339,
-        size: 319400,
-        ocr: "ZK-SNARK & SHARK Asset Attestation stub (256 bytes in Section I) binding AVIF preview downscaling, OCR text layer, and 16x16 Vector Quantized (VQ-VAE) neural thumbnail codebook indices.",
-        paletteSeed: [168, 85, 247],
-      },
-      {
-        filename: "VQ_SHARK_Neural_Attestation.pdf",
-        page: 2,
-        totalPages: 4,
-        width: 1654,
-        height: 2339,
-        size: 319400,
-        ocr: "Asymmetric Distance Computation (ADC) in GF(2^8): Precalculated 256x256 centroid distance lookup table scores 21,000 VQ latent grids in microseconds without image decompression.",
-        paletteSeed: [244, 63, 94],
-      },
-      {
-        filename: "Risukko_Oksa_GF28_Matrix8x8.png",
-        page: 1,
-        totalPages: 1,
-        width: 1920,
-        height: 1080,
-        size: 612400,
-        ocr: "Risukko & Oksa 2D Bijective Finite Field Generator over primitive polynomial 0x11d (x^8 + x^4 + x^3 + x^2 + 1). Strategy #3 self-healing color checksums and 8x8 Gauss-Jordan matrix inversion.",
-        paletteSeed: [247, 133, 34],
-      },
-      {
-        filename: "GaloisOil_PBIN_Telemetry_Chart.webp",
-        page: 1,
-        totalPages: 1,
-        width: 2560,
-        height: 1440,
-        size: 294120,
-        ocr: "GaloisOil PBIN Packed Binary Time-Series Store: WTI Crude RWTC, Brent RBRTE, Henry Hub RNGWHHD. Berlekamp-Massey LFSR synthesis and Golden Ratio phi boundaries.",
-        paletteSeed: [56, 189, 248],
-      },
-    ];
-
-    const totalExtra = Math.max(0, extraSyntheticCount);
-    for (let i = 0; i < totalExtra; i++) {
-      const tmpl = sampleAssets[i % sampleAssets.length]!;
-      const pageNum = i < sampleAssets.length ? tmpl.page : (i % 8) + 1;
-      const docName =
-        i < sampleAssets.length
-          ? tmpl.filename
-          : `Archive_Doc_${String(Math.floor(i / 8) + 1).padStart(4, "0")}.pdf`;
-
-      const id = `tok_${String(++tokenCounter).padStart(5, "0")}_p${pageNum}`;
-      const entryName = `${id}.token`;
-
-      // Synthesize deterministic payload seed for VQ latent codebook
-      const synthSeed = new Uint8Array(1024);
-      for (let b = 0; b < synthSeed.length; b++) {
-        synthSeed[b] = ((tmpl.paletteSeed[b % 3] ?? 128) + b * 13 + i * 29) & 0xff;
+    // 2. Tokenize existing documents from `documentDirectory` (`./documents`)
+    for (const fullPath of documentPaths) {
+      const item = await this.tokenizeDocumentFile(fullPath, ++tokenCounter);
+      if (item) {
+        archiveItems.push(item);
+        documentTokens++;
       }
-      const vqIndices = encodeBytesToVqGrid(synthSeed, tmpl.width, tmpl.height, i + 1);
-
-      const headerInfo = {
-        width: tmpl.width,
-        height: tmpl.height,
-        colorDepth: 24,
-        format: PreviewFormat.SVG,
-        mimeType: "image/svg+xml",
-      };
-
-      const { previewBytes, previewFormat } = buildCompactPreviewPayload(
-        new Uint8Array(0),
-        headerInfo,
-        vqIndices,
-        docName,
-        pageNum,
-      );
-
-      const createdAt = new Date(Date.now() - i * 3600_000).toISOString();
-      const ocrText = `[Page ${pageNum}/${tmpl.totalPages}] ${docName} — ${tmpl.ocr}`;
-
-      const metadata: TokenMetadataPayload = {
-        id,
-        filename: docName,
-        sourcePath: `/api/token/${encodeURIComponent(id)}/preview`,
-        mimeType: previewFormatToMime(previewFormat),
-        page: pageNum,
-        totalPages: tmpl.totalPages,
-        width: tmpl.width,
-        height: tmpl.height,
-        colorDepth: 24,
-        createdAt,
-        ocrText,
-        tags: ["spec-v2", "vq-16x16", "shark-attested"],
-      };
-
-      const tokenBytes = encodeBinaryToken({
-        originalFileSize: tmpl.size,
-        width: tmpl.width,
-        height: tmpl.height,
-        page: pageNum,
-        previewFormat,
-        shardBlockId: Math.floor((tokenCounter - 1) / 64),
-        shardIndex: (tokenCounter - 1) % 64,
-        vqIndices,
-        metadata,
-        previewBytes,
-      });
-
-      const decoded = decodeBinaryToken(tokenBytes);
-      archiveItems.push({
-        entryName,
-        tokenBytes,
-        meta: {
-          id,
-          entryName,
-          filename: docName,
-          sourcePath: metadata.sourcePath,
-          mimeType: metadata.mimeType,
-          page: pageNum,
-          totalPages: tmpl.totalPages,
-          width: tmpl.width,
-          height: tmpl.height,
-          originalFileSize: tmpl.size,
-          previewFormat,
-          flags: decoded.flags,
-          ocrText,
-          createdAt,
-          merkleRootHex: decoded.merkleRootHex,
-          snarkVerified: decoded.snarkAttestation.valid,
-          vqIndices,
-        },
-      });
     }
 
     const { totalBytes, tokenCount } = await writeNativeTokenZipArchive(
@@ -333,9 +449,10 @@ export class Win11TokenPipeline {
 
     return {
       totalTokens: tokenCount,
+      imageTokens,
+      documentTokens,
       archiveBytes: totalBytes,
       elapsedMs: Math.round((performance.now() - t0) * 100) / 100,
     };
   }
 }
-

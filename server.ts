@@ -6,10 +6,12 @@ import { VqInvertedIndexEngine } from "./utils/vqInvertedIndex";
 import { CompressedTokenSearchEngine } from "./utils/zipEngine";
 
 const IMAGE_DIR = "./images";
+const DOCUMENT_DIR = "./documents";
 const ZIP_ARCHIVE_PATH = "./data/tokens.zip";
 
 const pipeline = new Win11TokenPipeline({
   sourceDirectory: IMAGE_DIR,
+  documentDirectory: DOCUMENT_DIR,
   outputZipPath: ZIP_ARCHIVE_PATH,
   allowedExtensions: [".jpg", ".jpeg", ".png", ".webp", ".avif", ".bmp", ".svg", ".pdf", ".docx"],
   maxTokenSizeKb: 25,
@@ -17,7 +19,13 @@ const pipeline = new Win11TokenPipeline({
 
 const searchEngine = new CompressedTokenSearchEngine(ZIP_ARCHIVE_PATH);
 const invertedIndex = new VqInvertedIndexEngine(":memory:");
-const apiHandlers = new TokenApiHandlers(searchEngine, pipeline, IMAGE_DIR, invertedIndex);
+const apiHandlers = new TokenApiHandlers(
+  searchEngine,
+  pipeline,
+  IMAGE_DIR,
+  invertedIndex,
+  DOCUMENT_DIR,
+);
 
 const port = Number(Bun.env.APP_PORT ?? 3000);
 const host = Bun.env.APP_HOST ?? "localhost";
@@ -89,19 +97,26 @@ const server = serve({
       return apiHandlers.handleGetSourceImage(name);
     }
 
+    if (path.startsWith("/api/document/") && req.method === "GET") {
+      const name = decodeURIComponent(path.slice("/api/document/".length));
+      return apiHandlers.handleGetSourceDocument(name);
+    }
+
     return errorResponse("Not Found", 404, false);
   },
 });
 
 console.log(`🚀 TinyToken Server running at http://${server.hostname}:${server.port}`);
 
-// Initialize ZIP index and native bun:sqlite VQ Inverted Index asynchronously in ~10ms
+// Initialize ZIP index and native bun:sqlite VQ Inverted Index asynchronously
 (async function initIndex() {
   const t0 = performance.now();
   const zipFile = Bun.file(ZIP_ARCHIVE_PATH);
   if (!(await zipFile.exists())) {
-    console.log("📦 Building initial TinyToken 25 KB GF(2^8) + VQ + SHARK archive...");
-    await pipeline.buildTokenArchive(24);
+    console.log(
+      `📦 Building TinyToken 25 KB GF(2^8) + VQ + SHARK archive from ${IMAGE_DIR} and ${DOCUMENT_DIR}...`,
+    );
+    await pipeline.buildTokenArchive();
   }
   await searchEngine.buildIndex();
   await invertedIndex.syncTokens(searchEngine.getAllEntries());

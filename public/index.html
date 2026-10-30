@@ -475,17 +475,14 @@
           id="search-input"
           class="search-input mono"
           type="text"
-          placeholder="Search 25KB tokens by OCR text, filename, or ID (e.g. d.jpg, SHARK, PBIN, page)..."
+          placeholder="Search 25KB tokens by OCR text, filename, or ID (e.g. Galois, Governance, Azure, Hector)..."
           autocomplete="off"
         />
         <button id="btn-clear-sim" class="btn btn-purple mono" style="display:none;" title="Exit VQ ADC similarity mode">
           × Clear VQ Similar
         </button>
-        <button id="btn-rebuild-25" class="btn mono" title="Rebuild ZIP index with 25 tokens">
-          ⚡ Index 25
-        </button>
-        <button id="btn-rebuild-500" class="btn mono" title="Stress-test ZIP index with 500 tokens">
-          🚀 Bench 500
+        <button id="btn-rebuild" class="btn mono" title="Re-scan ./images and ./documents and rebuild ./data/tokens.zip">
+          🔄 Re-Index Assets
         </button>
       </div>
 
@@ -510,6 +507,7 @@
 
       <div id="viewer-stage" class="viewer-stage">
         <img id="viewer-img" class="viewer-media" alt="Token Preview" style="display:none;" />
+        <iframe id="viewer-pdf" title="Document Source Viewer" style="width:100%;height:100%;border:none;display:none;"></iframe>
         <canvas id="viewer-vq-canvas" width="16" height="16" class="viewer-media pixelated" style="width:240px;height:240px;display:none;"></canvas>
         <div class="viewer-hud mono">
           <span id="viewer-dim-badge" class="pill pill-cyan">-- × --</span>
@@ -599,6 +597,7 @@
     const elGrid = document.getElementById('token-grid');
     const elSearch = document.getElementById('search-input');
     const elViewerImg = document.getElementById('viewer-img');
+    const elViewerPdf = document.getElementById('viewer-pdf');
     const elViewerCanvas = document.getElementById('viewer-vq-canvas');
 
     // Render 256-byte (512 hex chars) 16x16 VQ grid onto a 16x16 canvas in < 0.05ms
@@ -747,16 +746,28 @@
     function updateViewerStage() {
       if (!currentTokenDetail) return;
       renderVqHexToCanvas(currentTokenDetail.vqHex, elViewerCanvas);
+      const isDocument =
+        currentTokenDetail.metadata?.mimeType === 'application/pdf' ||
+        (currentTokenDetail.metadata?.sourcePath || '').startsWith('/api/document/');
 
       if (viewerMode === 'vq') {
         elViewerImg.style.display = 'none';
+        elViewerPdf.style.display = 'none';
         elViewerCanvas.style.display = 'block';
       } else if (viewerMode === 'full') {
         elViewerCanvas.style.display = 'none';
-        elViewerImg.style.display = 'block';
-        elViewerImg.src = currentTokenDetail.metadata.sourcePath;
+        if (isDocument) {
+          elViewerImg.style.display = 'none';
+          elViewerPdf.style.display = 'block';
+          elViewerPdf.src = currentTokenDetail.metadata.sourcePath;
+        } else {
+          elViewerPdf.style.display = 'none';
+          elViewerImg.style.display = 'block';
+          elViewerImg.src = currentTokenDetail.metadata.sourcePath;
+        }
       } else {
         elViewerCanvas.style.display = 'none';
+        elViewerPdf.style.display = 'none';
         elViewerImg.style.display = 'block';
         elViewerImg.src = currentTokenDetail.previewUrl;
       }
@@ -841,21 +852,19 @@
       await selectToken(selectedTokenId);
     };
 
-    // Live Index Rebuild / Benchmark buttons
-    async function triggerRebuild(syntheticCount) {
-      document.getElementById('stat-status').textContent = `INDEXING ${syntheticCount}...`;
+    // Live Index Rebuild button (re-scans ./images and ./documents)
+    async function triggerRebuild() {
+      document.getElementById('stat-status').textContent = 'INDEXING...';
       await fetch('/api/index/rebuild', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ syntheticCount })
+        headers: { 'Content-Type': 'application/json' }
       });
       document.getElementById('stat-status').textContent = 'LIVE BUN';
       await loadStatsAndCodebook();
       await runSearch();
     }
 
-    document.getElementById('btn-rebuild-25').onclick = () => triggerRebuild(24);
-    document.getElementById('btn-rebuild-500').onclick = () => triggerRebuild(500);
+    document.getElementById('btn-rebuild').onclick = () => triggerRebuild();
 
     // Keyboard navigation (Left/Right arrows)
     window.addEventListener('keydown', (e) => {

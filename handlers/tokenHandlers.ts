@@ -20,6 +20,7 @@ export class TokenApiHandlers {
     private pipeline: Win11TokenPipeline,
     private imageDir = "./images",
     private invertedIndex?: VqInvertedIndexEngine,
+    private documentDir = "./documents",
   ) {}
 
   /**
@@ -188,12 +189,30 @@ export class TokenApiHandlers {
   }
 
   /**
+   * Sanitizes a requested asset filename while preserving spaces and parentheses
+   * (e.g. `grid (2).svg`, `Beyond Deviation and Deficit (1).pdf`).
+   */
+  private sanitizeFilename(name: string): string | null {
+    const trimmed = name.trim();
+    if (
+      !trimmed ||
+      trimmed.includes("..") ||
+      trimmed.includes("/") ||
+      trimmed.includes("\\") ||
+      /[\x00-\x1f<>:"|?*]/.test(trimmed)
+    ) {
+      return null;
+    }
+    return trimmed;
+  }
+
+  /**
    * GET /api/image/:name
    * Streams the original full-resolution image from `./images` using Bun.file().
    */
   public async handleGetSourceImage(name: string): Promise<Response> {
-    const safeName = name.replace(/[^a-zA-Z0-9._-]/g, "");
-    if (!safeName || safeName.includes("..")) {
+    const safeName = this.sanitizeFilename(name);
+    if (!safeName) {
       return errorResponse("Invalid image filename", 400);
     }
 
@@ -207,6 +226,31 @@ export class TokenApiHandlers {
       status: 200,
       headers: {
         "Content-Type": file.type || "image/jpeg",
+        "Cache-Control": "public, max-age=3600",
+      },
+    });
+  }
+
+  /**
+   * GET /api/document/:name
+   * Streams the original document from `./documents` using Bun.file().
+   */
+  public async handleGetSourceDocument(name: string): Promise<Response> {
+    const safeName = this.sanitizeFilename(name);
+    if (!safeName) {
+      return errorResponse("Invalid document filename", 400);
+    }
+
+    const path = `${this.documentDir}/${safeName}`;
+    const file = Bun.file(path);
+    if (!(await file.exists())) {
+      return errorResponse(`Document '${safeName}' not found`, 404);
+    }
+
+    return new Response(file, {
+      status: 200,
+      headers: {
+        "Content-Type": file.type || "application/pdf",
         "Cache-Control": "public, max-age=3600",
       },
     });
@@ -256,20 +300,10 @@ export class TokenApiHandlers {
 
   /**
    * POST /api/index/rebuild
-   * Re-scans `./images` and rebuilds the ZIP container with configurable synthetic token count.
+   * Re-scans `./images` (`IMAGE_DIR`) and `./documents` (`DOCUMENT_DIR`) and rebuilds the ZIP container.
    */
-  public async handleRebuildIndex(req: Request): Promise<Response> {
-    let syntheticCount = 24;
-    try {
-      const body = (await req.json()) as { syntheticCount?: number };
-      if (typeof body.syntheticCount === "number") {
-        syntheticCount = Math.min(21000, Math.max(0, Math.floor(body.syntheticCount)));
-      }
-    } catch {
-      // default 24
-    }
-
-    const buildRes = await this.pipeline.buildTokenArchive(syntheticCount);
+  public async handleRebuildIndex(_req?: Request): Promise<Response> {
+    const buildRes = await this.pipeline.buildTokenArchive();
     await this.engine.buildIndex();
     if (this.invertedIndex) {
       await this.invertedIndex.syncTokens(this.engine.getAllEntries());
@@ -278,6 +312,8 @@ export class TokenApiHandlers {
     return jsonResponse({
       success: true,
       totalTokens: buildRes.totalTokens,
+      imageTokens: buildRes.imageTokens,
+      documentTokens: buildRes.documentTokens,
       archiveBytes: buildRes.archiveBytes,
       buildElapsedMs: buildRes.elapsedMs,
       bootIndexTimeMs: this.engine.lastBootIndexMs,

@@ -129,13 +129,12 @@ describe("TinyToken GF(2^8) + VQ + SHARK/SNARK Pipeline", () => {
     expect(computeVqAdcDistance(gridA, gridB)).toBeLessThan(computeVqAdcDistance(gridA, gridC));
   });
 
-  test("Native Bun ZIP Indexer & Search Engine indexes d.jpg and slices tokens in sub-5ms", async () => {
-    // Verify image header sniffer on real ./images/d.jpg
-    const dFile = Bun.file("./images/d.jpg");
-    if (await dFile.exists()) {
-      const dBytes = new Uint8Array(await dFile.slice(0, 4096).arrayBuffer());
-      const info = sniffImageHeader(dBytes, ".jpg");
-      expect(info.format).toBe(PreviewFormat.JPEG);
+  test("Native Bun ZIP Indexer & Search Engine indexes ./images and ./documents in sub-5ms", async () => {
+    const sampleImg = Bun.file("./images/HectorDoor.png");
+    if (await sampleImg.exists()) {
+      const imgBytes = new Uint8Array(await sampleImg.slice(0, 4096).arrayBuffer());
+      const info = sniffImageHeader(imgBytes, ".png");
+      expect(info.format).toBe(PreviewFormat.PNG);
       expect(info.width).toBeGreaterThan(0);
       expect(info.height).toBeGreaterThan(0);
     }
@@ -143,13 +142,16 @@ describe("TinyToken GF(2^8) + VQ + SHARK/SNARK Pipeline", () => {
     const testZipPath = "./data/test_tokens.zip";
     const pipeline = new Win11TokenPipeline({
       sourceDirectory: "./images",
+      documentDirectory: "./documents",
       outputZipPath: testZipPath,
-      allowedExtensions: [".jpg", ".png", ".webp"],
+      allowedExtensions: [".jpg", ".jpeg", ".png", ".webp", ".svg", ".pdf", ".docx"],
       maxTokenSizeKb: 25,
     });
 
-    const buildRes = await pipeline.buildTokenArchive(12);
-    expect(buildRes.totalTokens).toBeGreaterThanOrEqual(12);
+    const buildRes = await pipeline.buildTokenArchive();
+    expect(buildRes.imageTokens).toBeGreaterThan(0);
+    expect(buildRes.documentTokens).toBeGreaterThan(0);
+    expect(buildRes.totalTokens).toBe(buildRes.imageTokens + buildRes.documentTokens);
 
     const engine = new CompressedTokenSearchEngine(testZipPath);
     await engine.buildIndex();
@@ -157,10 +159,10 @@ describe("TinyToken GF(2^8) + VQ + SHARK/SNARK Pipeline", () => {
     expect(engine.getCount()).toBe(buildRes.totalTokens);
     expect(engine.lastBootIndexMs).toBeLessThan(500);
 
-    const ocrHits = engine.searchOCR("SHARK", 10);
-    expect(ocrHits.length).toBeGreaterThan(0);
+    const docHits = engine.searchOCR("Document:", 10);
+    expect(docHits.length).toBe(buildRes.documentTokens);
 
-    const firstId = ocrHits[0]!.id;
+    const firstId = docHits[0]!.id;
     const vqHits = engine.searchSimilarVQ(firstId, "", 5);
     expect(vqHits.length).toBeGreaterThan(0);
     expect(vqHits[0]!.id).toBe(firstId);
@@ -176,8 +178,9 @@ describe("TinyToken GF(2^8) + VQ + SHARK/SNARK Pipeline", () => {
     const decoded = decodeBinaryToken(rawSlice!);
     expect(decoded.id).toBe(firstId);
     expect(decoded.snarkAttestation.valid).toBe(true);
+    expect(decoded.metadata.sourcePath.startsWith("/api/document/")).toBe(true);
 
-    // Verify Turso / LibSQL VQ Inverted Index Engine set-intersection search
+    // Verify native bun:sqlite VQ Inverted Index Engine set-intersection search
     const invIndex = new VqInvertedIndexEngine("file::memory:");
     await invIndex.syncTokens(engine.getAllEntries());
 
@@ -189,7 +192,7 @@ describe("TinyToken GF(2^8) + VQ + SHARK/SNARK Pipeline", () => {
       10,
     );
     expect(patternMatches.length).toBeGreaterThan(0);
-    expect(patternMatches[0]!.id).toBe(firstId);
+    expect(patternMatches.some((m) => m.id === firstId)).toBe(true);
     invIndex.close();
   });
 
