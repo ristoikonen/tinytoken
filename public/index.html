@@ -3,25 +3,37 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>TinyToken • GF(2⁸) + VQ + SHARK Fast Token & Image Viewer</title>
+  <title>TinyToken • Tactical Mission Asset Console</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
   <style>
     :root {
-      /* Glow2 Design Palette (from README.md) */
-      --glow-cyan: #38bdf8;
-      --glow-rose: #f43f5e;
-      --glow-emerald: #10b981;
-      --glow-purple: #a855f7;
-      --glow-yellow: #f78522;
+      /* Raktor Luminous Tactical Palette (with Nuclear Hazard / Danger Glow) */
+      --bg-void: #090e1a;
+      --bg-panel: linear-gradient(165deg, rgba(22, 34, 58, 0.78) 0%, rgba(14, 22, 39, 0.88) 60%, rgba(9, 14, 26, 0.96) 100%);
+      --bg-elevated: #1a2744;
+      --bg-inset: rgba(10, 15, 28, 0.75);
+      
+      --border-subtle: rgba(56, 189, 248, 0.14);
+      --border-light: rgba(56, 189, 248, 0.28);
+      --border-accent: rgba(56, 189, 248, 0.55);
 
-      --dk-blue: #14213D;   /* Deep Canvas / App Void */
-      --dk-blue2: #124E78;  /* Elevated Surface / Structural Border */
-      --dk-gray: #333533;   /* Neutral Inset / Control Surface */
-      --gray: #CFDBD5;      /* Secondary Text / Structural Borders */
-      --lt-gray: #E5E5E5;   /* Primary Text / High Contrast Readout */
-      --dk-orange: #F78522; /* Telemetry / Byte Mapping / Warn */
+      --cyan-bright: #38bdf8;
+      --cyan-muted: #0284c7;
+      --cyan-glow: rgba(56, 189, 248, 0.25);
+      
+      --amber-hazard: #f59e0b;
+      --amber-glow: rgba(245, 158, 11, 0.28);
+
+      --text-high: #f8fafc;
+      --text-medium: #cbd5e1;
+      --text-low: #94a3b8;
+      --text-dim: #64748b;
+
+      --status-emerald: #10b981;
+      --status-amber: #f59e0b;
+      --status-rose: #f43f5e;
     }
 
     * {
@@ -31,41 +43,61 @@
     }
 
     body {
-      background-color: var(--dk-blue);
+      background-color: var(--bg-void);
       background-image:
-        radial-gradient(at 0% 0%, rgba(56, 189, 248, 0.10) 0px, transparent 45%),
-        radial-gradient(at 100% 0%, rgba(168, 85, 247, 0.08) 0px, transparent 45%);
-      color: var(--lt-gray);
+        radial-gradient(ellipse at 85% -5%, rgba(56, 189, 248, 0.16) 0%, transparent 50%),
+        radial-gradient(ellipse at 15% 105%, rgba(245, 158, 11, 0.12) 0%, transparent 45%),
+        radial-gradient(circle at 50% 50%, rgba(26, 38, 66, 0.3) 0%, transparent 80%),
+        linear-gradient(180deg, #0d1322 0%, #080c16 100%);
+      color: var(--text-medium);
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
       min-height: 100vh;
       display: flex;
       flex-direction: column;
       line-height: 1.45;
+      font-size: 0.85rem;
+      -webkit-font-smoothing: antialiased;
     }
 
     .mono {
       font-family: 'JetBrains Mono', monospace;
     }
 
-    /* Top Header & Telemetry Bar */
+    /* Custom tactical scrollbar */
+    ::-webkit-scrollbar {
+      width: 5px;
+      height: 5px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(9, 14, 26, 0.8);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(56, 189, 248, 0.2);
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(56, 189, 248, 0.38);
+    }
+
+    /* Top Navigation Header */
     header {
-      background: rgba(20, 33, 61, 0.92);
-      backdrop-filter: blur(8px);
-      border-bottom: 1px solid var(--dk-blue2);
+      background: rgba(13, 20, 36, 0.92);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border-subtle);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
       position: sticky;
       top: 0;
-      z-index: 40;
-      padding: 0.65rem 1.25rem;
+      z-index: 50;
+      padding: 0.55rem 1.25rem;
     }
 
     .header-row {
       max-width: 1440px;
       margin: 0 auto;
       display: flex;
-      flex-wrap: wrap;
       align-items: center;
       justify-content: space-between;
-      gap: 0.75rem;
+      gap: 1rem;
     }
 
     .brand {
@@ -74,209 +106,211 @@
       gap: 0.65rem;
     }
 
-    .brand-mark {
-      width: 28px;
-      height: 28px;
-      border-radius: 6px;
-      background: var(--dk-blue2);
-      border: 1px solid var(--glow-cyan);
-      display: grid;
-      place-items: center;
-      color: var(--glow-cyan);
-      font-weight: 700;
-      font-size: 0.8rem;
-      box-shadow: 0 0 12px rgba(56, 189, 248, 0.25);
-    }
-
     .brand-title {
-      font-size: 1.25rem;
+      font-size: 1.18rem;
       font-weight: 700;
       letter-spacing: -0.02em;
-      color: var(--lt-gray);
+      color: var(--text-high);
     }
 
     .brand-title span {
-      color: var(--glow-cyan);
-    }
-
-    .header-right {
-      display: flex;
-      flex-direction: column;
-      align-items: flex-end;
-      gap: 0.25rem;
+      color: var(--cyan-bright);
+      text-shadow: 0 0 14px var(--cyan-glow);
     }
 
     .project-credit {
-      font-size: 0.65rem;
-      color: var(--gray);
-      opacity: 0.8;
-      letter-spacing: 0.01em;
+      font-size: 0.66rem;
+      color: var(--text-low);
+      letter-spacing: 0.02em;
     }
 
-    .telemetry-strip {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 0.5rem;
-    }
-
-    .pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.4rem;
-      padding: 0.25rem 0.6rem;
-      border-radius: 999px;
-      font-size: 0.72rem;
-      font-weight: 600;
-      background: var(--dk-gray);
-      border: 1px solid var(--dk-blue2);
-      color: var(--lt-gray);
-    }
-
-    .dot {
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      display: inline-block;
-    }
-
-    .pill-emerald { border-color: rgba(16, 185, 129, 0.5); color: var(--glow-emerald); }
-    .pill-rose    { border-color: rgba(244, 63, 94, 0.5);  color: var(--glow-rose); }
-    .pill-purple  { border-color: rgba(168, 85, 247, 0.5); color: var(--glow-purple); }
-    .pill-orange  { border-color: rgba(247, 133, 34, 0.5); color: var(--dk-orange); }
-    .pill-cyan    { border-color: rgba(56, 189, 248, 0.5); color: var(--glow-cyan); }
-
-    /* Main Split Workspace */
+    /* Main Split Workspace - Expanded Viewer Width */
     .workspace {
       max-width: 1440px;
       width: 100%;
       margin: 0 auto;
-      padding: 1rem 1.25rem;
+      padding: 0.85rem 1.25rem;
       display: grid;
       grid-template-columns: 1fr;
-      gap: 1rem;
+      gap: 0.95rem;
       flex: 1;
     }
 
     @media (min-width: 1024px) {
       .workspace {
-        grid-template-columns: 7fr 5fr;
+        grid-template-columns: 5fr 6fr; /* Expanded to 55% for right viewer */
         align-items: start;
       }
     }
 
-    /* Panel Cards */
+    /* Tactical Panel Card with Ambient Gradient */
     .panel {
-      background: rgba(18, 78, 120, 0.22);
-      border: 1px solid var(--dk-blue2);
+      background: var(--bg-panel);
+      backdrop-filter: blur(14px);
+      border: 1px solid var(--border-subtle);
       border-radius: 10px;
-      padding: 0.9rem;
+      padding: 0.95rem;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 12px 36px -8px rgba(0, 0, 0, 0.55);
     }
 
-    /* Search & Toolbar */
+    /* Search & Action Bar */
     .toolbar {
       display: flex;
       flex-wrap: wrap;
       gap: 0.5rem;
-      margin-bottom: 0.85rem;
+      margin-bottom: 0.75rem;
     }
 
     .search-input {
       flex: 1;
       min-width: 200px;
-      background: var(--dk-gray);
-      border: 1px solid var(--dk-blue2);
-      color: var(--lt-gray);
-      padding: 0.5rem 0.75rem;
+      background: rgba(10, 16, 30, 0.85);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-high);
+      padding: 0.45rem 0.75rem;
       border-radius: 6px;
-      font-size: 0.85rem;
+      font-size: 0.78rem;
       outline: none;
-      transition: border-color 0.15s;
+      transition: all 0.15s ease;
+    }
+
+    .search-input::placeholder {
+      color: var(--text-dim);
     }
 
     .search-input:focus {
-      border-color: var(--glow-cyan);
-      box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.15);
+      border-color: var(--cyan-bright);
+      box-shadow: 0 0 0 2px var(--cyan-glow);
+      background: rgba(14, 22, 42, 0.95);
     }
 
+    /* Buttons */
     .btn {
-      background: var(--dk-gray);
-      color: var(--lt-gray);
-      border: 1px solid var(--dk-blue2);
-      padding: 0.45rem 0.75rem;
+      background: rgba(18, 27, 48, 0.7);
+      color: var(--text-medium);
+      border: 1px solid var(--border-subtle);
+      padding: 0.4rem 0.7rem;
       border-radius: 6px;
-      font-size: 0.76rem;
-      font-weight: 600;
+      font-size: 0.72rem;
+      font-weight: 500;
       cursor: pointer;
       display: inline-flex;
       align-items: center;
       gap: 0.35rem;
-      transition: all 0.15s;
+      transition: all 0.14s ease;
     }
 
     .btn:hover {
-      border-color: var(--glow-cyan);
-      color: var(--glow-cyan);
+      border-color: var(--border-light);
+      color: var(--text-high);
+      background: var(--bg-elevated);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
     }
 
-    .btn-active {
-      background: var(--dk-blue2);
-      border-color: var(--glow-cyan);
-      color: var(--glow-cyan);
+    .btn.btn-active {
+      background: var(--bg-elevated);
+      border-color: var(--cyan-bright);
+      color: var(--cyan-bright);
+      box-shadow: 0 0 12px var(--cyan-glow);
     }
 
-    .btn-purple {
-      border-color: rgba(168, 85, 247, 0.6);
-      color: var(--glow-purple);
+    .btn-action-cyan {
+      background: rgba(56, 189, 248, 0.14);
+      border: 1px solid rgba(56, 189, 248, 0.45);
+      color: #e0f2fe;
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 0.48rem 0.95rem;
+      border-radius: 6px;
+      letter-spacing: 0.02em;
+      box-shadow: 0 0 16px rgba(56, 189, 248, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.12);
     }
 
-    .btn-rose {
-      border-color: rgba(244, 63, 94, 0.6);
-      color: var(--glow-rose);
+    .btn-action-cyan:hover {
+      background: rgba(56, 189, 248, 0.24);
+      border-color: var(--cyan-bright);
+      color: #ffffff;
+      box-shadow: 0 0 24px rgba(56, 189, 248, 0.45);
+      transform: translateY(-1px);
+    }
+
+    /* Segmented Control Bar */
+    .segmented-ctrl {
+      display: inline-flex;
+      background: rgba(9, 14, 26, 0.85);
+      border: 1px solid var(--border-subtle);
+      border-radius: 6px;
+      padding: 2px;
+      gap: 2px;
+    }
+
+    .segmented-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-low);
+      padding: 0.32rem 0.68rem;
+      font-size: 0.7rem;
+      font-weight: 500;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.12s ease;
+    }
+
+    .segmented-btn:hover {
+      color: var(--text-high);
+    }
+
+    .segmented-btn.btn-active {
+      background: var(--bg-elevated);
+      color: var(--cyan-bright);
+      font-weight: 600;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.4), 0 0 8px var(--cyan-glow);
     }
 
     /* Token Grid */
     .token-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(152px, 1fr));
-      gap: 0.65rem;
-      max-height: calc(100vh - 210px);
+      grid-template-columns: repeat(auto-fill, minmax(135px, 1fr));
+      gap: 0.6rem;
+      max-height: calc(100vh - 150px);
       overflow-y: auto;
       padding-right: 0.25rem;
     }
 
     .token-card {
-      background: rgba(20, 33, 61, 0.85);
-      border: 1px solid var(--dk-blue2);
-      border-radius: 8px;
-      padding: 0.5rem;
+      background: linear-gradient(180deg, rgba(23, 34, 58, 0.45) 0%, rgba(12, 18, 32, 0.7) 100%);
+      border: 1px solid rgba(56, 189, 248, 0.1);
+      border-radius: 7px;
+      padding: 0.45rem;
       cursor: pointer;
-      transition: transform 0.12s, border-color 0.12s;
+      transition: all 0.14s ease;
       display: flex;
       flex-direction: column;
-      gap: 0.4rem;
+      gap: 0.35rem;
       position: relative;
     }
 
     .token-card:hover {
-      border-color: var(--glow-cyan);
-      transform: translateY(-1px);
+      border-color: rgba(56, 189, 248, 0.45);
+      background: linear-gradient(180deg, rgba(30, 46, 78, 0.6) 0%, rgba(16, 24, 42, 0.8) 100%);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45), 0 0 12px rgba(56, 189, 248, 0.15);
     }
 
     .token-card.selected {
-      border-color: var(--glow-cyan);
-      box-shadow: 0 0 0 1px var(--glow-cyan), 0 0 14px rgba(56, 189, 248, 0.22);
-      background: rgba(18, 78, 120, 0.42);
+      border-color: var(--cyan-bright);
+      box-shadow: 0 0 0 1px var(--cyan-bright), 0 0 20px rgba(56, 189, 248, 0.3);
+      background: linear-gradient(180deg, rgba(35, 54, 92, 0.7) 0%, rgba(18, 28, 50, 0.85) 100%);
     }
 
     .thumb-wrap {
       width: 100%;
       aspect-ratio: 1 / 1;
-      background: var(--dk-gray);
+      background: #080c16;
       border-radius: 5px;
       overflow: hidden;
       position: relative;
-      border: 1px solid rgba(207, 219, 213, 0.12);
+      border: 1px solid rgba(56, 189, 248, 0.12);
     }
 
     .thumb-canvas {
@@ -288,58 +322,75 @@
 
     .card-badge-top {
       position: absolute;
-      top: 4px;
-      left: 4px;
-      right: 4px;
+      top: 3px;
+      left: 3px;
+      right: 3px;
       display: flex;
       justify-content: space-between;
       pointer-events: none;
     }
 
     .micro-tag {
-      font-size: 0.62rem;
+      font-size: 0.58rem;
       padding: 1px 5px;
-      border-radius: 4px;
-      background: rgba(20, 33, 61, 0.88);
-      border: 1px solid rgba(56, 189, 248, 0.4);
-      color: var(--glow-cyan);
+      border-radius: 3px;
+      background: rgba(9, 14, 26, 0.92);
+      border: 1px solid rgba(56, 189, 248, 0.2);
+      color: var(--text-medium);
+      font-weight: 500;
+      backdrop-filter: blur(4px);
     }
 
     .micro-tag.sim {
-      border-color: var(--glow-purple);
-      color: var(--glow-purple);
+      border-color: var(--cyan-bright);
+      color: var(--cyan-bright);
+      background: rgba(14, 30, 56, 0.9);
+      box-shadow: 0 0 8px var(--cyan-glow);
     }
 
     .card-title {
-      font-size: 0.74rem;
+      font-size: 0.7rem;
       font-weight: 600;
-      color: var(--lt-gray);
+      color: var(--text-high);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
 
     .card-sub {
-      font-size: 0.66rem;
-      color: var(--gray);
+      font-size: 0.62rem;
+      color: var(--text-low);
       display: flex;
       justify-content: space-between;
     }
 
-    /* Fast Image & Token Viewer (Right Column) */
+    /* Right Column: Tactical Inspector & Viewer */
     .viewer-panel {
       position: sticky;
-      top: 3.8rem;
+      top: 3.6rem;
       display: flex;
       flex-direction: column;
-      gap: 0.75rem;
+      gap: 0.65rem;
     }
 
+    .viewer-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* Expanded & Luminous Raktor Nuclear Hazard Viewer Stage */
     .viewer-stage {
       width: 100%;
-      height: 310px;
-      background: var(--dk-gray);
-      border: 1px solid var(--dk-blue2);
+      height: 490px; /* Vastly enlarged from 290px -> 490px */
+      background:
+        radial-gradient(circle at 50% 25%, rgba(56, 189, 248, 0.12) 0%, transparent 60%),
+        radial-gradient(circle at 85% 85%, rgba(245, 158, 11, 0.08) 0%, transparent 50%),
+        linear-gradient(160deg, #131b2e 0%, #0b1120 50%, #070a12 100%);
+      border: 1px solid rgba(56, 189, 248, 0.22);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 12px 36px -4px rgba(0, 0, 0, 0.65);
       border-radius: 8px;
       position: relative;
       overflow: hidden;
@@ -355,10 +406,12 @@
     }
 
     .viewer-media {
-      max-width: 100%;
-      max-height: 100%;
+      max-width: 98%;
+      max-height: 98%;
+      object-fit: contain;
       transform-origin: center center;
-      transition: transform 0.06s ease-out;
+      transition: transform 0.05s ease-out;
+      filter: drop-shadow(0 12px 28px rgba(0, 0, 0, 0.7));
     }
 
     .pixelated {
@@ -376,84 +429,103 @@
       pointer-events: none;
     }
 
-    .viewer-controls {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.35rem;
-      justify-content: space-between;
-      align-items: center;
+    .hud-badge {
+      font-size: 0.65rem;
+      padding: 3px 8px;
+      border-radius: 4px;
+      background: rgba(9, 14, 26, 0.9);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      color: var(--text-medium);
+      font-weight: 500;
+      backdrop-filter: blur(6px);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
     }
 
-    /* 25 KB Byte-Map Bar */
+    /* Raktor Nuclear Hazard / Danger Glow Byte-Map Card */
     .bytemap-box {
-      background: var(--dk-gray);
-      border: 1px solid var(--dk-blue2);
-      border-radius: 7px;
-      padding: 0.6rem;
+      background:
+        radial-gradient(ellipse at top right, rgba(245, 158, 11, 0.12) 0%, transparent 65%),
+        radial-gradient(circle at bottom left, rgba(56, 189, 248, 0.08) 0%, transparent 60%),
+        linear-gradient(170deg, rgba(25, 36, 60, 0.6) 0%, rgba(13, 19, 34, 0.8) 100%);
+      border: 1px solid rgba(245, 158, 11, 0.24);
+      border-radius: 8px;
+      padding: 0.65rem 0.8rem;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
     }
 
     .bytemap-bar {
-      height: 12px;
+      height: 9px;
       width: 100%;
-      background: rgba(20, 33, 61, 0.8);
-      border-radius: 999px;
+      background: #060a14;
+      border-radius: 4px;
       overflow: hidden;
       display: flex;
-      margin: 0.4rem 0;
-      border: 1px solid rgba(207, 219, 213, 0.15);
+      margin: 0.35rem 0;
+      border: 1px solid rgba(56, 189, 248, 0.15);
+      box-shadow: inset 0 1px 3px rgba(0,0,0,0.5);
     }
 
-    .bm-seg-s1 { background: var(--glow-rose); }
-    .bm-seg-vq { background: var(--glow-purple); }
-    .bm-seg-s2 { background: var(--glow-cyan); }
-    .bm-seg-s3 { background: var(--dk-orange); }
+    .bm-seg-s1 { background: #cbd5e1; }
+    .bm-seg-vq { background: #64748b; }
+    .bm-seg-s2 { background: var(--cyan-bright); box-shadow: 0 0 6px var(--cyan-glow); }
+    .bm-seg-s3 { background: #334155; }
 
     .bytemap-legend {
       display: flex;
       flex-wrap: wrap;
       gap: 0.65rem;
-      font-size: 0.68rem;
-      color: var(--gray);
+      font-size: 0.64rem;
+      color: var(--text-low);
     }
 
+    /* Luminous Telemetry KV Readout Grid */
     .kv-grid {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 0.45rem;
-      font-size: 0.72rem;
+      gap: 0.4rem;
+      font-size: 0.7rem;
     }
 
     .kv-item {
-      background: var(--dk-gray);
-      border: 1px solid rgba(18, 78, 120, 0.7);
+      background: linear-gradient(160deg, rgba(22, 33, 56, 0.55) 0%, rgba(12, 18, 32, 0.75) 100%);
+      border: 1px solid rgba(56, 189, 248, 0.12);
       border-radius: 6px;
-      padding: 0.4rem 0.55rem;
+      padding: 0.38rem 0.55rem;
+      transition: all 0.14s ease;
+    }
+
+    .kv-item:hover {
+      border-color: rgba(56, 189, 248, 0.3);
+      background: linear-gradient(160deg, rgba(26, 40, 68, 0.65) 0%, rgba(14, 22, 38, 0.85) 100%);
     }
 
     .kv-label {
-      font-size: 0.63rem;
-      color: var(--gray);
+      font-size: 0.58rem;
+      color: var(--text-low);
       text-transform: uppercase;
-      letter-spacing: 0.04em;
+      letter-spacing: 0.06em;
     }
 
     .kv-val {
-      color: var(--lt-gray);
-      font-weight: 600;
+      color: var(--text-high);
+      font-weight: 500;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+      margin-top: 1px;
     }
 
+    /* OCR Box */
     .ocr-box {
-      background: var(--dk-gray);
-      border: 1px solid rgba(18, 78, 120, 0.7);
+      background: rgba(10, 16, 28, 0.75);
+      border: 1px solid var(--border-subtle);
       border-radius: 6px;
       padding: 0.55rem;
-      font-size: 0.73rem;
-      color: var(--gray);
-      max-height: 92px;
+      font-size: 0.7rem;
+      color: var(--text-medium);
+      max-height: 85px;
       overflow-y: auto;
+      line-height: 1.4;
     }
   </style>
 </head>
@@ -461,8 +533,8 @@
   <header>
     <div class="header-row">
       <div class="brand">
-        <div class="logo-box flex items-center justify-center flex-shrink-0" style="width:36px;height:36px;background:transparent;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-          <svg version="1.0" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 128.000000 128.000000" preserveAspectRatio="xMidYMid meet" style="filter:drop-shadow(0 0 5px rgba(56,189,248,0.45));">
+        <div class="logo-box flex items-center justify-center flex-shrink-0" style="width:34px;height:34px;background:transparent;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <svg version="1.0" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 128.000000 128.000000" preserveAspectRatio="xMidYMid meet" style="filter:drop-shadow(0 0 6px rgba(56,189,248,0.5));">
             <g transform="translate(0.000000,128.000000) scale(0.100000,-0.100000)" fill="#38bdf8" stroke="none">
               <path d="M1130 1261 c-5 -11 -10 -25 -10 -31 0 -19 -50 -113 -73 -138 -25 -27 -155 -109 -272 -172 -44 -23 -93 -52 -109 -63 -70 -49 -301 -185 -308 -181 -4 3 23 51 60 108 l66 104 65 7 c85 9 155 53 204 127 20 29 52 68 72 85 37 33 44 65 15 71 -13 2 -64 -44 -197 -180 -55 -56 -158 -66 -165 -15 -2 12 -11 23 -20 25 -15 3 -18 -4 -18 -35 0 -30 -13 -57 -64 -133 -84 -124 -154 -210 -192 -235 -17 -11 -65 -29 -107 -39 l-77 -18 0 -55 c0 -51 1 -54 22 -48 11 4 54 8 93 8 56 0 82 -5 114 -21 23 -12 49 -22 58 -22 20 0 348 -169 407 -209 23 -16 48 -36 55 -45 8 -9 21 -16 30 -16 33 0 61 -43 61 -93 0 -40 3 -47 19 -47 16 0 20 8 23 38 4 51 26 52 125 2 65 -32 91 -40 137 -40 48 0 56 3 56 18 0 14 -24 30 -88 60 -48 23 -95 42 -105 42 -23 0 -243 114 -287 149 -19 16 -46 32 -60 36 -37 11 -300 147 -300 155 0 8 450 33 550 30 41 -1 139 -2 218 -1 140 1 142 1 142 24 0 46 -7 47 -181 48 -90 0 -295 -3 -455 -7 -198 -5 -293 -4 -297 3 -9 14 28 41 213 154 85 53 218 134 295 181 77 48 166 98 197 111 31 14 74 37 95 51 20 14 48 26 61 26 30 0 82 39 82 62 0 24 -29 23 -91 -3 -27 -12 -52 -19 -56 -16 -3 3 6 36 21 72 14 36 26 70 26 75 0 18 -39 10 -50 -9z" />
             </g>
@@ -473,20 +545,7 @@
         </div>
       </div>
 
-      <div class="header-right">
-        <div class="telemetry-strip mono">
-          <span class="pill pill-emerald" title="Bun Native ZIP Central Directory Engine">
-            <span class="dot" style="background:var(--glow-emerald)"></span>
-            <span id="stat-status">LIVE BUN</span>
-          </span>
-          <span class="pill pill-cyan" id="stat-tokens">0 TOKENS</span>
-          <span class="pill pill-orange" id="stat-boot">BOOT: -- ms</span>
-          <span class="pill pill-orange" id="stat-search">SEARCH: -- ms</span>
-          <span class="pill pill-purple" id="stat-vq">VQ RAM: -- KB</span>
-          <span class="pill pill-rose" id="stat-snark">SHARK/RS: 100%</span>
-        </div>
-        <div class="project-credit mono">Part of Risukko project. &copy; Risto Ikonen 2026. All Rights Reserved.</div>
-      </div>
+      <div class="project-credit mono">Part of Risukko project. &copy; Risto Ikonen 2026. All Rights Reserved.</div>
     </div>
   </header>
 
@@ -498,13 +557,13 @@
           id="search-input"
           class="search-input mono"
           type="text"
-          placeholder="Search 25KB tokens by OCR text, filename, or ID (e.g. Galois, Governance, Azure, Hector)..."
+          placeholder="Search 25KB tokens by OCR text, filename, or ID..."
           autocomplete="off"
         />
-        <button id="btn-clear-sim" class="btn btn-purple mono" style="display:none;" title="Exit VQ ADC similarity mode">
-          × Clear VQ Similar
+        <button id="btn-clear-sim" class="btn btn-action-cyan mono" style="display:none;" title="Exit VQ ADC similarity mode">
+          × Clear Similar
         </button>
-        <button id="btn-rebuild" class="btn mono" title="Re-scan ./images and ./documents and rebuild ./data/tokens.zip">
+        <button id="btn-rebuild" class="btn mono" title="Re-scan and rebuild ./data/tokens.zip">
           🔄 Re-Index Assets
         </button>
       </div>
@@ -515,55 +574,56 @@
     <!-- Right Column: Sparse Fast Image & Token Byte-Map Viewer -->
     <aside class="panel viewer-panel">
       <div class="viewer-controls">
-        <div style="display:flex;gap:0.35rem;flex-wrap:wrap;">
-          <button id="mode-preview" class="btn btn-active mono">Sect III Preview</button>
-          <button id="mode-vq" class="btn mono">VQ 16×16 (256B)</button>
-          <button id="mode-full" class="btn mono">Full-Res Source</button>
+        <div class="segmented-ctrl mono">
+          <button id="mode-preview" class="segmented-btn btn-active">PREVIEW</button>
+          <button id="mode-vq" class="segmented-btn">VQ 16×16</button>
+          <button id="mode-full" class="segmented-btn" disabled style="opacity:0.35;cursor:not-allowed;" title="Source full-res view currently disabled">SOURCE</button>
         </div>
-        <div style="display:flex;gap:0.3rem;">
+        <div style="display:flex;gap:0.25rem;">
           <button id="zoom-out" class="btn mono" title="Zoom Out">−</button>
-          <button id="zoom-reset" class="btn mono" title="Reset Zoom (1x)">1x</button>
+          <button id="zoom-reset" class="btn mono" title="Reset Zoom">1.25x</button>
           <button id="zoom-in" class="btn mono" title="Zoom In">+</button>
-          <button id="toggle-pixel" class="btn mono" title="Toggle Crisp Pixelated Rendering"> Crisp</button>
+          <button id="toggle-pixel" class="btn mono" title="Toggle Crisp Pixelated Rendering">Crisp</button>
         </div>
       </div>
 
+      <!-- Expanded Luminous Viewer Stage -->
       <div id="viewer-stage" class="viewer-stage">
         <img id="viewer-img" class="viewer-media" alt="Token Preview" style="display:none;" />
         <iframe id="viewer-pdf" title="Document Source Viewer" style="width:100%;height:100%;border:none;display:none;"></iframe>
-        <canvas id="viewer-vq-canvas" width="16" height="16" class="viewer-media pixelated" style="width:240px;height:240px;display:none;"></canvas>
+        <canvas id="viewer-vq-canvas" width="16" height="16" class="viewer-media pixelated" style="width:360px;height:360px;display:none;"></canvas>
         <div class="viewer-hud mono">
-          <span id="viewer-dim-badge" class="pill pill-cyan">-- × --</span>
-          <span id="viewer-slice-badge" class="pill pill-orange">SLICE: -- ms</span>
+          <span id="viewer-dim-badge" class="hud-badge">-- × --</span>
+          <span id="viewer-slice-badge" class="hud-badge">SLICE: -- ms</span>
         </div>
       </div>
 
-      <div style="display:flex;gap:0.4rem;flex-wrap:wrap;justify-content:space-between;">
-        <button id="btn-find-similar" class="btn btn-purple mono">
-          ◈ Find Visually Similar (DINOv2 + VQ)
+      <div style="display:flex;gap:0.35rem;flex-wrap:wrap;justify-content:space-between;align-items:center;">
+        <button id="btn-find-similar" class="btn btn-action-cyan mono">
+          ◈ Find Visually Similar
         </button>
-        <button id="btn-homomorphic" class="btn btn-rose mono" title="Apply blind GF(2^8) linear state mask directly on raw 25KB token slice">
-          ⊕ GF(2⁸) Homomorphic Mask
+        <button id="btn-homomorphic" class="btn mono" title="Apply blind GF(2^8) linear state mask directly on raw 25KB token slice">
+          ⊕ GF(2⁸) Mask
         </button>
       </div>
 
-      <!-- 25 KB Token Byte-Map Bar -->
+      <!-- 25 KB Token Byte-Map Bar with Nuclear Hazard Ambient Glow -->
       <div class="bytemap-box">
-        <div style="display:flex;justify-content:space-between;font-size:0.72rem;" class="mono">
-          <span style="color:var(--lt-gray);font-weight:600;">25 KB TOKEN ENVELOPE BYTE-MAP</span>
-          <span id="bm-total" style="color:var(--dk-orange);">0 / 25,600 B</span>
+        <div style="display:flex;justify-content:space-between;font-size:0.65rem;" class="mono">
+          <span style="color:var(--text-high);font-weight:600;letter-spacing:0.04em;">25 KB TOKEN ENVELOPE</span>
+          <span id="bm-total" style="color:var(--cyan-bright);font-weight:600;">0 / 25,600 B</span>
         </div>
         <div class="bytemap-bar">
-          <div id="bm-s1" class="bm-seg-s1" style="width:10%" title="Section I: Header + 256B Attestation + 64B RS Parity"></div>
-          <div id="bm-vq" class="bm-seg-vq" style="width:8%" title="Section I: 256B VQ 16x16 Codebook Grid"></div>
+          <div id="bm-s1" class="bm-seg-s1" style="width:10%" title="Section I: Header + Attestation + RS Parity"></div>
+          <div id="bm-vq" class="bm-seg-vq" style="width:8%" title="Section I: VQ 16x16 Grid"></div>
           <div id="bm-s2" class="bm-seg-s2" style="width:22%" title="Section II: QuickLZ Metadata & OCR"></div>
           <div id="bm-s3" class="bm-seg-s3" style="width:60%" title="Section III: 220x220 Preview Image"></div>
         </div>
         <div class="bytemap-legend mono">
-          <span><b style="color:var(--glow-rose)">■</b> Hdr+SNARK+RS: <span id="lbl-s1">448B</span></span>
-          <span><b style="color:var(--glow-purple)">■</b> VQ Grid: <span id="lbl-vq">256B</span></span>
-          <span><b style="color:var(--glow-cyan)">■</b> Meta/OCR: <span id="lbl-s2">0B</span></span>
-          <span><b style="color:var(--dk-orange)">■</b> Preview: <span id="lbl-s3">0B</span></span>
+          <span><b style="color:#cbd5e1">■</b> Hdr+SNARK+RS: <span id="lbl-s1">448B</span></span>
+          <span><b style="color:#64748b">■</b> VQ: <span id="lbl-vq">256B</span></span>
+          <span><b style="color:var(--cyan-bright)">■</b> Meta/OCR: <span id="lbl-s2">0B</span></span>
+          <span><b style="color:#334155">■</b> Preview: <span id="lbl-s3">0B</span></span>
         </div>
       </div>
 
@@ -575,29 +635,32 @@
         </div>
         <div class="kv-item">
           <div class="kv-label">GF(2⁸) RS Parity (64B)</div>
-          <div id="kv-rs" class="kv-val" style="color:var(--glow-emerald);">—</div>
+          <div id="kv-rs" class="kv-val" style="color:var(--status-emerald);">—</div>
         </div>
         <div class="kv-item">
-          <div class="kv-label">Ed25519 + Merkle Attestation</div>
-          <div id="kv-snark" class="kv-val" style="color:var(--glow-rose);">—</div>
+          <div class="kv-label">Ed25519 Attestation</div>
+          <div id="kv-snark" class="kv-val" style="color:var(--cyan-bright);">—</div>
         </div>
         <div class="kv-item">
-          <div class="kv-label">ZIP Slice Offset / CRC32</div>
-          <div id="kv-zip" class="kv-val" style="color:var(--dk-orange);">—</div>
+          <div class="kv-label">ZIP Slice / CRC32</div>
+          <div id="kv-zip" class="kv-val">—</div>
         </div>
         <div class="kv-item">
           <div class="kv-label">SHA-256 Merkle Root</div>
-          <div id="kv-merkle" class="kv-val" style="color:var(--glow-cyan);">—</div>
+          <div id="kv-merkle" class="kv-val">—</div>
         </div>
         <div class="kv-item">
-          <div class="kv-label">Homomorphic GF(2⁸) Tag</div>
-          <div id="kv-homo" class="kv-val" style="color:var(--glow-purple);">—</div>
+          <div class="kv-label">GF(2⁸) State Tag</div>
+          <div id="kv-homo" class="kv-val">—</div>
         </div>
       </div>
 
       <div>
-        <div class="kv-label mono" style="margin-bottom:0.25rem;">Extracted OCR & Asset Metadata Layer (Section II)</div>
-        <div id="ocr-readout" class="ocr-box mono">Select a token to inspect its 25 KB binary slice, VQ 16×16 neural codebook, and SHARK attestation proof.</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.25rem;">
+          <div class="kv-label mono" style="margin-bottom:0;">Extracted OCR & Metadata</div>
+          <span id="ocr-timestamp" class="mono" style="font-size:0.65rem;color:var(--cyan-bright);font-weight:500;"></span>
+        </div>
+        <div id="ocr-readout" class="ocr-box mono">Select a token to inspect its 25 KB binary envelope, VQ 16×16 neural codebook, and provenance proof.</div>
       </div>
     </aside>
   </main>
@@ -608,7 +671,7 @@
     let selectedTokenId = null;
     let currentTokenDetail = null;
     let viewerMode = 'preview'; // 'preview' | 'vq' | 'full'
-    let zoomLevel = 1;
+    let zoomLevel = 1.25;
     let panX = 0;
     let panY = 0;
     let isDragging = false;
@@ -623,7 +686,6 @@
     const elViewerPdf = document.getElementById('viewer-pdf');
     const elViewerCanvas = document.getElementById('viewer-vq-canvas');
 
-    // HTML Entity escaping helper to prevent XSS from filenames/metadata
     function escapeHtml(str) {
       if (str === null || str === undefined) return '';
       return String(str).replace(/[&<>"']/g, c => ({
@@ -635,7 +697,6 @@
       })[c]);
     }
 
-    // Render 256-byte (512 hex chars) 16x16 VQ grid onto a 16x16 canvas in < 0.05ms
     function renderVqHexToCanvas(vqHex, canvas) {
       if (!canvas || !vqHex || codebook.length === 0) return;
       const ctx = canvas.getContext('2d');
@@ -643,7 +704,7 @@
       const data = imgData.data;
       for (let i = 0; i < 256; i++) {
         const idx = parseInt(vqHex.slice(i * 2, i * 2 + 2), 16) || 0;
-        const c = codebook[idx] || { r: 20, g: 33, b: 61 };
+        const c = codebook[idx] || { r: 13, g: 15, b: 22 };
         const p = i * 4;
         data[p] = c.r;
         data[p + 1] = c.g;
@@ -660,16 +721,6 @@
       ]);
 
       if (cbRes.centroids) codebook = cbRes.centroids;
-      if (statsRes.success) {
-        document.getElementById('stat-tokens').textContent =
-          `${statsRes.tokenCount} TOKENS (${(statsRes.archiveSizeBytes / 1024).toFixed(0)} KB ZIP)`;
-        document.getElementById('stat-boot').textContent =
-          `BOOT: ${statsRes.bootIndexTimeMs} ms`;
-        document.getElementById('stat-vq').textContent =
-          `VQ RAM: ${(statsRes.vqRamFootprintBytes / 1024).toFixed(1)} KB`;
-        document.getElementById('stat-snark').textContent =
-          `SHARK/RS: ${statsRes.snarkVerifiedCount}/${statsRes.tokenCount}`;
-      }
     }
 
     async function runSearch() {
@@ -681,9 +732,6 @@
       }
       const res = await fetch(`/api/search?${params.toString()}`).then(r => r.json());
       if (!res.success) return;
-
-      document.getElementById('stat-search').textContent =
-        `${res.mode === 'vq-adc' ? 'VQ-ADC' : 'SEARCH'}: ${res.searchTimeMs} ms`;
 
       currentHits = res.hits || [];
       renderGrid();
@@ -702,21 +750,24 @@
 
         const safeFilename = escapeHtml(hit.filename);
         const simBadge = hit.similarityScore !== undefined
-          ? `<span class="micro-tag sim mono">${escapeHtml(String(hit.similarityScore))}% DINO+VQ</span>`
+          ? `<span class="micro-tag sim mono">${escapeHtml(String(hit.similarityScore))}% MATCH</span>`
           : `<span class="micro-tag mono">${escapeHtml(hit.previewFormat || '')}</span>`;
+        const pageBadge = (hit.page && hit.page > 1)
+          ? `<span class="micro-tag mono">P.${hit.page}</span>`
+          : '';
 
         card.innerHTML = `
           <div class="thumb-wrap">
             <canvas class="thumb-canvas" width="16" height="16"></canvas>
             <div class="card-badge-top">
               ${simBadge}
-              <span class="micro-tag mono">P.${hit.page}</span>
+              ${pageBadge}
             </div>
           </div>
           <div class="card-title mono" title="${safeFilename}">${safeFilename}</div>
           <div class="card-sub mono">
             <span>${hit.width}×${hit.height}</span>
-            <span style="color:var(--dk-orange)">${(hit.tokenSize / 1024).toFixed(1)}KB</span>
+            <span style="color:var(--text-medium);">${(hit.tokenSize / 1024).toFixed(1)}KB</span>
           </div>
         `;
 
@@ -742,9 +793,9 @@
 
       // Update Viewer HUD
       document.getElementById('viewer-dim-badge').textContent =
-        `${t.width}×${t.height} • ${t.previewFormat} • ${(t.originalFileSize / 1024).toFixed(1)} KB orig`;
+        `${t.width}×${t.height} • ${t.previewFormat} • ${(t.originalFileSize / 1024).toFixed(1)} KB`;
       document.getElementById('viewer-slice-badge').textContent =
-        `SLICE: ${tel.sliceExtractTimeMs} ms | VERIFY: ${tel.rsAndSnarkVerifyTimeMs} ms`;
+        `SLICE: ${tel.sliceExtractTimeMs}ms | VERIFY: ${tel.rsAndSnarkVerifyTimeMs}ms`;
 
       // Update 25 KB Byte-Map Bar
       const bm = t.byteMap;
@@ -766,13 +817,30 @@
         t.rsParityValid ? `VALID (${t.rsCorrectedErrors} healed)` : 'CORRUPTED';
       document.getElementById('kv-snark').textContent =
         t.snarkAttestation.valid
-          ? `ED25519 OK (${t.snarkAttestation.verifiedInUs} µs • kid:${(t.snarkAttestation.signerKeyIdHex || '').slice(0, 8)})`
+          ? `ED25519 OK (${t.snarkAttestation.verifiedInUs}µs • ${(t.snarkAttestation.signerKeyIdHex || '').slice(0, 8)})`
           : `INVALID (${t.snarkAttestation.failureReason || 'TAMPERED'})`;
       document.getElementById('kv-zip').textContent =
         `@${tel.zipDataOffset} • CRC ${tel.zipCrc32Hex}`;
       document.getElementById('kv-merkle').textContent = t.merkleRootHex.slice(0, 24) + '…';
       document.getElementById('kv-homo').textContent =
         `${t.homomorphicTagHex} ${t.flagLabels.homomorphicMasked ? '(MASKED)' : '(CLEAN)'}`;
+
+      // Date / Time in Extracted OCR & Metadata
+      const createdAt = t.metadata?.createdAt;
+      if (createdAt) {
+        const d = new Date(createdAt);
+        document.getElementById('ocr-timestamp').textContent =
+          d.toLocaleString(undefined, {
+            year: 'numeric',
+            month: 'short',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+          });
+      } else {
+        document.getElementById('ocr-timestamp').textContent = '';
+      }
 
       document.getElementById('ocr-readout').textContent =
         `${t.metadata.ocrText}\n\n[Header Hex 0..63]: ${t.headerHexPreview}`;
@@ -819,6 +887,7 @@
     }
 
     function setViewerMode(mode) {
+      if (mode === 'full') return; // Source view is currently disabled
       viewerMode = mode;
       document.getElementById('mode-preview').classList.toggle('btn-active', mode === 'preview');
       document.getElementById('mode-vq').classList.toggle('btn-active', mode === 'vq');
@@ -831,9 +900,9 @@
     document.getElementById('mode-vq').onclick = () => setViewerMode('vq');
     document.getElementById('mode-full').onclick = () => setViewerMode('full');
 
-    document.getElementById('zoom-in').onclick = () => { zoomLevel = Math.min(8, zoomLevel * 1.4); applyZoomTransform(); };
-    document.getElementById('zoom-out').onclick = () => { zoomLevel = Math.max(0.5, zoomLevel / 1.4); applyZoomTransform(); };
-    document.getElementById('zoom-reset').onclick = () => { zoomLevel = 1; panX = 0; panY = 0; applyZoomTransform(); };
+    document.getElementById('zoom-in').onclick = () => { zoomLevel = Math.min(8, zoomLevel * 1.35); applyZoomTransform(); };
+    document.getElementById('zoom-out').onclick = () => { zoomLevel = Math.max(0.5, zoomLevel / 1.35); applyZoomTransform(); };
+    document.getElementById('zoom-reset').onclick = () => { zoomLevel = 1.25; panX = 0; panY = 0; applyZoomTransform(); };
     document.getElementById('toggle-pixel').onclick = (e) => {
       crispPixelated = !crispPixelated;
       e.currentTarget.classList.toggle('btn-active', crispPixelated);
@@ -868,7 +937,7 @@
       if (!selectedTokenId) return;
       activeSimilarTo = selectedTokenId;
       document.getElementById('btn-clear-sim').style.display = 'inline-flex';
-      document.getElementById('btn-clear-sim').textContent = `× VQ Similar: ${selectedTokenId.slice(0, 12)}`;
+      document.getElementById('btn-clear-sim').textContent = `× Clear (${selectedTokenId.slice(0, 10)})`;
       runSearch();
     };
 
@@ -889,17 +958,24 @@
       await selectToken(selectedTokenId);
     };
 
-    // Live Index Rebuild button (re-scans ./images and ./documents)
+    // Live Index Rebuild button (re-scans and rebuilds archive)
     async function triggerRebuild() {
-      document.getElementById('stat-status').textContent = 'INDEXING...';
-      await fetch('/api/index/rebuild', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({})
-      });
-      document.getElementById('stat-status').textContent = 'LIVE BUN';
-      await loadStatsAndCodebook();
-      await runSearch();
+      const btn = document.getElementById('btn-rebuild');
+      const prevText = btn.textContent;
+      btn.textContent = '⏳ Indexing...';
+      btn.disabled = true;
+      try {
+        await fetch('/api/index/rebuild', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({})
+        });
+        await loadStatsAndCodebook();
+        await runSearch();
+      } finally {
+        btn.textContent = prevText;
+        btn.disabled = false;
+      }
     }
 
     document.getElementById('btn-rebuild').onclick = () => triggerRebuild();
