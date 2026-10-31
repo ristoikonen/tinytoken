@@ -8,7 +8,7 @@ import { corsResponse } from "./utils/response";
 
 const isVercel = Boolean(Bun.env.VERCEL || Bun.env.NOW_REGION);
 const IMAGE_DIR =
-  Bun.env.IMAGE_DIR ?? Bun.argv[2] ?? (isVercel ? "./images" : "C:/Users/risto/OneDrive/Pictures/Nikon/toke"); //my/pics
+  Bun.env.IMAGE_DIR ?? Bun.argv[2] ?? (isVercel ? "./images" : "./image"); //my/pics
 const DOCUMENT_DIR = "./documents";
 const ZIP_ARCHIVE_PATH = "./data/tokens.zip";
 const INDEXED_DIR_STAMP = "./data/.indexed_dir";
