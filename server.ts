@@ -11,8 +11,21 @@ const IMAGE_DIR =
   Bun.env.IMAGE_DIR ??
   Bun.argv[2] ??
   (isVercel ? "./images" : "C:/Users/risto/OneDrive/Pictures/Nikon/toke");
+function getZipArchivePath(): string {
+  const candidates = [
+    `${import.meta.dir}/data/tokens.zip`,
+    `${import.meta.dir}/../data/tokens.zip`,
+    `${process.cwd()}/data/tokens.zip`,
+    `./data/tokens.zip`,
+  ];
+  for (const c of candidates) {
+    if (Bun.file(c).size > 0) return c;
+  }
+  return "./data/tokens.zip";
+}
+
 const DOCUMENT_DIR = "./documents";
-const ZIP_ARCHIVE_PATH = "./data/tokens.zip";
+const ZIP_ARCHIVE_PATH = getZipArchivePath();
 const INDEXED_DIR_STAMP = "./data/.indexed_dir";
 
 const pipeline = new Win11TokenPipeline({
@@ -93,7 +106,27 @@ const server = serve({
 
   async fetch(req: BunRequest) {
     const url = new URL(req.url);
-    const path = url.pathname;
+    let path = url.pathname;
+
+    // Handle Vercel serverless rewrite parameters & forwarding headers
+    const vercelPath = url.searchParams.get("__path");
+    if (vercelPath) {
+      path = vercelPath.startsWith("/") ? vercelPath : `/${vercelPath}`;
+      url.searchParams.delete("__path");
+    } else if (
+      path === "/api/index" ||
+      path === "/api/index.ts" ||
+      path === "/api" ||
+      path === "/api/"
+    ) {
+      const forwarded =
+        req.headers.get("x-forwarded-uri") ||
+        req.headers.get("x-matched-path") ||
+        req.headers.get("x-invoke-path");
+      if (forwarded && forwarded.startsWith("/api/")) {
+        path = forwarded.split("?")[0];
+      }
+    }
 
     if (req.method === "OPTIONS") {
       return corsResponse(req);

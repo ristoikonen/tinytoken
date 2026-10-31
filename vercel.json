@@ -7,7 +7,7 @@
     }
   },
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/index.ts" }
+    { "source": "/api/:match*", "destination": "/api/index.ts?__path=/api/:match*" }
   ]
 }
 
