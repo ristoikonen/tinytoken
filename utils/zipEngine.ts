@@ -590,13 +590,19 @@ export class CompressedTokenSearchEngine {
     if (!meta) return null;
 
     const file = Bun.file(this.zipFilePath);
-    const slice = file.slice(meta.dataOffset, meta.dataOffset + meta.compressedSize);
-    const rawBytes = new Uint8Array(await slice.arrayBuffer());
+    if (!(await file.exists())) return null;
 
-    if (meta.compressionMethod === 8) {
-      return Bun.inflateSync(rawBytes);
+    try {
+      const slice = file.slice(meta.dataOffset, meta.dataOffset + meta.compressedSize);
+      const rawBytes = new Uint8Array(await slice.arrayBuffer());
+
+      if (meta.compressionMethod === 8) {
+        return Bun.inflateSync(rawBytes);
+      }
+      return rawBytes;
+    } catch {
+      return null;
     }
-    return rawBytes;
   }
 
   /**

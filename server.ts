@@ -6,7 +6,7 @@ import { VqInvertedIndexEngine } from "./utils/vqInvertedIndex";
 import { CompressedTokenSearchEngine } from "./utils/zipEngine";
 import { corsResponse } from "./utils/response";
 
-const IMAGE_DIR = "./images";
+const IMAGE_DIR = "C:/Users/risto/OneDrive/Pictures/Nikon";
 const DOCUMENT_DIR = "./documents";
 const ZIP_ARCHIVE_PATH = "./data/tokens.zip";
 
@@ -116,15 +116,17 @@ console.log(`🚀 TinyToken Server running at http://${server.hostname}:${server
   const zipFile = Bun.file(ZIP_ARCHIVE_PATH);
   if (!(await zipFile.exists())) {
     console.log(
-      `📦 Building TinyToken 25 KB GF(2^8) + VQ + SHARK archive from ${IMAGE_DIR} and ${DOCUMENT_DIR}...`,
+      `Building TinyToken 25 KB GF(2^8) + VQ + SHARK archive from ${IMAGE_DIR} and ${DOCUMENT_DIR}...`,
     );
+    const s = performance.now();
     await pipeline.buildTokenArchive();
+    console.log("Build token archive in", performance.now() - s);
   }
   await searchEngine.buildIndex();
   await invertedIndex.syncTokens(searchEngine.getAllEntries());
   const totalMs = (performance.now() - t0).toFixed(2);
   console.log(
-    `⚡ Indexed ${searchEngine.getCount()} tokens into RAM + bun:sqlite Inverted Index in ${totalMs} ms (${(searchEngine.archiveSizeBytes / 1024).toFixed(1)} KB archive)`,
+    `Indexed ${searchEngine.getCount()} tokens into RAM + bun:sqlite Inverted Index in ${totalMs} ms (${(searchEngine.archiveSizeBytes / 1024).toFixed(1)} KB archive)`,
   );
 })().catch((err) => {
   console.error("Failed to initialize token index:", err);
