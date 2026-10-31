@@ -8,7 +8,9 @@ import { corsResponse } from "./utils/response";
 
 const isVercel = Boolean(Bun.env.VERCEL || Bun.env.NOW_REGION);
 const IMAGE_DIR =
-  Bun.env.IMAGE_DIR ?? Bun.argv[2] ?? (isVercel ? "./images" : "./image"); //my/pics
+  Bun.env.IMAGE_DIR ??
+  Bun.argv[2] ??
+  (isVercel ? "./images" : "C:/Users/risto/OneDrive/Pictures/Nikon/toke");
 const DOCUMENT_DIR = "./documents";
 const ZIP_ARCHIVE_PATH = "./data/tokens.zip";
 const INDEXED_DIR_STAMP = "./data/.indexed_dir";
@@ -151,6 +153,16 @@ const server = serve({
 
 console.log(`🚀 TinyToken Server running at http://${server.hostname}:${server.port}`);
 
+async function directoryExists(dir: string): Promise<boolean> {
+  try {
+    const glob = new Bun.Glob("*");
+    for await (const _ of glob.scan({ cwd: dir })) break;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 // Initialize ZIP index and native bun:sqlite VQ Inverted Index asynchronously
 async function initIndex() {
   const t0 = performance.now();
@@ -158,9 +170,15 @@ async function initIndex() {
   const stampFile = Bun.file(INDEXED_DIR_STAMP);
   const lastIndexedDir = (await stampFile.exists()) ? (await stampFile.text()).trim() : null;
   const dirChanged = lastIndexedDir !== null && lastIndexedDir !== IMAGE_DIR;
+  const imageDirValid = await directoryExists(IMAGE_DIR);
 
-  // On Vercel, we mount the bundled data/tokens.zip and never attempt local Windows directory scanning
-  if (!isVercel && (!(await zipFile.exists()) || dirChanged)) {
+  // Rebuild only if running locally with a valid source directory
+  const shouldRebuild = !isVercel && (
+    (!(await zipFile.exists()) && imageDirValid) ||
+    (dirChanged && imageDirValid)
+  );
+
+  if (shouldRebuild) {
     if (dirChanged) {
       console.log(
         `Image directory changed (${lastIndexedDir} -> ${IMAGE_DIR}), rebuilding archive...`,
@@ -174,7 +192,7 @@ async function initIndex() {
     try {
       await Bun.write(INDEXED_DIR_STAMP, IMAGE_DIR);
     } catch { }
-  } else if (!isVercel && !(await stampFile.exists())) {
+  } else if (!isVercel && imageDirValid && !(await stampFile.exists())) {
     try {
       await Bun.write(INDEXED_DIR_STAMP, IMAGE_DIR);
     } catch { }

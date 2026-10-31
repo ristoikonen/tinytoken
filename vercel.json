@@ -2,10 +2,13 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "bunVersion": "1.x",
   "functions": {
-    "server.ts": {
+    "api/**/*.ts": {
       "includeFiles": "data/**"
     }
-  }
+  },
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/index.ts" }
+  ]
 }
 
 
