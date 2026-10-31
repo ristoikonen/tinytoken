@@ -89,7 +89,7 @@
     }
 
     .brand-title {
-      font-size: 1rem;
+      font-size: 1.25rem;
       font-weight: 700;
       letter-spacing: -0.02em;
       color: var(--lt-gray);
@@ -97,6 +97,20 @@
 
     .brand-title span {
       color: var(--glow-cyan);
+    }
+
+    .header-right {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 0.25rem;
+    }
+
+    .project-credit {
+      font-size: 0.65rem;
+      color: var(--gray);
+      opacity: 0.8;
+      letter-spacing: 0.01em;
     }
 
     .telemetry-strip {
@@ -447,22 +461,31 @@
   <header>
     <div class="header-row">
       <div class="brand">
-        <div class="brand-mark mono">GF</div>
+        <div class="logo-box flex items-center justify-center flex-shrink-0" style="width:36px;height:36px;background:transparent;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <svg version="1.0" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 128.000000 128.000000" preserveAspectRatio="xMidYMid meet" style="filter:drop-shadow(0 0 5px rgba(56,189,248,0.45));">
+            <g transform="translate(0.000000,128.000000) scale(0.100000,-0.100000)" fill="#38bdf8" stroke="none">
+              <path d="M1130 1261 c-5 -11 -10 -25 -10 -31 0 -19 -50 -113 -73 -138 -25 -27 -155 -109 -272 -172 -44 -23 -93 -52 -109 -63 -70 -49 -301 -185 -308 -181 -4 3 23 51 60 108 l66 104 65 7 c85 9 155 53 204 127 20 29 52 68 72 85 37 33 44 65 15 71 -13 2 -64 -44 -197 -180 -55 -56 -158 -66 -165 -15 -2 12 -11 23 -20 25 -15 3 -18 -4 -18 -35 0 -30 -13 -57 -64 -133 -84 -124 -154 -210 -192 -235 -17 -11 -65 -29 -107 -39 l-77 -18 0 -55 c0 -51 1 -54 22 -48 11 4 54 8 93 8 56 0 82 -5 114 -21 23 -12 49 -22 58 -22 20 0 348 -169 407 -209 23 -16 48 -36 55 -45 8 -9 21 -16 30 -16 33 0 61 -43 61 -93 0 -40 3 -47 19 -47 16 0 20 8 23 38 4 51 26 52 125 2 65 -32 91 -40 137 -40 48 0 56 3 56 18 0 14 -24 30 -88 60 -48 23 -95 42 -105 42 -23 0 -243 114 -287 149 -19 16 -46 32 -60 36 -37 11 -300 147 -300 155 0 8 450 33 550 30 41 -1 139 -2 218 -1 140 1 142 1 142 24 0 46 -7 47 -181 48 -90 0 -295 -3 -455 -7 -198 -5 -293 -4 -297 3 -9 14 28 41 213 154 85 53 218 134 295 181 77 48 166 98 197 111 31 14 74 37 95 51 20 14 48 26 61 26 30 0 82 39 82 62 0 24 -29 23 -91 -3 -27 -12 -52 -19 -56 -16 -3 3 6 36 21 72 14 36 26 70 26 75 0 18 -39 10 -50 -9z" />
+            </g>
+          </svg>
+        </div>
         <div>
-          <div class="brand-title">Tiny<span>Token</span> <span class="mono" style="font-size:0.72rem;color:var(--gray);font-weight:500;">v2 • GF(2⁸) + VQ + SHARK</span></div>
+          <div class="brand-title">Tiny<span>Token</span></div>
         </div>
       </div>
 
-      <div class="telemetry-strip mono">
-        <span class="pill pill-emerald" title="Bun Native ZIP Central Directory Engine">
-          <span class="dot" style="background:var(--glow-emerald)"></span>
-          <span id="stat-status">LIVE BUN</span>
-        </span>
-        <span class="pill pill-cyan" id="stat-tokens">0 TOKENS</span>
-        <span class="pill pill-orange" id="stat-boot">BOOT: -- ms</span>
-        <span class="pill pill-orange" id="stat-search">SEARCH: -- ms</span>
-        <span class="pill pill-purple" id="stat-vq">VQ RAM: -- KB</span>
-        <span class="pill pill-rose" id="stat-snark">SHARK/RS: 100%</span>
+      <div class="header-right">
+        <div class="telemetry-strip mono">
+          <span class="pill pill-emerald" title="Bun Native ZIP Central Directory Engine">
+            <span class="dot" style="background:var(--glow-emerald)"></span>
+            <span id="stat-status">LIVE BUN</span>
+          </span>
+          <span class="pill pill-cyan" id="stat-tokens">0 TOKENS</span>
+          <span class="pill pill-orange" id="stat-boot">BOOT: -- ms</span>
+          <span class="pill pill-orange" id="stat-search">SEARCH: -- ms</span>
+          <span class="pill pill-purple" id="stat-vq">VQ RAM: -- KB</span>
+          <span class="pill pill-rose" id="stat-snark">SHARK/RS: 100%</span>
+        </div>
+        <div class="project-credit mono">Part of Risukko project. &copy; Risto Ikonen 2026. All Rights Reserved.</div>
       </div>
     </div>
   </header>

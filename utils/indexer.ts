@@ -54,6 +54,14 @@ const DOCUMENT_EXTENSIONS = new Set([".pdf", ".docx", ".doc", ".txt", ".md"]);
 export class Win11TokenPipeline {
   constructor(private config: IndexerConfig) {}
 
+  public setSourceDirectory(dir: string): void {
+    this.config.sourceDirectory = dir;
+  }
+
+  public getSourceDirectory(): string {
+    return this.config.sourceDirectory;
+  }
+
   /**
    * Scans a directory using native `Bun.Glob` (zero node:fs imports) and filters by allowedExtensions.
    */
@@ -444,21 +452,25 @@ export class Win11TokenPipeline {
    * Tokenizes all real files in `sourceDirectory` (`./images`) and `documentDirectory` (`./documents`)
    * and writes the packed ZIP container to `outputZipPath`.
    */
-  public async buildTokenArchive(): Promise<{
+  public async buildTokenArchive(overrideSourceDir?: string): Promise<{
     totalTokens: number;
     imageTokens: number;
     documentTokens: number;
     archiveBytes: number;
     elapsedMs: number;
   }> {
+    if (overrideSourceDir) {
+      this.config.sourceDirectory = overrideSourceDir;
+    }
     const t0 = performance.now();
+    const sourceDir = this.config.sourceDirectory;
     const imageFilter = new Set(
       this.config.allowedExtensions
         .map((e) => e.toLowerCase())
         .filter((e) => IMAGE_EXTENSIONS.has(e)),
     );
     const imagePaths = await this.scanDirectory(
-      this.config.sourceDirectory,
+      sourceDir,
       imageFilter.size > 0 ? imageFilter : IMAGE_EXTENSIONS,
     );
     const documentPaths = await this.scanDocumentDirectory();

@@ -6,9 +6,11 @@ import { VqInvertedIndexEngine } from "./utils/vqInvertedIndex";
 import { CompressedTokenSearchEngine } from "./utils/zipEngine";
 import { corsResponse } from "./utils/response";
 
-const IMAGE_DIR = "C:/Users/risto/OneDrive/Pictures/Nikon";
+const IMAGE_DIR =
+  Bun.env.IMAGE_DIR ?? Bun.argv[2] ?? "C:/Users/risto/OneDrive/Pictures/Nikon/toke";
 const DOCUMENT_DIR = "./documents";
 const ZIP_ARCHIVE_PATH = "./data/tokens.zip";
+const INDEXED_DIR_STAMP = "./data/.indexed_dir";
 
 const pipeline = new Win11TokenPipeline({
   sourceDirectory: IMAGE_DIR,
@@ -114,19 +116,33 @@ console.log(`🚀 TinyToken Server running at http://${server.hostname}:${server
 (async function initIndex() {
   const t0 = performance.now();
   const zipFile = Bun.file(ZIP_ARCHIVE_PATH);
-  if (!(await zipFile.exists())) {
-    console.log(
-      `Building TinyToken 25 KB GF(2^8) + VQ + SHARK archive from ${IMAGE_DIR} and ${DOCUMENT_DIR}...`,
-    );
+  const stampFile = Bun.file(INDEXED_DIR_STAMP);
+  const lastIndexedDir = (await stampFile.exists()) ? (await stampFile.text()).trim() : null;
+  const dirChanged = lastIndexedDir !== null && lastIndexedDir !== IMAGE_DIR;
+
+  if (!(await zipFile.exists()) || dirChanged) {
+    if (dirChanged) {
+      console.log(
+        `Image directory changed (${lastIndexedDir} -> ${IMAGE_DIR}), rebuilding archive...`,
+      );
+    } else {
+      console.log(
+        `Building archive from ${IMAGE_DIR} and ${DOCUMENT_DIR}...`,
+      );
+    }
     const s = performance.now();
-    await pipeline.buildTokenArchive();
-    console.log("Build token archive in", performance.now() - s);
+    await pipeline.buildTokenArchive(IMAGE_DIR);
+    await Bun.write(INDEXED_DIR_STAMP, IMAGE_DIR);
+    console.log(`⚡ Built token archive in ${(performance.now() - s).toFixed(1)} ms`);
+  } else if (!(await stampFile.exists())) {
+    await Bun.write(INDEXED_DIR_STAMP, IMAGE_DIR);
   }
+
   await searchEngine.buildIndex();
   await invertedIndex.syncTokens(searchEngine.getAllEntries());
   const totalMs = (performance.now() - t0).toFixed(2);
   console.log(
-    `Indexed ${searchEngine.getCount()} tokens into RAM + bun:sqlite Inverted Index in ${totalMs} ms (${(searchEngine.archiveSizeBytes / 1024).toFixed(1)} KB archive)`,
+    `⚡ Indexed ${searchEngine.getCount()} tokens into RAM + bun:sqlite Inverted Index in ${totalMs} ms (${(searchEngine.archiveSizeBytes / 1024).toFixed(1)} KB archive)`,
   );
 })().catch((err) => {
   console.error("Failed to initialize token index:", err);

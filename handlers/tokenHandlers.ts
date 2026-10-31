@@ -52,6 +52,7 @@ export class TokenApiHandlers {
       tokenCount: entries.length,
       snarkVerifiedCount,
       archivePath: this.engine.getZipFilePath(),
+      sourceDirectory: this.imageDir,
       archiveSizeBytes: this.engine.archiveSizeBytes,
       totalTokenUncompressedBytes,
       vqRamFootprintBytes: vqRamBytes,
@@ -325,6 +326,8 @@ export class TokenApiHandlers {
       const decoded = await decodeBinaryToken(mutated);
       const elapsedUs = Math.round((performance.now() - t0) * 1000);
 
+      await Bun.write("./data/.indexed_dir", this.imageDir);
+
       return jsonResponse({
         success: true,
         id: decoded.id,
@@ -342,7 +345,8 @@ export class TokenApiHandlers {
 
   /**
    * POST /api/index/rebuild
-   * Re-scans `./images` (`IMAGE_DIR`) and `./documents` (`DOCUMENT_DIR`) and rebuilds the ZIP container.
+   * Re-scans `imageDir` and `documentDir` and rebuilds the ZIP container.
+   * Optionally accepts `{ sourceDirectory?: string }` to dynamically switch image directory.
    */
   public async handleRebuildIndex(req?: Request): Promise<Response> {
     const forbidden = verifySameOriginMutation(req);
@@ -352,16 +356,33 @@ export class TokenApiHandlers {
       return errorResponse("Another archive write or rebuild is currently in progress", 409);
     }
 
+    let overrideDir: string | undefined;
+    if (req && req.headers.get("content-type")?.includes("application/json")) {
+      try {
+        const body = (await req.json()) as { sourceDirectory?: string };
+        if (body.sourceDirectory && typeof body.sourceDirectory === "string") {
+          overrideDir = body.sourceDirectory.trim().replace(/\\/g, "/");
+        }
+      } catch {}
+    }
+
+    if (overrideDir) {
+      this.imageDir = overrideDir;
+    }
+
     this.writeLockInProgress = true;
     try {
-      const buildRes = await this.pipeline.buildTokenArchive();
+      const buildRes = await this.pipeline.buildTokenArchive(overrideDir);
       await this.engine.buildIndex();
       if (this.invertedIndex) {
         await this.invertedIndex.syncTokens(this.engine.getAllEntries());
       }
 
+      await Bun.write("./data/.indexed_dir", this.imageDir);
+
       return jsonResponse({
         success: true,
+        sourceDirectory: this.imageDir,
         totalTokens: buildRes.totalTokens,
         imageTokens: buildRes.imageTokens,
         documentTokens: buildRes.documentTokens,

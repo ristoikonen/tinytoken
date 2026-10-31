@@ -354,15 +354,17 @@ export async function rasterizeAssetToWebpAndTensors(
   try {
     const pipeline = sharp(inputBuffer, { failOn: "none" });
     const meta = await pipeline.metadata();
+    const isRotated90or270 = (meta.orientation ?? 1) >= 5 && (meta.orientation ?? 1) <= 8;
     const width = isDocument
       ? (docDimensions?.width ?? 1240)
-      : (meta.width ?? fallbackHeader.width);
+      : (isRotated90or270 ? (meta.height ?? fallbackHeader.height) : (meta.width ?? fallbackHeader.width));
     const height = isDocument
       ? (docDimensions?.height ?? 1754)
-      : (meta.height ?? fallbackHeader.height);
+      : (isRotated90or270 ? (meta.width ?? fallbackHeader.width) : (meta.height ?? fallbackHeader.height));
 
     const [webpBuf, rgb16Buf, dinoRgbResult] = await Promise.all([
       sharp(inputBuffer, { failOn: "none" })
+        .rotate()
         .resize(320, 320, {
           fit: "inside",
           withoutEnlargement: true,
@@ -371,12 +373,14 @@ export async function rasterizeAssetToWebpAndTensors(
         .webp({ quality: 78, smartSubsample: true, effort: 4 })
         .toBuffer(),
       sharp(inputBuffer, { failOn: "none" })
+        .rotate()
         .flatten({ background: { r: 20, g: 33, b: 61 } })
         .resize(16, 16, { fit: "fill", kernel: "lanczos3" })
         .removeAlpha()
         .raw()
         .toBuffer(),
       sharp(inputBuffer, { failOn: "none" })
+        .rotate()
         .flatten({ background: { r: 255, g: 255, b: 255 } })
         .resize(384, 384, { fit: "inside", withoutEnlargement: true, kernel: "lanczos3" })
         .removeAlpha()
@@ -386,6 +390,7 @@ export async function rasterizeAssetToWebpAndTensors(
     let finalWebp = webpBuf;
     if (finalWebp.byteLength > maxPreviewBytes) {
       finalWebp = await sharp(inputBuffer, { failOn: "none" })
+        .rotate()
         .resize(240, 240, { fit: "inside", withoutEnlargement: true })
         .webp({ quality: 68, smartSubsample: true, effort: 4 })
         .toBuffer();
