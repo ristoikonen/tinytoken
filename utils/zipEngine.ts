@@ -602,6 +602,7 @@ export class CompressedTokenSearchEngine {
   /**
    * Updates an in-memory and on-disk token slice in-place (for Homomorphic GF(2^8) state transitions)
    * when the entry is stored uncompressed (STORE mode).
+   * Synchronizes both the Local File Header CRC-32 and Central Directory CRC-32 on disk.
    */
   public async writeMutatedTokenInPlace(
     idOrEntryName: string,
@@ -614,11 +615,50 @@ export class CompressedTokenSearchEngine {
 
     const file = Bun.file(this.zipFilePath);
     const fullArchive = new Uint8Array(await file.arrayBuffer());
+    const archiveView = new DataView(
+      fullArchive.buffer,
+      fullArchive.byteOffset,
+      fullArchive.byteLength,
+    );
+
+    // 1. Update the raw token slice at dataOffset
     fullArchive.set(mutatedTokenBytes, meta.dataOffset);
+
+    // 2. Recompute and update PKZIP CRC-32 in Local File Header (offset 14..17)
+    const newCrc = Bun.hash.crc32(mutatedTokenBytes) >>> 0;
+    if (meta.localHeaderOffset + 18 <= fullArchive.length) {
+      archiveView.setUint32(meta.localHeaderOffset + 14, newCrc, true);
+    }
+
+    // 3. Scan and update PKZIP CRC-32 in Central Directory Header
+    const tailLen = Math.min(fullArchive.length, 65557);
+    const tailOffset = fullArchive.length - tailLen;
+    for (let i = fullArchive.length - 22; i >= tailOffset; i--) {
+      if (archiveView.getUint32(i, true) === ZIP_EOCD_SIG) {
+        const cdOffset = archiveView.getUint32(i + 16, true);
+        const cdSize = archiveView.getUint32(i + 12, true);
+        let ptr = cdOffset;
+        while (ptr + 46 <= cdOffset + cdSize && ptr + 46 <= fullArchive.length) {
+          if (archiveView.getUint32(ptr, true) !== ZIP_CENTRAL_DIR_HEADER_SIG) break;
+          const entryLocalOffset = archiveView.getUint32(ptr + 42, true);
+          const nameLen = archiveView.getUint16(ptr + 28, true);
+          const extraLen = archiveView.getUint16(ptr + 30, true);
+          const commentLen = archiveView.getUint16(ptr + 32, true);
+          if (entryLocalOffset === meta.localHeaderOffset) {
+            archiveView.setUint32(ptr + 16, newCrc, true);
+            break;
+          }
+          ptr += 46 + nameLen + extraLen + commentLen;
+        }
+        break;
+      }
+    }
+
     await Bun.write(this.zipFilePath, fullArchive);
 
     const decoded = await decodeBinaryToken(mutatedTokenBytes);
     meta.flags = decoded.flags;
+    meta.crc32 = newCrc;
     meta.snarkVerified = decoded.snarkAttestation.valid;
     return true;
   }

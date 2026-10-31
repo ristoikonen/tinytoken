@@ -531,13 +531,13 @@
           <span id="bm-total" style="color:var(--dk-orange);">0 / 25,600 B</span>
         </div>
         <div class="bytemap-bar">
-          <div id="bm-s1" class="bm-seg-s1" style="width:15%" title="Section I: Header + 256B SHARK + 384B RS Parity"></div>
+          <div id="bm-s1" class="bm-seg-s1" style="width:10%" title="Section I: Header + 256B Attestation + 64B RS Parity"></div>
           <div id="bm-vq" class="bm-seg-vq" style="width:8%" title="Section I: 256B VQ 16x16 Codebook Grid"></div>
           <div id="bm-s2" class="bm-seg-s2" style="width:22%" title="Section II: QuickLZ Metadata & OCR"></div>
-          <div id="bm-s3" class="bm-seg-s3" style="width:55%" title="Section III: 220x220 Preview Image"></div>
+          <div id="bm-s3" class="bm-seg-s3" style="width:60%" title="Section III: 220x220 Preview Image"></div>
         </div>
         <div class="bytemap-legend mono">
-          <span><b style="color:var(--glow-rose)">■</b> Hdr+SHARK+RS: <span id="lbl-s1">768B</span></span>
+          <span><b style="color:var(--glow-rose)">■</b> Hdr+SNARK+RS: <span id="lbl-s1">448B</span></span>
           <span><b style="color:var(--glow-purple)">■</b> VQ Grid: <span id="lbl-vq">256B</span></span>
           <span><b style="color:var(--glow-cyan)">■</b> Meta/OCR: <span id="lbl-s2">0B</span></span>
           <span><b style="color:var(--dk-orange)">■</b> Preview: <span id="lbl-s3">0B</span></span>
@@ -551,7 +551,7 @@
           <div id="kv-id" class="kv-val">—</div>
         </div>
         <div class="kv-item">
-          <div class="kv-label">GF(2⁸) RS Parity (384B)</div>
+          <div class="kv-label">GF(2⁸) RS Parity (64B)</div>
           <div id="kv-rs" class="kv-val" style="color:var(--glow-emerald);">—</div>
         </div>
         <div class="kv-item">
@@ -599,6 +599,18 @@
     const elViewerImg = document.getElementById('viewer-img');
     const elViewerPdf = document.getElementById('viewer-pdf');
     const elViewerCanvas = document.getElementById('viewer-vq-canvas');
+
+    // HTML Entity escaping helper to prevent XSS from filenames/metadata
+    function escapeHtml(str) {
+      if (str === null || str === undefined) return '';
+      return String(str).replace(/[&<>"']/g, c => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+      })[c]);
+    }
 
     // Render 256-byte (512 hex chars) 16x16 VQ grid onto a 16x16 canvas in < 0.05ms
     function renderVqHexToCanvas(vqHex, canvas) {
@@ -665,9 +677,10 @@
         card.className = 'token-card' + (hit.id === selectedTokenId ? ' selected' : '');
         card.onclick = () => selectToken(hit.id);
 
+        const safeFilename = escapeHtml(hit.filename);
         const simBadge = hit.similarityScore !== undefined
-          ? `<span class="micro-tag sim mono">${hit.similarityScore}% DINO+VQ</span>`
-          : `<span class="micro-tag mono">${hit.previewFormat}</span>`;
+          ? `<span class="micro-tag sim mono">${escapeHtml(String(hit.similarityScore))}% DINO+VQ</span>`
+          : `<span class="micro-tag mono">${escapeHtml(hit.previewFormat || '')}</span>`;
 
         card.innerHTML = `
           <div class="thumb-wrap">
@@ -677,7 +690,7 @@
               <span class="micro-tag mono">P.${hit.page}</span>
             </div>
           </div>
-          <div class="card-title mono" title="${hit.filename}">${hit.filename}</div>
+          <div class="card-title mono" title="${safeFilename}">${safeFilename}</div>
           <div class="card-sub mono">
             <span>${hit.width}×${hit.height}</span>
             <span style="color:var(--dk-orange)">${(hit.tokenSize / 1024).toFixed(1)}KB</span>
@@ -715,11 +728,12 @@
       const total = bm.totalTokenBytes || 1;
       document.getElementById('bm-total').textContent =
         `${bm.totalTokenBytes.toLocaleString()} / 25,600 B (${((bm.totalTokenBytes / 25600) * 100).toFixed(1)}%)`;
-      document.getElementById('bm-s1').style.width = `${Math.max(6, ((768) / total) * 100)}%`;
+      document.getElementById('bm-s1').style.width = `${Math.max(5, ((bm.section1HeaderBytes ? bm.section1HeaderBytes - 256 : 448) / total) * 100)}%`;
       document.getElementById('bm-vq').style.width = `${Math.max(5, ((256) / total) * 100)}%`;
       document.getElementById('bm-s2').style.width = `${Math.max(8, (bm.section2MetaBytes / total) * 100)}%`;
       document.getElementById('bm-s3').style.width = `${Math.max(10, (bm.section3PreviewBytes / total) * 100)}%`;
 
+      document.getElementById('lbl-s1').textContent = `${bm.section1HeaderBytes ? bm.section1HeaderBytes - 256 : 448}B`;
       document.getElementById('lbl-s2').textContent = `${bm.section2MetaBytes}B`;
       document.getElementById('lbl-s3').textContent = `${bm.section3PreviewBytes}B`;
 

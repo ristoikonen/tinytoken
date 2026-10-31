@@ -34,4 +34,15 @@ Extending the design palette with more colors, for testing:
 #F78522	DkOrange	Telemetry / Byte Mapping / Warn	Telemetry highlights, payload hashes, byte-map badges, packet drops
 
 
+
+### Key Considerations for the Separate Process Setup
+
+To make the separate-process model robust in production:
+
+Atomic File Swapping: When the indexing process generates an updated tokens.zip, it should write to a temporary file (e.g. tokens.zip.tmp) and perform an atomic file rename onto tokens.zip. This ensures the web server never attempts to slice from a half-written archive.
+Fast Cache Invalidation: If the indexer runs while the server is active, the server needs a lightweight signal (such as watching the file timestamp or a local reload signal) to re-read the trailing _index.json (which takes ~20 ms) and update bun:sqlite.
+Decouple In-Place Mutations: Currently, /api/token/:id/mutate writes directly into tokens.zip. If the archive is treated as a compiled, immutable build artifact from an external pipeline, token mutation states should ideally be recorded in an SQLite overlay or separate state ledger rather than mutating the batch ZIP on disk.
+
+
+
 This project was created using `bun init` in bun v1.3.14. [Bun](https://bun.com) is a fast all-in-one JavaScript runtime.

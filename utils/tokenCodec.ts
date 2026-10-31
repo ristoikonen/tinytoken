@@ -1,9 +1,9 @@
 /**
  * 25 KB Binary Token Packer & Unpacker (utils/tokenCodec.ts)
- * Implements the 3-section GF28 V2 specification:
- * - Section I   (0..1023,   1,024 B): Header + 256B SNARK/SHARK Stub + 256B VQ Grid + 384B GF(2^8) RS Parity
- * - Section II  (1024..1024+metaLen, <= 4,096 B): QuickLZ/UTF-8 JSON Metadata & OCR Text
- * - Section III (1024+metaLen..,     <= 20,480 B): Embedded 220x220 Preview Image
+ * Implements the 3-section GF28 V2 specification (Option C Trimmed Parity Layout):
+ * - Section I   (0..703,     704 B): Header + 256B SNARK/SHARK Stub + 256B VQ Grid + 64B GF(2^8) RS Parity
+ * - Section II  (704..704+metaLen, <= 4,096 B): QuickLZ/UTF-8 JSON Metadata & OCR Text
+ * - Section III (704+metaLen..,     <= 20,800 B): Embedded 220x220 Preview Image
  */
 
 import {
@@ -25,7 +25,7 @@ import {
   type DecodedToken,
   type TokenMetadataPayload,
 } from "../models/token";
-import { encodeHeaderParity384, verifyAndHealHeader640 } from "./galois";
+import { encodeHeaderParity64, verifyAndHealHeader640 } from "./galois";
 import { QuickLZ } from "./quicklz";
 import {
   bytesToHex,
@@ -185,8 +185,8 @@ export async function encodeBinaryToken(
   // 384..639: 256-Byte VQ 16x16 Latent Codebook Grid
   tokenBuffer.set(vqIndices, VQ_GRID_OFFSET);
 
-  // 640..1023: 384-Byte GF(2^8) Reed-Solomon Parity over bytes 0..639
-  const rsParity = encodeHeaderParity384(tokenBuffer.subarray(0, RS_PARITY_OFFSET));
+  // 640..703: 64-Byte GF(2^8) Reed-Solomon Parity over bytes 0..639
+  const rsParity = encodeHeaderParity64(tokenBuffer.subarray(0, RS_PARITY_OFFSET));
   tokenBuffer.set(rsParity, RS_PARITY_OFFSET);
 
   // --- Section II: Metadata & OCR Layer ---
@@ -212,10 +212,10 @@ export async function decodeBinaryToken(
     );
   }
 
-  // 1. Verify & heal Section I Header (0..639) using 384-byte GF(2^8) Reed-Solomon parity (640..1023)
+  // 1. Verify & heal Section I Header (0..639) using 64-byte GF(2^8) Reed-Solomon parity (640..703)
   const headerPayload640 = rawToken.subarray(0, RS_PARITY_OFFSET);
-  const parity384 = rawToken.subarray(RS_PARITY_OFFSET, SECTION1_HEADER_BYTES);
-  const rsResult = verifyAndHealHeader640(headerPayload640, parity384);
+  const parity64 = rawToken.subarray(RS_PARITY_OFFSET, SECTION1_HEADER_BYTES);
+  const rsResult = verifyAndHealHeader640(headerPayload640, parity64);
 
   const healedHeader = rsResult.healedPayload;
   const view = new DataView(healedHeader.buffer, healedHeader.byteOffset, healedHeader.byteLength);

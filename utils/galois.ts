@@ -184,44 +184,40 @@ export function reedSolomonVerifyAndHeal(
 }
 
 /**
- * Multi-lane GF(2^8) Reed-Solomon encoder/verifier for the 640-byte Section I payload:
- * Splits 640 bytes into 3 lanes (214B, 213B, 213B) and generates 3 x 128B = 384B parity.
- * Each lane is <= 255 bytes in GF(2^8) and can detect/heal corruptions independently.
+ * Multi-lane GF(2^8) Reed-Solomon encoder/verifier for the 640-byte Section I payload (Option C Trimmed Footprint):
+ * Splits 640 bytes into 3 lanes (214B, 213B, 213B) and generates 22B + 21B + 21B = 64B parity.
+ * Each lane is <= 255 bytes in GF(2^8) and heals single-byte corruptions independently.
  */
-const LANE_SIZES = [214, 213, 213] as const;
-const LANE_PARITY_SIZE = 32; // 32 parity bytes per lane + 288B Cauchy cross-lane parity = 384B total
+export const LANE_SIZES = [214, 213, 213] as const;
+export const LANE_PARITY_SIZES = [22, 21, 21] as const;
 
-export function encodeHeaderParity384(headerPayload640: Uint8Array): Uint8Array {
+export function encodeHeaderParity64(headerPayload640: Uint8Array): Uint8Array {
   if (headerPayload640.length !== 640) {
     throw new Error(`Expected 640-byte header payload, got ${headerPayload640.length}`);
   }
-  const parity384 = new Uint8Array(384);
+  const parity64 = new Uint8Array(64);
   let srcOffset = 0;
   let dstOffset = 0;
 
-  // First 96 bytes: 3 x 32-byte RS lane parities
-  for (const laneLen of LANE_SIZES) {
+  for (let i = 0; i < LANE_SIZES.length; i++) {
+    const laneLen = LANE_SIZES[i]!;
+    const parityLen = LANE_PARITY_SIZES[i]!;
     const lane = headerPayload640.subarray(srcOffset, srcOffset + laneLen);
-    const laneParity = reedSolomonEncode(lane, LANE_PARITY_SIZE);
-    parity384.set(laneParity, dstOffset);
+    const laneParity = reedSolomonEncode(lane, parityLen);
+    parity64.set(laneParity, dstOffset);
     srcOffset += laneLen;
-    dstOffset += LANE_PARITY_SIZE;
+    dstOffset += parityLen;
   }
 
-  // Remaining 288 bytes (96..383): Cross-lane GF(2^8) Vandermonde/Cauchy redundancy shares
-  for (let i = 0; i < 288; i++) {
-    const a = headerPayload640[i] ?? 0;
-    const b = headerPayload640[i + 213] ?? 0;
-    const c = headerPayload640[(i + 426) % 640] ?? 0;
-    parity384[96 + i] = gfAdd(gfMul(a, 0x02), gfAdd(gfMul(b, 0x03), gfMul(c, 0x05)));
-  }
-
-  return parity384;
+  return parity64;
 }
+
+export const encodeHeaderParity = encodeHeaderParity64;
+export const encodeHeaderParity384 = encodeHeaderParity64; // Backwards-compatible alias
 
 export function verifyAndHealHeader640(
   headerPayload640: Uint8Array,
-  parity384: Uint8Array,
+  parity64: Uint8Array,
 ): { valid: boolean; healedPayload: Uint8Array; correctedErrors: number } {
   const healed = new Uint8Array(headerPayload640);
   let srcOffset = 0;
@@ -229,9 +225,11 @@ export function verifyAndHealHeader640(
   let totalCorrected = 0;
   let allValid = true;
 
-  for (const laneLen of LANE_SIZES) {
+  for (let i = 0; i < LANE_SIZES.length; i++) {
+    const laneLen = LANE_SIZES[i]!;
+    const parityLen = LANE_PARITY_SIZES[i]!;
     const lane = healed.subarray(srcOffset, srcOffset + laneLen);
-    const laneParity = parity384.subarray(dstOffset, dstOffset + LANE_PARITY_SIZE);
+    const laneParity = parity64.subarray(dstOffset, dstOffset + parityLen);
     const res = reedSolomonVerifyAndHeal(lane, laneParity);
     if (!res.valid) {
       allValid = false;
@@ -240,7 +238,7 @@ export function verifyAndHealHeader640(
       totalCorrected += res.correctedErrors;
     }
     srcOffset += laneLen;
-    dstOffset += LANE_PARITY_SIZE;
+    dstOffset += parityLen;
   }
 
   return { valid: allValid, healedPayload: healed, correctedErrors: totalCorrected };
@@ -268,7 +266,7 @@ export function applyHomomorphicMaskGF28(
   mutated[88] = gfAdd(gfMul(prevTag || 1, maskScalar & 0xff), maskScalar & 0xff);
 
   // Re-synchronize Section I Reed-Solomon parity over bytes 0..639
-  const newParity = encodeHeaderParity384(mutated.subarray(0, 640));
+  const newParity = encodeHeaderParity64(mutated.subarray(0, 640));
   mutated.set(newParity, 640);
 
   return mutated;

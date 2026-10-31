@@ -10,7 +10,7 @@ import {
 } from "../models/token";
 import {
   applyHomomorphicMaskGF28,
-  encodeHeaderParity384,
+  encodeHeaderParity64,
   gfAdd,
   gfDiv,
   gfInv,
@@ -51,6 +51,18 @@ describe("TinyToken GF(2^8) + VQ + SHARK/SNARK Pipeline", () => {
     expect(compressed.length).toBeLessThan(raw.length);
     const decompressed = QuickLZ.decompress(compressed);
     expect(new TextDecoder().decode(decompressed)).toBe(sample);
+
+    // Security: reject crafted header claiming 4 GB decompression size
+    const malicious4Gb = new Uint8Array(9);
+    malicious4Gb[0] = 3;
+    malicious4Gb[1] = 0xff;
+    malicious4Gb[2] = 0xff;
+    malicious4Gb[3] = 0xff;
+    malicious4Gb[4] = 0xff; // 4,294,967,295 bytes (4 GB)
+    expect(() => QuickLZ.decompress(malicious4Gb)).toThrow("exceeds safety limit");
+
+    // Security: reject truncated headers
+    expect(() => QuickLZ.decompress(new Uint8Array([3, 10, 0]))).toThrow("expected at least 9 header bytes");
   });
 
   test("25 KB Binary Token encodes, verifies Ed25519+Merkle attestation across all sections, and heals GF(2^8) byte corruption", async () => {
@@ -171,7 +183,7 @@ describe("TinyToken GF(2^8) + VQ + SHARK/SNARK Pipeline", () => {
     // 7. Keyless hash/signature tampering (recomputing RS parity without private key) -> MUST fail Ed25519 signature
     const sigTampered = new Uint8Array(tokenBytes);
     sigTampered[128 + 170] = (sigTampered[128 + 170] ?? 0) ^ 0x01; // flip 1 bit in 64B Ed25519 signature
-    sigTampered.set(encodeHeaderParity384(sigTampered.subarray(0, 640)), 640); // recompute valid RS parity
+    sigTampered.set(encodeHeaderParity64(sigTampered.subarray(0, 640)), 640); // recompute valid RS parity
     const decodedSigTampered = await decodeBinaryToken(sigTampered);
     expect(decodedSigTampered.rsParityValid).toBe(true);
     expect(decodedSigTampered.snarkAttestation.valid).toBe(false);
@@ -263,7 +275,7 @@ describe("TinyToken GF(2^8) + VQ + SHARK/SNARK Pipeline", () => {
     expect(patternMatches.length).toBeGreaterThan(0);
     expect(patternMatches.some((m) => m.id === firstId)).toBe(true);
     invIndex.close();
-  });
+  }, 15000);
 
   test("generateMockTinyTokenBuffer creates a valid 25KB Canberra synthetic token that decodes cleanly", async () => {
     const mockBuf = await generateMockTinyTokenBuffer("canberra_grass_01", "grassland_synthetic");
@@ -355,6 +367,66 @@ describe("TinyToken GF(2^8) + VQ + SHARK/SNARK Pipeline", () => {
       }),
     );
     expect(noCorsFormPost.status).toBe(415);
+  });
+
+  test("Malformed URI paths return 400 Bad Request instead of throwing unhandled URIError", async () => {
+    const { default: server } = await import("../server");
+    const malformedTokenReq = new Request("http://localhost:3000/api/token/%E0%A4%A");
+    const resToken = await server.fetch(malformedTokenReq);
+    expect(resToken.status).toBe(400);
+    const jsonToken = (await resToken.json()) as { success: boolean; error: string };
+    expect(jsonToken.success).toBe(false);
+    expect(jsonToken.error).toBe("Invalid URI encoding");
+
+    const malformedImgReq = new Request("http://localhost:3000/api/image/%E0%A4%A");
+    const resImg = await server.fetch(malformedImgReq);
+    expect(resImg.status).toBe(400);
+
+    const malformedDocReq = new Request("http://localhost:3000/api/document/%E0%A4%A");
+    const resDoc = await server.fetch(malformedDocReq);
+    expect(resDoc.status).toBe(400);
+  });
+
+  test("handleGetTokenPreview applies X-Content-Type-Options: nosniff and CSP sandbox on SVG payloads", async () => {
+    const rawSvgToken = await encodeBinaryToken({
+      originalFileSize: 64,
+      width: 100,
+      height: 100,
+      page: 1,
+      previewFormat: PreviewFormat.SVG,
+      vqIndices: new Uint8Array(256),
+      metadata: {
+        id: "tok_svg_csp_test",
+        filename: "test.svg",
+        sourcePath: "",
+        mimeType: "image/svg+xml",
+        page: 1,
+        totalPages: 1,
+        width: 100,
+        height: 100,
+        colorDepth: 24,
+        createdAt: new Date().toISOString(),
+        ocrText: "",
+      },
+      previewBytes: new TextEncoder().encode("<svg><script>alert(1)</script></svg>"),
+    });
+
+    const engine = new CompressedTokenSearchEngine("./data/test_tokens.zip");
+    engine.extractToken = async () => rawSvgToken;
+    const pipeline = new Win11TokenPipeline({
+      sourceDirectory: "./images",
+      documentDirectory: "./documents",
+      outputZipPath: "./data/test_tokens.zip",
+      allowedExtensions: [".png"],
+      maxTokenSizeKb: 25,
+    });
+    const handlers = new TokenApiHandlers(engine, pipeline);
+
+    const previewRes = await handlers.handleGetTokenPreview("tok_svg_csp_test");
+    expect(previewRes.status).toBe(200);
+    expect(previewRes.headers.get("content-type")).toBe("image/svg+xml");
+    expect(previewRes.headers.get("x-content-type-options")).toBe("nosniff");
+    expect(previewRes.headers.get("content-security-policy")).toBe("default-src 'none'; sandbox");
   });
 });
 

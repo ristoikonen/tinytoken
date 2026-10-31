@@ -1,6 +1,9 @@
-import { z } from "zod";
-
-const ipSchema = z.string().min(1, "IP cannot be empty");
+function validateIp(ip: string): string {
+  if (typeof ip !== "string" || ip.trim().length === 0) {
+    throw new Error("IP cannot be empty");
+  }
+  return ip.trim();
+}
 
 /**
  * Generates an anonymized HMAC-SHA256 IP hash using Bun's native CryptoHasher & Uint8Array.fromHex.
@@ -14,7 +17,7 @@ export async function generateIPHash(ip: string): Promise<string> {
 
   const keyBytes = Uint8Array.fromHex(keyHex);
   const hmac = new Bun.CryptoHasher("sha256", keyBytes);
-  hmac.update(ipSchema.parse(ip));
+  hmac.update(validateIp(ip));
   const hashHex = hmac.digest("hex");
 
   return `anon_${hashHex.slice(0, 24)}`;
@@ -52,7 +55,7 @@ export function getEncryptionKeyBytes(keyVersion: string): Uint8Array<ArrayBuffe
 
 /** Encrypts an IP address using WebCrypto AES-GCM and Bun native Uint8Array.prototype.toBase64(). */
 export async function encryptIP(ip: string): Promise<EncryptedIp> {
-  const plaintext = ipSchema.parse(ip);
+  const plaintext = validateIp(ip);
   const configuredKeyVersion = Bun.env.IP_ENCRYPTION_KEY_VERSION;
   if (!configuredKeyVersion?.trim()) {
     throw new Error("IP_ENCRYPTION_KEY_VERSION is missing.");

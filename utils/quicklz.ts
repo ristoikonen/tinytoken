@@ -4,12 +4,13 @@
  */
 
 export class QuickLZ {
-  private static readonly DEFAULT_HEADER_LEN = 9;
-  private static readonly HASH_VALUES = 4096;
+  public static readonly DEFAULT_HEADER_LEN = 9;
+  public static readonly HASH_VALUES = 4096;
+  public static readonly DEFAULT_MAX_DECOMPRESSED_SIZE = 64 * 1024; // 64 KB safety limit
 
   public static compress(source: Uint8Array): Uint8Array<ArrayBuffer> {
     const srcLen = source.length;
-    if (srcLen === 0) return new Uint8Array(0);
+    if (srcLen === 0) return new Uint8Array(new ArrayBuffer(0));
 
     const destination = new Uint8Array(srcLen + 400);
     const hash = new Int32Array(this.HASH_VALUES).fill(-1);
@@ -95,14 +96,35 @@ export class QuickLZ {
     this.writeUInt16LE(destination, controlWordIdx, controlWord);
     this.writeUInt32LE(destination, 5, dstIdx);
 
-    return destination.subarray(0, dstIdx);
+    const out = new Uint8Array(new ArrayBuffer(dstIdx));
+    out.set(destination.subarray(0, dstIdx));
+    return out;
   }
 
-  public static decompress(source: Uint8Array): Uint8Array<ArrayBuffer> {
-    if (source.length === 0) return new Uint8Array(0);
+  public static decompress(
+    source: Uint8Array,
+    maxDecompressedSize = QuickLZ.DEFAULT_MAX_DECOMPRESSED_SIZE,
+  ): Uint8Array<ArrayBuffer> {
+    if (source.length === 0) return new Uint8Array(new ArrayBuffer(0));
+
+    if (source.length < this.DEFAULT_HEADER_LEN) {
+      throw new Error(
+        `Invalid QuickLZ stream: expected at least ${this.DEFAULT_HEADER_LEN} header bytes, got ${source.length}`,
+      );
+    }
 
     const sizeDecompressed = this.readUInt32LE(source, 1);
-    const destination = new Uint8Array(sizeDecompressed);
+    if (sizeDecompressed === 0) {
+      return new Uint8Array(new ArrayBuffer(0));
+    }
+
+    if (sizeDecompressed < 0 || sizeDecompressed > maxDecompressedSize) {
+      throw new Error(
+        `QuickLZ decompressed size (${sizeDecompressed} bytes) exceeds safety limit (${maxDecompressedSize} bytes)`,
+      );
+    }
+
+    const destination = new Uint8Array(new ArrayBuffer(sizeDecompressed));
 
     let srcIdx = this.DEFAULT_HEADER_LEN;
     let dstIdx = 0;
@@ -111,6 +133,9 @@ export class QuickLZ {
 
     while (dstIdx < sizeDecompressed) {
       if (controlBitsCount === 0) {
+        if (srcIdx + 2 > source.length) {
+          throw new Error("Truncated QuickLZ stream: missing control word");
+        }
         controlWord = this.readUInt16LE(source, srcIdx);
         srcIdx += 2;
         controlBitsCount = 16;
@@ -119,17 +144,39 @@ export class QuickLZ {
       if ((controlWord & 1) === 1) {
         let matchLen = 0;
         let offset = 0;
+        if (srcIdx >= source.length) {
+          throw new Error("Truncated QuickLZ stream: unexpected end of match token");
+        }
         const b0 = source[srcIdx] ?? 0;
-        const b1 = source[srcIdx + 1] ?? 0;
 
         if ((b0 & 1) === 1) {
+          if (srcIdx + 2 > source.length) {
+            throw new Error("Truncated QuickLZ stream: truncated 2-byte match token");
+          }
+          const b1 = source[srcIdx + 1] ?? 0;
           matchLen = b0 >>> 4;
           offset = (((b0 >>> 1) & 0x07) << 8) | b1;
           srcIdx += 2;
         } else {
-          offset = (((b0 >>> 1) & 0x07) << 8) | b1;
+          if (srcIdx + 3 > source.length) {
+            throw new Error("Truncated QuickLZ stream: truncated 3-byte match token");
+          }
+          const b1 = source[srcIdx + 1] ?? 0;
           matchLen = source[srcIdx + 2] ?? 0;
+          offset = (((b0 >>> 1) & 0x07) << 8) | b1;
           srcIdx += 3;
+        }
+
+        if (offset <= 0 || offset > dstIdx) {
+          throw new Error(
+            `Invalid QuickLZ back-reference offset ${offset} at output position ${dstIdx}`,
+          );
+        }
+
+        if (dstIdx + matchLen > sizeDecompressed) {
+          throw new Error(
+            `QuickLZ decompression match overflow: dstIdx=${dstIdx}, matchLen=${matchLen}, max=${sizeDecompressed}`,
+          );
         }
 
         let matchIdx = dstIdx - offset;
@@ -137,6 +184,9 @@ export class QuickLZ {
           destination[dstIdx++] = destination[matchIdx++] ?? 0;
         }
       } else {
+        if (srcIdx >= source.length) {
+          throw new Error("Truncated QuickLZ stream: truncated literal byte");
+        }
         destination[dstIdx++] = source[srcIdx++] ?? 0;
       }
 

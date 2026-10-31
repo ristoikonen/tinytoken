@@ -71,30 +71,37 @@ const server = serve({
     }
 
     // Dynamic token & image routes
-    if (path.startsWith("/api/token/")) {
-      const rest = path.slice("/api/token/".length);
-      if (rest.endsWith("/preview") && req.method === "GET") {
-        const id = decodeURIComponent(rest.slice(0, -"/preview".length));
-        return apiHandlers.handleGetTokenPreview(id);
+    try {
+      if (path.startsWith("/api/token/")) {
+        const rest = path.slice("/api/token/".length);
+        if (rest.endsWith("/preview") && req.method === "GET") {
+          const id = decodeURIComponent(rest.slice(0, -"/preview".length));
+          return apiHandlers.handleGetTokenPreview(id);
+        }
+        if (rest.endsWith("/mutate") && req.method === "POST") {
+          const id = decodeURIComponent(rest.slice(0, -"/mutate".length));
+          return apiHandlers.handleHomomorphicMutate(id, req);
+        }
+        if (req.method === "GET" && rest.length > 0) {
+          const id = decodeURIComponent(rest);
+          return apiHandlers.handleGetToken(id);
+        }
       }
-      if (rest.endsWith("/mutate") && req.method === "POST") {
-        const id = decodeURIComponent(rest.slice(0, -"/mutate".length));
-        return apiHandlers.handleHomomorphicMutate(id, req);
-      }
-      if (req.method === "GET" && rest.length > 0) {
-        const id = decodeURIComponent(rest);
-        return apiHandlers.handleGetToken(id);
-      }
-    }
 
-    if (path.startsWith("/api/image/") && req.method === "GET") {
-      const name = decodeURIComponent(path.slice("/api/image/".length));
-      return apiHandlers.handleGetSourceImage(name);
-    }
+      if (path.startsWith("/api/image/") && req.method === "GET") {
+        const name = decodeURIComponent(path.slice("/api/image/".length));
+        return apiHandlers.handleGetSourceImage(name);
+      }
 
-    if (path.startsWith("/api/document/") && req.method === "GET") {
-      const name = decodeURIComponent(path.slice("/api/document/".length));
-      return apiHandlers.handleGetSourceDocument(name);
+      if (path.startsWith("/api/document/") && req.method === "GET") {
+        const name = decodeURIComponent(path.slice("/api/document/".length));
+        return apiHandlers.handleGetSourceDocument(name);
+      }
+    } catch (err) {
+      if (err instanceof URIError) {
+        return errorResponse("Invalid URI encoding", 400);
+      }
+      throw err;
     }
 
     return errorResponse("Not Found", 404, false);

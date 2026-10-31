@@ -4,7 +4,7 @@
  * SNARK/SHARK provenance verification, and homomorphic GF(2^8) state mutation.
  */
 
-import { TokenFlags } from "../models/token";
+import { PreviewFormat, TokenFlags } from "../models/token";
 import { applyHomomorphicMaskGF28 } from "../utils/galois";
 import { previewFormatToLabel, previewFormatToMime } from "../utils/imagePreview";
 import type { Win11TokenPipeline } from "../utils/indexer";
@@ -205,15 +205,22 @@ export class TokenApiHandlers {
     const mimeType = previewFormatToMime(decoded.previewFormat);
     const extractMs = (performance.now() - t0).toFixed(3);
 
+    const headers: Record<string, string> = {
+      "Content-Type": mimeType,
+      "Cache-Control": "no-cache",
+      "X-Token-Extract-Ms": extractMs,
+      "X-RS-Parity-Valid": String(decoded.rsParityValid),
+      "X-SNARK-Attested": String(decoded.snarkAttestation.valid),
+      "X-Content-Type-Options": "nosniff",
+    };
+
+    if (decoded.previewFormat === PreviewFormat.SVG || mimeType === "image/svg+xml") {
+      headers["Content-Security-Policy"] = "default-src 'none'; sandbox";
+    }
+
     return new Response(new Uint8Array(decoded.previewBytes), {
       status: 200,
-      headers: {
-        "Content-Type": mimeType,
-        "Cache-Control": "no-cache",
-        "X-Token-Extract-Ms": extractMs,
-        "X-RS-Parity-Valid": String(decoded.rsParityValid),
-        "X-SNARK-Attested": String(decoded.snarkAttestation.valid),
-      },
+      headers,
     });
   }
 

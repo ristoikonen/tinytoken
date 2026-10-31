@@ -1,18 +1,18 @@
 /**
  * TinyToken Binary Token Specification V2 (GF28 + VQ + SNARK/SHARK)
  * Fixed 25 KB (25,600 bytes max) hybrid token envelope:
- * - Section I   (0..1023, 1,024 B): Header, 256B SNARK/SHARK Attestation Stub, 256B VQ 16x16 Grid, 384B GF(2^8) RS Parity
- * - Section II  (1024..5119, up to 4,096 B): Compact Metadata & OCR Text (QuickLZ / UTF-8 JSON)
- * - Section III (5120..25599, up to 20,480 B): High-Efficiency 220x220 Preview Image
+ * - Section I   (0..703, 704 B): Header, 256B SNARK/SHARK Attestation Stub, 256B VQ 16x16 Grid, 64B GF(2^8) RS Parity
+ * - Section II  (704..4799, up to 4,096 B): Compact Metadata & OCR Text (QuickLZ / UTF-8 JSON)
+ * - Section III (4800..25599, up to 20,800 B): High-Efficiency 220x220 Preview Image
  */
 
 export const TOKEN_MAGIC = "GF28";
 export const TOKEN_VERSION = 2;
 
 export const MAX_TOKEN_BYTES = 25 * 1024; // 25,600 bytes
-export const SECTION1_HEADER_BYTES = 1024;
+export const SECTION1_HEADER_BYTES = 704;
 export const SECTION2_MAX_META_BYTES = 4096;
-export const SECTION3_MAX_PREVIEW_BYTES = 20480;
+export const SECTION3_MAX_PREVIEW_BYTES = 20800; // 25,600 - 704 - 4,096
 
 export const SNARK_STUB_OFFSET = 128;
 export const SNARK_STUB_BYTES = 256; // 128..383
@@ -21,7 +21,7 @@ export const VQ_GRID_OFFSET = 384;
 export const VQ_GRID_BYTES = 256; // 384..639 (16x16 Uint8 codebook indices in GF(2^8))
 
 export const RS_PARITY_OFFSET = 640;
-export const RS_PARITY_BYTES = 384; // 640..1023 (3x128B Reed-Solomon parity over 0..639)
+export const RS_PARITY_BYTES = 64; // 640..703 (64B Reed-Solomon parity over 0..639: 3 lanes [22B, 21B, 21B])
 
 export enum TokenFlags {
   NONE = 0,
