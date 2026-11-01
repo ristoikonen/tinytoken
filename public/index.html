@@ -441,6 +441,80 @@
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
     }
 
+    /* Semantic Visual Traits Section */
+    .traits-box {
+      background: linear-gradient(170deg, rgba(20, 30, 52, 0.7) 0%, rgba(10, 15, 28, 0.85) 100%);
+      border: 1px solid rgba(56, 189, 248, 0.22);
+      border-radius: 8px;
+      padding: 0.6rem 0.8rem;
+      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
+    }
+
+    .traits-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+      min-height: 28px;
+      align-items: center;
+    }
+
+    .trait-empty {
+      font-size: 0.65rem;
+      color: var(--text-low);
+    }
+
+    .trait-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.32rem;
+      padding: 0.22rem 0.55rem;
+      border-radius: 4px;
+      font-size: 0.65rem;
+      font-family: var(--font-mono);
+      font-weight: 500;
+      transition: all 0.14s ease;
+      cursor: default;
+      line-height: 1.2;
+    }
+
+    .trait-chip:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.45);
+    }
+
+    .trait-cat-Silhouette {
+      background: rgba(245, 158, 11, 0.12);
+      border: 1px solid rgba(245, 158, 11, 0.45);
+      color: #fde68a;
+    }
+
+    .trait-cat-Texture {
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(16, 185, 129, 0.45);
+      color: #a7f3d0;
+    }
+
+    .trait-cat-ColorSpace {
+      background: rgba(56, 189, 248, 0.12);
+      border: 1px solid rgba(56, 189, 248, 0.45);
+      color: #bae6fd;
+    }
+
+    .trait-cat-StructuralGrid {
+      background: rgba(148, 163, 184, 0.12);
+      border: 1px solid rgba(148, 163, 184, 0.4);
+      color: #cbd5e1;
+    }
+
+    .trait-badge-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      display: inline-block;
+      flex-shrink: 0;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+    }
+
     /* Raktor Nuclear Hazard / Danger Glow Byte-Map Card */
     .bytemap-box {
       background:
@@ -605,6 +679,17 @@
         <button id="btn-homomorphic" class="btn mono" title="Apply blind GF(2^8) linear state mask directly on raw 25KB token slice">
           ⊕ GF(2⁸) Mask
         </button>
+      </div>
+
+      <!-- Semantic Visual Traits (Human-in-the-Loop Explainable Registry) -->
+      <div class="traits-box">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.35rem;" class="mono">
+          <span style="color:var(--text-high);font-weight:600;font-size:0.65rem;letter-spacing:0.04em;">SEMANTIC VISUAL TRAITS</span>
+          <span id="traits-status" style="color:var(--cyan-bright);font-size:0.62rem;font-weight:500;">0 DETECTED</span>
+        </div>
+        <div id="traits-container" class="traits-container">
+          <span class="trait-empty mono">Select a token to inspect its visual traits</span>
+        </div>
       </div>
 
       <!-- 25 KB Token Byte-Map Bar with Nuclear Hazard Ambient Glow -->
@@ -840,6 +925,31 @@
           });
       } else {
         document.getElementById('ocr-timestamp').textContent = '';
+      }
+
+      // Update Semantic Visual Traits
+      const traits = t.traits || [];
+      const elTraitsContainer = document.getElementById('traits-container');
+      const elTraitsStatus = document.getElementById('traits-status');
+
+      if (traits.length > 0) {
+        const verifiedCount = traits.filter(tr => tr.isManuallyVerified).length;
+        elTraitsStatus.textContent = `${traits.length} DETECTED (${verifiedCount} VERIFIED)`;
+
+        elTraitsContainer.innerHTML = traits.slice(0, 6).map(tr => {
+          const marker = tr.isManuallyVerified ? '🌟' : '🤖';
+          const rgbColor = `rgb(${tr.rgb.r}, ${tr.rgb.g}, ${tr.rgb.b})`;
+          return `
+            <div class="trait-chip trait-cat-${tr.category}" title="${escapeHtml(tr.name)} [ID #${tr.tokenId}] • ${tr.percentage}% of grid (${tr.count} cells)">
+              <span class="trait-badge-dot" style="background:${rgbColor};"></span>
+              <span>${marker} <b>${escapeHtml(tr.category)}:</b> ${escapeHtml(tr.name)}</span>
+              <span style="opacity:0.75;font-weight:400;">(${tr.percentage}%)</span>
+            </div>
+          `;
+        }).join('');
+      } else {
+        elTraitsStatus.textContent = '0 DETECTED';
+        elTraitsContainer.innerHTML = '<span class="trait-empty mono">No visual traits detected in this token</span>';
       }
 
       document.getElementById('ocr-readout').textContent =

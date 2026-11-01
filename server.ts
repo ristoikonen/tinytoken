@@ -87,6 +87,10 @@ const server = serve({
       await ensureInitialized();
       return apiHandlers.handleCodebook();
     },
+    "/api/registry": async () => {
+      await ensureInitialized();
+      return apiHandlers.handleGetRegistry();
+    },
     "/api/search": async (req: BunRequest) => {
       await ensureInitialized();
       return apiHandlers.handleSearch(new URL(req.url));
@@ -144,6 +148,7 @@ const server = serve({
       }
       if (path === "/api/stats") return apiHandlers.handleStats();
       if (path === "/api/codebook") return apiHandlers.handleCodebook();
+      if (path === "/api/registry") return apiHandlers.handleGetRegistry();
       if (path === "/api/search") return apiHandlers.handleSearch(url);
       if (path === "/api/search/pattern") return apiHandlers.handlePatternSearch(url);
       if (path === "/api/index/rebuild" && req.method === "POST") return apiHandlers.handleRebuildIndex(req);

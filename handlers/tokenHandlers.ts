@@ -16,6 +16,7 @@ import {
 } from "../utils/response";
 import { decodeBinaryToken } from "../utils/tokenCodec";
 import { VQ_CODEBOOK, vqGridToHex } from "../utils/vqCodebook";
+import { visualTraitRegistry } from "../utils/visualTraitRegistry";
 import type { VqInvertedIndexEngine } from "../utils/vqInvertedIndex";
 import type { CompressedTokenSearchEngine } from "../utils/zipEngine";
 
@@ -186,8 +187,20 @@ export class TokenApiHandlers {
         vqHex: vqGridToHex(decoded.vqIndices),
         metadata: decoded.metadata,
         byteMap: decoded.byteMap,
+        traits: visualTraitRegistry.evaluateGrid(decoded.vqIndices),
         headerHexPreview: headerHexPreview.trim(),
       },
+    });
+  }
+
+  /**
+   * GET /api/registry
+   * Returns the full 256-codebook visual trait dictionary mapping.
+   */
+  public handleGetRegistry(): Response {
+    return jsonResponse({
+      success: true,
+      registry: visualTraitRegistry.getAll(),
     });
   }
 

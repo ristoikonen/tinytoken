@@ -1,0 +1,72 @@
+{
+  "12": {
+    "name": "Dense Foliage Greenery",
+    "category": "Texture",
+    "isManuallyVerified": true
+  },
+  "29": {
+    "name": "Clear Atmospheric Sky",
+    "category": "ColorSpace",
+    "isManuallyVerified": true
+  },
+  "61": {
+    "name": "Eucalyptus Canopy Texture",
+    "category": "Texture",
+    "isManuallyVerified": true
+  },
+  "77": {
+    "name": "High Horizon Cyan Envelope",
+    "category": "ColorSpace",
+    "isManuallyVerified": true
+  },
+  "97": {
+    "name": "Terracotta Earth Ground Plane",
+    "category": "ColorSpace",
+    "isManuallyVerified": true
+  },
+  "108": {
+    "name": "Familiar Red Kangaroo Silhouette",
+    "category": "Silhouette",
+    "isManuallyVerified": true
+  },
+  "132": {
+    "name": "Outback Ochre Clay Signature",
+    "category": "Texture",
+    "isManuallyVerified": true
+  },
+  "146": {
+    "name": "Warm Subject Flesh Geometry",
+    "category": "Silhouette",
+    "isManuallyVerified": true
+  },
+  "194": {
+    "name": "Warm Sunlit Highlight",
+    "category": "ColorSpace",
+    "isManuallyVerified": true
+  },
+  "215": {
+    "name": "Risto Ikonen (Facial Alignment Structure)",
+    "category": "Silhouette",
+    "isManuallyVerified": true
+  },
+  "252": {
+    "name": "Pure Ink Line & Typography Anchor",
+    "category": "StructuralGrid",
+    "isManuallyVerified": true
+  },
+  "253": {
+    "name": "Dark Shadow & Boundary Horizon",
+    "category": "StructuralGrid",
+    "isManuallyVerified": true
+  },
+  "254": {
+    "name": "Silver Grey Document Intermediate",
+    "category": "ColorSpace",
+    "isManuallyVerified": true
+  },
+  "255": {
+    "name": "Pure Paper White Canvas Field",
+    "category": "ColorSpace",
+    "isManuallyVerified": true
+  }
+}

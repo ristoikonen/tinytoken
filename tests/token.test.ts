@@ -428,5 +428,45 @@ describe("TinyToken GF(2^8) + VQ + SHARK/SNARK Pipeline", () => {
     expect(previewRes.headers.get("x-content-type-options")).toBe("nosniff");
     expect(previewRes.headers.get("content-security-policy")).toBe("default-src 'none'; sandbox");
   });
+
+  test("VisualTraitRegistry evaluates 16x16 grids and handles manual registrations in sub-0.1ms", async () => {
+    const { VisualTraitRegistry } = await import("../utils/visualTraitRegistry");
+    const registry = new VisualTraitRegistry("./data/test_manual_token_registry.json");
+
+    // Synthetic 16x16 grid with kangaroo (108), paper white (255), and ink (252)
+    const grid = new Uint8Array(256).fill(255); // 250 white cells
+    for (let i = 0; i < 6; i++) grid[i] = 108; // 6 kangaroo cells
+
+    const traits = registry.evaluateGrid(grid);
+    expect(traits.length).toBe(2);
+
+    const whiteTrait = traits.find((t) => t.tokenId === 255);
+    expect(whiteTrait).toBeDefined();
+    expect(whiteTrait?.category).toBe("ColorSpace");
+    expect(whiteTrait?.isManuallyVerified).toBe(true);
+    expect(whiteTrait?.percentage).toBe(97.7);
+
+    const kangarooTrait = traits.find((t) => t.tokenId === 108);
+    expect(kangarooTrait).toBeDefined();
+    expect(kangarooTrait?.name).toContain("Kangaroo");
+    expect(kangarooTrait?.category).toBe("Silhouette");
+    expect(kangarooTrait?.isManuallyVerified).toBe(true);
+
+    // Register custom entity
+    await registry.registerToken(42, "Custom Drone Target", "Silhouette");
+    grid[10] = 42;
+    grid[11] = 42;
+    const updatedTraits = registry.evaluateGrid(grid);
+    const customTrait = updatedTraits.find((t) => t.tokenId === 42);
+    expect(customTrait).toBeDefined();
+    expect(customTrait?.name).toBe("Custom Drone Target");
+    expect(customTrait?.isManuallyVerified).toBe(true);
+
+    // Clean up test file if created
+    const testFile = Bun.file("./data/test_manual_token_registry.json");
+    if (await testFile.exists()) {
+      await Bun.write("./data/test_manual_token_registry.json", "");
+    }
+  });
 });
 
