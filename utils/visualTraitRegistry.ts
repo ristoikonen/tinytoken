@@ -22,6 +22,16 @@ export interface TokenTraitMetadata {
   isManuallyVerified?: boolean;
 }
 
+export interface ObjectAnnotation {
+  id: string;
+  tokenId: string;
+  label: string;
+  category: VisualTraitCategory;
+  boundingBox: [number, number, number, number]; // [normX, normY, normW, normH] 0..1
+  centroidIds: number[];
+  createdAt: string;
+}
+
 export interface EvaluatedTrait {
   tokenId: number;
   name: string;
@@ -35,9 +45,14 @@ export interface EvaluatedTrait {
 export class VisualTraitRegistry {
   private registry = new Map<number, TokenTraitMetadata>();
   private registryFilePath: string;
+  private objectRegistryFilePath: string;
 
-  constructor(filePath = "./data/manual_token_registry.json") {
+  constructor(
+    filePath = "./data/manual_token_registry.json",
+    objectRegistryFilePath = "./data/object_registry.json",
+  ) {
     this.registryFilePath = filePath;
+    this.objectRegistryFilePath = objectRegistryFilePath;
     // Synchronously seed with baseline curated entries immediately
     for (const [key, val] of Object.entries(VisualTraitRegistry.DEFAULT_CURATED_MAP)) {
       this.registry.set(Number(key), { ...val });
@@ -116,6 +131,80 @@ export class VisualTraitRegistry {
     } catch (err) {
       console.warn("VisualTraitRegistry: Could not persist registry to disk:", err);
     }
+  }
+
+  /**
+   * Teaches an object by mapping covered centroid IDs into the manual registry
+   * and saving the spatial bounding-box annotation.
+   */
+  public async teachObject(
+    tokenId: string,
+    label: string,
+    category: VisualTraitCategory,
+    boundingBox: [number, number, number, number],
+    centroidIds: number[],
+  ): Promise<{ taughtCentroids: number[]; annotation: ObjectAnnotation }> {
+    const taughtCentroids: number[] = [];
+
+    // Map the dominant centroids to this label in the manual registry
+    for (const cid of centroidIds) {
+      if (cid >= 0 && cid <= 255) {
+        this.registry.set(cid, {
+          name: label,
+          category,
+          isManuallyVerified: true,
+        });
+        taughtCentroids.push(cid);
+      }
+    }
+
+    // Persist updated token registry
+    try {
+      const payload = JSON.stringify(Object.fromEntries(this.registry), null, 2);
+      await Bun.write(this.registryFilePath, payload);
+    } catch (err) {
+      console.warn("VisualTraitRegistry: Could not write token registry:", err);
+    }
+
+    // Append to object registry
+    const annotation: ObjectAnnotation = {
+      id: `obj_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+      tokenId,
+      label,
+      category,
+      boundingBox,
+      centroidIds: taughtCentroids,
+      createdAt: new Date().toISOString(),
+    };
+
+    try {
+      let existing: ObjectAnnotation[] = [];
+      const objFile = Bun.file(this.objectRegistryFilePath);
+      if (await objFile.exists()) {
+        try {
+          existing = (await objFile.json()) as ObjectAnnotation[];
+        } catch {}
+      }
+      existing.push(annotation);
+      await Bun.write(this.objectRegistryFilePath, JSON.stringify(existing, null, 2));
+    } catch (err) {
+      console.warn("VisualTraitRegistry: Could not write object registry:", err);
+    }
+
+    return { taughtCentroids, annotation };
+  }
+
+  /**
+   * Retrieves all object annotations.
+   */
+  public async getObjectAnnotations(): Promise<ObjectAnnotation[]> {
+    try {
+      const objFile = Bun.file(this.objectRegistryFilePath);
+      if (await objFile.exists()) {
+        return (await objFile.json()) as ObjectAnnotation[];
+      }
+    } catch {}
+    return [];
   }
 
   /**

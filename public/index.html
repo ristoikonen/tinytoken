@@ -398,6 +398,8 @@
       align-items: center;
       justify-content: center;
       user-select: none;
+      -webkit-user-select: none;
+      -webkit-user-drag: none;
       cursor: grab;
     }
 
@@ -412,6 +414,10 @@
       transform-origin: center center;
       transition: transform 0.05s ease-out;
       filter: drop-shadow(0 12px 28px rgba(0, 0, 0, 0.7));
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-user-drag: none;
+      pointer-events: none; /* Prevents browser native image dragging */
     }
 
     .pixelated {
@@ -439,6 +445,84 @@
       font-weight: 500;
       backdrop-filter: blur(6px);
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+    }
+
+    /* Interactive Bounding-Box Teaching Overlay & Popover */
+    .label-bounding-box {
+      position: absolute;
+      border: 2px dashed var(--cyan-bright);
+      background: rgba(56, 189, 248, 0.16);
+      pointer-events: none;
+      z-index: 25;
+      box-shadow: 0 0 14px var(--cyan-glow);
+      border-radius: 4px;
+    }
+
+    .label-popover {
+      position: absolute;
+      z-index: 35;
+      background: rgba(12, 19, 36, 0.96);
+      border: 1px solid var(--cyan-bright);
+      border-radius: 8px;
+      padding: 0.6rem 0.75rem;
+      box-shadow: 0 10px 32px rgba(0, 0, 0, 0.8), 0 0 18px var(--cyan-glow);
+      backdrop-filter: blur(10px);
+      width: 250px;
+    }
+
+    .popover-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.68rem;
+      font-weight: 600;
+      color: var(--cyan-bright);
+      margin-bottom: 0.4rem;
+      letter-spacing: 0.04em;
+    }
+
+    .popover-close {
+      background: transparent;
+      border: none;
+      color: var(--text-medium);
+      cursor: pointer;
+      font-size: 0.8rem;
+      padding: 0 4px;
+      line-height: 1;
+    }
+
+    .popover-close:hover {
+      color: #ffffff;
+    }
+
+    .popover-input {
+      width: 100%;
+      background: rgba(6, 10, 20, 0.85);
+      border: 1px solid var(--border-light);
+      border-radius: 4px;
+      color: #ffffff;
+      padding: 0.35rem 0.5rem;
+      font-size: 0.7rem;
+      box-sizing: border-box;
+      outline: none;
+      font-family: inherit;
+    }
+
+    .popover-input:focus {
+      border-color: var(--cyan-bright);
+      box-shadow: 0 0 8px var(--cyan-glow);
+    }
+
+    .popover-select {
+      background: rgba(6, 10, 20, 0.85);
+      border: 1px solid var(--border-light);
+      border-radius: 4px;
+      color: var(--text-high);
+      padding: 0.3rem 0.4rem;
+      font-size: 0.65rem;
+      outline: none;
+      flex: 1;
+      font-family: inherit;
     }
 
     /* Semantic Visual Traits Section */
@@ -653,7 +737,8 @@
           <button id="mode-vq" class="segmented-btn">VQ 16×16</button>
           <button id="mode-full" class="segmented-btn" disabled style="opacity:0.35;cursor:not-allowed;" title="Source full-res view currently disabled">SOURCE</button>
         </div>
-        <div style="display:flex;gap:0.25rem;">
+        <div style="display:flex;gap:0.25rem;align-items:center;">
+          <button id="btn-label-mode" class="btn mono" title="Draw bounding box on image to name/teach an object">✎ Label</button>
           <button id="zoom-out" class="btn mono" title="Zoom Out">−</button>
           <button id="zoom-reset" class="btn mono" title="Reset Zoom">1.25x</button>
           <button id="zoom-in" class="btn mono" title="Zoom In">+</button>
@@ -662,10 +747,34 @@
       </div>
 
       <!-- Expanded Luminous Viewer Stage -->
-      <div id="viewer-stage" class="viewer-stage">
-        <img id="viewer-img" class="viewer-media" alt="Token Preview" style="display:none;" />
+      <div id="viewer-stage" class="viewer-stage" draggable="false" ondragstart="return false;">
+        <img id="viewer-img" class="viewer-media" alt="Token Preview" draggable="false" ondragstart="return false;" style="display:none;" />
         <iframe id="viewer-pdf" title="Document Source Viewer" style="width:100%;height:100%;border:none;display:none;"></iframe>
-        <canvas id="viewer-vq-canvas" width="16" height="16" class="viewer-media pixelated" style="width:360px;height:360px;display:none;"></canvas>
+        <canvas id="viewer-vq-canvas" width="16" height="16" class="viewer-media pixelated" draggable="false" ondragstart="return false;" style="width:360px;height:360px;display:none;"></canvas>
+        <div id="label-box" class="label-bounding-box" style="display:none;"></div>
+        <div id="label-popover" class="label-popover" style="display:none;">
+          <div class="popover-title mono">
+            <span>✎ TEACH OBJECT</span>
+            <button id="btn-close-popover" class="popover-close" type="button" title="Close">✕</button>
+          </div>
+          <div class="popover-body mono">
+            <div id="label-covered-info" style="font-size:0.62rem;color:var(--text-medium);margin-bottom:0.35rem;">
+              Region: 0% • 0 VQ Centroids
+            </div>
+            <input id="label-input-name" class="popover-input" type="text" placeholder="Object name (e.g. Red Kangaroo)" maxlength="40" />
+            <div style="display:flex;gap:0.35rem;margin-top:0.4rem;">
+              <select id="label-input-cat" class="popover-select">
+                <option value="Silhouette">Silhouette</option>
+                <option value="Texture">Texture</option>
+                <option value="ColorSpace">ColorSpace</option>
+                <option value="StructuralGrid">StructuralGrid</option>
+              </select>
+              <button id="btn-submit-label" class="btn btn-action-cyan" type="button" style="padding:0.25rem 0.65rem;font-size:0.68rem;white-space:nowrap;">
+                ✓ Teach
+              </button>
+            </div>
+          </div>
+        </div>
         <div class="viewer-hud mono">
           <span id="viewer-dim-badge" class="hud-badge">-- × --</span>
           <span id="viewer-slice-badge" class="hud-badge">SLICE: -- ms</span>
@@ -928,11 +1037,19 @@
       }
 
       // Update Semantic Visual Traits
-      const traits = t.traits || [];
+      renderTraits(t.traits || []);
+
+      document.getElementById('ocr-readout').textContent =
+        `${t.metadata.ocrText}\n\n[Header Hex 0..63]: ${t.headerHexPreview}`;
+
+      updateViewerStage();
+    }
+
+    function renderTraits(traits) {
       const elTraitsContainer = document.getElementById('traits-container');
       const elTraitsStatus = document.getElementById('traits-status');
 
-      if (traits.length > 0) {
+      if (traits && traits.length > 0) {
         const verifiedCount = traits.filter(tr => tr.isManuallyVerified).length;
         elTraitsStatus.textContent = `${traits.length} DETECTED (${verifiedCount} VERIFIED)`;
 
@@ -951,11 +1068,6 @@
         elTraitsStatus.textContent = '0 DETECTED';
         elTraitsContainer.innerHTML = '<span class="trait-empty mono">No visual traits detected in this token</span>';
       }
-
-      document.getElementById('ocr-readout').textContent =
-        `${t.metadata.ocrText}\n\n[Header Hex 0..63]: ${t.headerHexPreview}`;
-
-      updateViewerStage();
     }
 
     function updateViewerStage() {
@@ -1019,7 +1131,88 @@
       applyZoomTransform();
     };
 
-    // Mouse wheel zoom & drag pan on viewer stage
+    // Object Teaching & Bounding-Box Labeling Tool
+    let isLabelMode = false;
+    let isDrawingBox = false;
+    let drawStartX = 0;
+    let drawStartY = 0;
+    let currentSelectedBbox = [0, 0, 1, 1];
+    let currentSelectedCentroids = [];
+
+    const elBtnLabel = document.getElementById('btn-label-mode');
+    const elLabelBox = document.getElementById('label-box');
+    const elLabelPopover = document.getElementById('label-popover');
+    const elInputLabelName = document.getElementById('label-input-name');
+    const elSelectLabelCat = document.getElementById('label-input-cat');
+    const elBtnSubmitLabel = document.getElementById('btn-submit-label');
+    const elBtnClosePopover = document.getElementById('btn-close-popover');
+    const elLabelInfo = document.getElementById('label-covered-info');
+
+    function toggleLabelMode(force) {
+      isLabelMode = force !== undefined ? force : !isLabelMode;
+      elBtnLabel.classList.toggle('btn-active', isLabelMode);
+      stage.style.cursor = isLabelMode ? 'crosshair' : 'grab';
+      if (!isLabelMode) {
+        hideLabelPopover();
+      }
+    }
+
+    function hideLabelPopover() {
+      elLabelBox.style.display = 'none';
+      elLabelPopover.style.display = 'none';
+      isDrawingBox = false;
+    }
+
+    elBtnLabel.onclick = () => toggleLabelMode();
+    elBtnClosePopover.onclick = () => hideLabelPopover();
+
+    async function submitTaughtObject() {
+      if (!selectedTokenId) return;
+      const label = elInputLabelName.value.trim();
+      const category = elSelectLabelCat.value;
+      if (!label) {
+        elInputLabelName.focus();
+        return;
+      }
+
+      elBtnSubmitLabel.disabled = true;
+      elBtnSubmitLabel.textContent = 'Saving...';
+
+      try {
+        const res = await fetch(`/api/token/${encodeURIComponent(selectedTokenId)}/teach`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            label,
+            category,
+            boundingBox: currentSelectedBbox,
+            centroidIds: currentSelectedCentroids,
+          }),
+        }).then(r => r.json());
+
+        if (res.success) {
+          if (currentTokenDetail) currentTokenDetail.traits = res.traits;
+          renderTraits(res.traits);
+          hideLabelPopover();
+          toggleLabelMode(false);
+        } else {
+          alert(res.error || 'Failed to teach object');
+        }
+      } catch (err) {
+        console.error('Error teaching object:', err);
+      } finally {
+        elBtnSubmitLabel.disabled = false;
+        elBtnSubmitLabel.textContent = '✓ Teach';
+      }
+    }
+
+    elBtnSubmitLabel.onclick = () => submitTaughtObject();
+    elInputLabelName.onkeydown = (e) => {
+      if (e.key === 'Enter') submitTaughtObject();
+      if (e.key === 'Escape') hideLabelPopover();
+    };
+
+    // Mouse wheel zoom & drag pan or bounding-box draw on viewer stage
     const stage = document.getElementById('viewer-stage');
     stage.addEventListener('wheel', (e) => {
       e.preventDefault();
@@ -1028,17 +1221,122 @@
     }, { passive: false });
 
     stage.addEventListener('mousedown', (e) => {
+      if (elLabelPopover.contains(e.target)) return;
+
+      // Always prevent native browser image drag and text selection
+      e.preventDefault();
+
+      if (isLabelMode) {
+        isDrawingBox = true;
+        const rect = stage.getBoundingClientRect();
+        drawStartX = e.clientX - rect.left;
+        drawStartY = e.clientY - rect.top;
+        elLabelBox.style.left = drawStartX + 'px';
+        elLabelBox.style.top = drawStartY + 'px';
+        elLabelBox.style.width = '0px';
+        elLabelBox.style.height = '0px';
+        elLabelBox.style.display = 'block';
+        elLabelPopover.style.display = 'none';
+        return;
+      }
+
       isDragging = true;
       dragStartX = e.clientX - panX;
       dragStartY = e.clientY - panY;
     });
+
     window.addEventListener('mousemove', (e) => {
+      if (isLabelMode && isDrawingBox) {
+        e.preventDefault();
+        const rect = stage.getBoundingClientRect();
+        const curX = Math.max(0, Math.min(rect.width, e.clientX - rect.left));
+        const curY = Math.max(0, Math.min(rect.height, e.clientY - rect.top));
+
+        const boxLeft = Math.min(drawStartX, curX);
+        const boxTop = Math.min(drawStartY, curY);
+        const boxWidth = Math.abs(curX - drawStartX);
+        const boxHeight = Math.abs(curY - drawStartY);
+
+        elLabelBox.style.left = boxLeft + 'px';
+        elLabelBox.style.top = boxTop + 'px';
+        elLabelBox.style.width = boxWidth + 'px';
+        elLabelBox.style.height = boxHeight + 'px';
+        return;
+      }
+
       if (!isDragging) return;
       panX = e.clientX - dragStartX;
       panY = e.clientY - dragStartY;
       applyZoomTransform();
     });
-    window.addEventListener('mouseup', () => { isDragging = false; });
+
+    window.addEventListener('mouseup', () => {
+      if (isLabelMode && isDrawingBox) {
+        isDrawingBox = false;
+        const rect = stage.getBoundingClientRect();
+        let boxWidth = parseFloat(elLabelBox.style.width) || 0;
+        let boxHeight = parseFloat(elLabelBox.style.height) || 0;
+        let boxLeft = parseFloat(elLabelBox.style.left) || 0;
+        let boxTop = parseFloat(elLabelBox.style.top) || 0;
+
+        // If user simply clicked on an object without dragging, synthesize a convenient 48x48 box on that point
+        if (boxWidth < 10 || boxHeight < 10) {
+          boxWidth = 48;
+          boxHeight = 48;
+          boxLeft = Math.max(0, Math.min(rect.width - 48, drawStartX - 24));
+          boxTop = Math.max(0, Math.min(rect.height - 48, drawStartY - 24));
+          elLabelBox.style.left = boxLeft + 'px';
+          elLabelBox.style.top = boxTop + 'px';
+          elLabelBox.style.width = boxWidth + 'px';
+          elLabelBox.style.height = boxHeight + 'px';
+          elLabelBox.style.display = 'block';
+        }
+
+        if (currentTokenDetail) {
+          const normX = Math.max(0, Math.min(1, boxLeft / rect.width));
+          const normY = Math.max(0, Math.min(1, boxTop / rect.height));
+          const normW = Math.max(0.01, Math.min(1 - normX, boxWidth / rect.width));
+          const normH = Math.max(0.01, Math.min(1 - normY, boxHeight / rect.height));
+
+          currentSelectedBbox = [normX, normY, normW, normH];
+
+          // Compute covered 16x16 centroids
+          const startCellX = Math.max(0, Math.min(15, Math.floor(normX * 16)));
+          const endCellX = Math.max(0, Math.min(15, Math.floor((normX + normW) * 16)));
+          const startCellY = Math.max(0, Math.min(15, Math.floor(normY * 16)));
+          const endCellY = Math.max(0, Math.min(15, Math.floor((normY + normH) * 16)));
+
+          const covered = new Set();
+          let cellCount = 0;
+          if (currentTokenDetail.vqHex) {
+            for (let cy = startCellY; cy <= endCellY; cy++) {
+              for (let cx = startCellX; cx <= endCellX; cx++) {
+                cellCount++;
+                const idx = cy * 16 + cx;
+                const cid = parseInt(currentTokenDetail.vqHex.slice(idx * 2, idx * 2 + 2), 16);
+                if (!isNaN(cid)) covered.add(cid);
+              }
+            }
+          }
+          currentSelectedCentroids = Array.from(covered);
+
+          const popLeft = Math.min(rect.width - 265, Math.max(10, boxLeft));
+          const popTop = Math.min(rect.height - 145, Math.max(10, boxTop + boxHeight + 8));
+
+          elLabelPopover.style.left = popLeft + 'px';
+          elLabelPopover.style.top = popTop + 'px';
+          elLabelPopover.style.display = 'block';
+
+          elLabelInfo.textContent = `Region: ${((cellCount / 256) * 100).toFixed(1)}% of grid • ${currentSelectedCentroids.length} VQ Centroid(s)`;
+          elInputLabelName.value = '';
+          setTimeout(() => elInputLabelName.focus(), 30);
+        } else {
+          hideLabelPopover();
+        }
+        return;
+      }
+      isDragging = false;
+    });
 
     // Search input & VQ Similarity
     elSearch.addEventListener('input', () => runSearch());

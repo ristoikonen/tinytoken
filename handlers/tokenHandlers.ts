@@ -205,6 +205,95 @@ export class TokenApiHandlers {
   }
 
   /**
+   * POST /api/token/:id/teach
+   * Teaches an object by mapping the selected region & centroids to a named label.
+   */
+  public async handleTeachObject(id: string, req: Request): Promise<Response> {
+    try {
+      const body = (await req.json()) as {
+        label?: string;
+        category?: string;
+        boundingBox?: [number, number, number, number];
+        centroidIds?: number[];
+      };
+
+      const label = String(body.label || "").trim();
+      const category = (body.category || "Silhouette") as any;
+      const boundingBox = (Array.isArray(body.boundingBox) ? body.boundingBox : [0, 0, 1, 1]) as [
+        number,
+        number,
+        number,
+        number,
+      ];
+      let targetCentroids = Array.isArray(body.centroidIds)
+        ? body.centroidIds.map(Number).filter((n) => !Number.isNaN(n) && n >= 0 && n <= 255)
+        : [];
+
+      if (!label) {
+        return errorResponse("Object label is required", 400);
+      }
+
+      const rawToken = await this.engine.extractToken(id);
+      if (!rawToken) {
+        return errorResponse(`Token '${id}' not found`, 404);
+      }
+
+      const decoded = await decodeBinaryToken(rawToken);
+
+      // If centroidIds was empty, derive them from 16x16 grid and boundingBox
+      if (targetCentroids.length === 0 && decoded.vqIndices && decoded.vqIndices.length === 256) {
+        const [bx, by, bw, bh] = boundingBox;
+        const startX = Math.max(0, Math.min(15, Math.floor(bx * 16)));
+        const endX = Math.max(0, Math.min(15, Math.floor((bx + bw) * 16)));
+        const startY = Math.max(0, Math.min(15, Math.floor(by * 16)));
+        const endY = Math.max(0, Math.min(15, Math.floor((by + bh) * 16)));
+
+        const extracted = new Set<number>();
+        for (let y = startY; y <= endY; y++) {
+          for (let x = startX; x <= endX; x++) {
+            const cellIdx = y * 16 + x;
+            extracted.add(decoded.vqIndices[cellIdx]!);
+          }
+        }
+        targetCentroids = Array.from(extracted);
+      }
+
+      const { taughtCentroids, annotation } = await visualTraitRegistry.teachObject(
+        id,
+        label,
+        category,
+        boundingBox,
+        targetCentroids,
+      );
+
+      const updatedTraits = visualTraitRegistry.evaluateGrid(decoded.vqIndices);
+
+      return jsonResponse({
+        success: true,
+        message: `Taught '${label}' across ${taughtCentroids.length} centroids`,
+        annotation,
+        taughtCentroids,
+        traits: updatedTraits,
+      });
+    } catch (err: any) {
+      return errorResponse(`Failed to teach object: ${err?.message || String(err)}`, 500);
+    }
+  }
+
+  /**
+   * GET /api/objects
+   * Returns all taught object annotations.
+   */
+  public async handleGetObjectAnnotations(): Promise<Response> {
+    const annotations = await visualTraitRegistry.getObjectAnnotations();
+    return jsonResponse({
+      success: true,
+      count: annotations.length,
+      annotations,
+    });
+  }
+
+  /**
    * GET /api/token/:id/preview
    * Streams the embedded Section III preview image directly from the sliced 25 KB token.
    */

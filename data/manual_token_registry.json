@@ -1,4 +1,9 @@
 {
+  "0": {
+    "name": "Christine",
+    "category": "Silhouette",
+    "isManuallyVerified": true
+  },
   "12": {
     "name": "Dense Foliage Greenery",
     "category": "Texture",
@@ -7,6 +12,31 @@
   "29": {
     "name": "Clear Atmospheric Sky",
     "category": "ColorSpace",
+    "isManuallyVerified": true
+  },
+  "48": {
+    "name": "Banksia flower",
+    "category": "Silhouette",
+    "isManuallyVerified": true
+  },
+  "49": {
+    "name": "Banksia flower",
+    "category": "Silhouette",
+    "isManuallyVerified": true
+  },
+  "54": {
+    "name": "Banksia flower",
+    "category": "Silhouette",
+    "isManuallyVerified": true
+  },
+  "55": {
+    "name": "Gray Kangaroo",
+    "category": "Silhouette",
+    "isManuallyVerified": true
+  },
+  "56": {
+    "name": "Gray Kangaroo",
+    "category": "Silhouette",
     "isManuallyVerified": true
   },
   "61": {
@@ -19,9 +49,34 @@
     "category": "ColorSpace",
     "isManuallyVerified": true
   },
+  "90": {
+    "name": "Banksia flower",
+    "category": "Silhouette",
+    "isManuallyVerified": true
+  },
+  "96": {
+    "name": "Banksia flower",
+    "category": "Silhouette",
+    "isManuallyVerified": true
+  },
   "97": {
-    "name": "Terracotta Earth Ground Plane",
-    "category": "ColorSpace",
+    "name": "Gray Kangaroo",
+    "category": "Silhouette",
+    "isManuallyVerified": true
+  },
+  "98": {
+    "name": "Gray Kangaroo",
+    "category": "Silhouette",
+    "isManuallyVerified": true
+  },
+  "103": {
+    "name": "Banksia flower",
+    "category": "Silhouette",
+    "isManuallyVerified": true
+  },
+  "104": {
+    "name": "Gray Kangaroo",
+    "category": "Silhouette",
     "isManuallyVerified": true
   },
   "108": {
@@ -29,23 +84,128 @@
     "category": "Silhouette",
     "isManuallyVerified": true
   },
+  "111": {
+    "name": "Christine",
+    "category": "Silhouette",
+    "isManuallyVerified": true
+  },
   "132": {
-    "name": "Outback Ochre Clay Signature",
-    "category": "Texture",
+    "name": "Charred Tree Trunk",
+    "category": "Silhouette",
+    "isManuallyVerified": true
+  },
+  "138": {
+    "name": "Banksia flower",
+    "category": "Silhouette",
+    "isManuallyVerified": true
+  },
+  "139": {
+    "name": "Banksia flower",
+    "category": "Silhouette",
+    "isManuallyVerified": true
+  },
+  "145": {
+    "name": "Christine",
+    "category": "Silhouette",
     "isManuallyVerified": true
   },
   "146": {
-    "name": "Warm Subject Flesh Geometry",
+    "name": "Gray Kangaroo",
+    "category": "Silhouette",
+    "isManuallyVerified": true
+  },
+  "147": {
+    "name": "Gray Kangaroo",
+    "category": "Silhouette",
+    "isManuallyVerified": true
+  },
+  "151": {
+    "name": "Christine",
+    "category": "Silhouette",
+    "isManuallyVerified": true
+  },
+  "152": {
+    "name": "Gray Kangaroo",
+    "category": "Silhouette",
+    "isManuallyVerified": true
+  },
+  "153": {
+    "name": "Echidna",
+    "category": "Silhouette",
+    "isManuallyVerified": true
+  },
+  "154": {
+    "name": "Christine",
+    "category": "Silhouette",
+    "isManuallyVerified": true
+  },
+  "160": {
+    "name": "Christine",
+    "category": "Silhouette",
+    "isManuallyVerified": true
+  },
+  "174": {
+    "name": "Charred Tree Trunk",
+    "category": "Silhouette",
+    "isManuallyVerified": true
+  },
+  "180": {
+    "name": "Charred Tree Trunk",
+    "category": "Silhouette",
+    "isManuallyVerified": true
+  },
+  "181": {
+    "name": "Charred Tree Trunk",
+    "category": "Silhouette",
+    "isManuallyVerified": true
+  },
+  "187": {
+    "name": "Banksia flower",
     "category": "Silhouette",
     "isManuallyVerified": true
   },
   "194": {
-    "name": "Warm Sunlit Highlight",
-    "category": "ColorSpace",
+    "name": "Banksia flower",
+    "category": "Silhouette",
+    "isManuallyVerified": true
+  },
+  "195": {
+    "name": "Echidna",
+    "category": "Silhouette",
+    "isManuallyVerified": true
+  },
+  "196": {
+    "name": "Bird",
+    "category": "Silhouette",
+    "isManuallyVerified": true
+  },
+  "201": {
+    "name": "Banksia flower",
+    "category": "Silhouette",
     "isManuallyVerified": true
   },
   "215": {
     "name": "Risto Ikonen (Facial Alignment Structure)",
+    "category": "Silhouette",
+    "isManuallyVerified": true
+  },
+  "222": {
+    "name": "Charred Tree Trunk",
+    "category": "Silhouette",
+    "isManuallyVerified": true
+  },
+  "223": {
+    "name": "Charred Tree Trunk",
+    "category": "Silhouette",
+    "isManuallyVerified": true
+  },
+  "229": {
+    "name": "Charred Tree Trunk",
+    "category": "Silhouette",
+    "isManuallyVerified": true
+  },
+  "230": {
+    "name": "Charred Tree Trunk",
     "category": "Silhouette",
     "isManuallyVerified": true
   },

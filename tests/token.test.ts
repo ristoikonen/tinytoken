@@ -462,10 +462,24 @@ describe("TinyToken GF(2^8) + VQ + SHARK/SNARK Pipeline", () => {
     expect(customTrait?.name).toBe("Custom Drone Target");
     expect(customTrait?.isManuallyVerified).toBe(true);
 
+    // Teach object bounding box annotation
+    const teachResult = await registry.teachObject(
+      "tok_test_01",
+      "Red Kangaroo Juvenile",
+      "Silhouette",
+      [0.2, 0.3, 0.4, 0.5],
+      [108, 132],
+    );
+    expect(teachResult.taughtCentroids).toEqual([108, 132]);
+    expect(teachResult.annotation.label).toBe("Red Kangaroo Juvenile");
+
+    const annotations = await registry.getObjectAnnotations();
+    expect(annotations.some((a) => a.label === "Red Kangaroo Juvenile")).toBe(true);
+
     // Clean up test file if created
     const testFile = Bun.file("./data/test_manual_token_registry.json");
     if (await testFile.exists()) {
-      await Bun.write("./data/test_manual_token_registry.json", "");
+      await Bun.write("./data/test_manual_token_registry.json", "{}");
     }
   });
 });
