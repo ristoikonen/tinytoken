@@ -88,7 +88,8 @@ export interface AbstractObjectRecipe {
   dinoPrototypeVector?: number[];               // 384-dim normalized prototype vector
   source: LearningSource;
   confidence: number;          // 1.0 (verified), 0.3 (suggestion)
-  version: number;             // Increments on each observation/consolidation
+  version: number;             // Model generation: increments ONLY on material distribution drift (>10%) or consolidation
+  observationCount: number;    // Running count of concrete sightings across all tokens (avoids eager version inflation)
   createdAt: string;           // ISO 8601 UTC
   updatedAt: string;           // ISO 8601 UTC
 }

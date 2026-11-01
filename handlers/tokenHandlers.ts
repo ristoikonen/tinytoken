@@ -16,7 +16,11 @@ import {
 } from "../utils/response";
 import { decodeBinaryToken } from "../utils/tokenCodec";
 import { VQ_CODEBOOK, vqGridToHex } from "../utils/vqCodebook";
-import { visualTraitRegistry } from "../utils/visualTraitRegistry";
+import {
+  DEFAULT_OBSERVATION_LATITUDE,
+  DEFAULT_OBSERVATION_LONGITUDE,
+  visualTraitRegistry,
+} from "../utils/visualTraitRegistry";
 import type { VqInvertedIndexEngine } from "../utils/vqInvertedIndex";
 import type { CompressedTokenSearchEngine } from "../utils/zipEngine";
 
@@ -145,6 +149,72 @@ export class TokenApiHandlers {
       headerHexPreview += (rawToken[i] ?? 0).toString(16).padStart(2, "0").toUpperCase() + " ";
     }
 
+    // Retrieve object registry intelligence associated with this token
+    const evidenceList = await visualTraitRegistry.getEvidence();
+    const tokenEvidence = evidenceList.filter(
+      (e) =>
+        e.observedTokenId === id ||
+        e.observedTokenId === decoded.id ||
+        (indexMeta && (e.observedTokenId === indexMeta.id || e.observedTokenId === indexMeta.filename)),
+    );
+    const recipes = await visualTraitRegistry.getRecipes();
+
+    const objectAnnotations = tokenEvidence.map((e) => {
+      const r = recipes.find(
+        (rcp) => rcp.recipeId === e.recipeId || rcp.label.toLowerCase() === e.label.toLowerCase(),
+      );
+      return {
+        id: e.evidenceId,
+        recipeId: e.recipeId || r?.recipeId || `rcp_${e.label.toLowerCase().replace(/[^a-z0-9]/g, "_")}`,
+        label: e.label,
+        category: e.category,
+        boundingBox: e.boundingBox,
+        centroidIds: e.observedCentroids,
+        source: e.source || r?.source || "human_verified",
+        confidence: e.confidence ?? r?.confidence ?? 1.0,
+        version: r?.version ?? 1,
+        observationCount: r?.observationCount ?? 1,
+        createdAt: r?.createdAt || e.utcTimestamp || e.observedAt,
+        updatedAt: r?.updatedAt || e.utcTimestamp || e.observedAt,
+        latitude: e.latitude,
+        longitude: e.longitude,
+      };
+    });
+
+    let primaryObjectLabel: string | null = null;
+    if (objectAnnotations.length > 0) {
+      primaryObjectLabel = `${objectAnnotations[0]!.label} · ${objectAnnotations[0]!.category}`;
+    } else {
+      // 1. Level 2/3: Try zero-shot abstract object recipe matching against VQ grid
+      const matched = visualTraitRegistry.matchObjectRecipe(decoded.vqIndices, recipes, 0.20);
+      if (matched) {
+        primaryObjectLabel = `${matched.recipe.label} · ${matched.recipe.category}`;
+        objectAnnotations.push({
+          id: `inferred_${matched.recipe.recipeId}`,
+          recipeId: matched.recipe.recipeId,
+          label: matched.recipe.label,
+          category: matched.recipe.category,
+          boundingBox: [0, 0, 1, 1],
+          centroidIds: Object.keys(matched.recipe.dominantCentroidDist).map(Number),
+          source: "recipe_inferred",
+          confidence: matched.similarity,
+          version: matched.recipe.version,
+          observationCount: matched.recipe.observationCount ?? 1,
+          createdAt: matched.recipe.createdAt,
+          updatedAt: matched.recipe.updatedAt,
+          latitude: DEFAULT_OBSERVATION_LATITUDE,
+          longitude: DEFAULT_OBSERVATION_LONGITUDE,
+        });
+      } else {
+        // 2. Level 1: Try dominant verified trait matching from manual registry
+        const evaluatedTraits = visualTraitRegistry.evaluateGrid(decoded.vqIndices);
+        const verifiedTrait = evaluatedTraits.find((tr) => tr.isManuallyVerified && tr.percentage >= 5.0);
+        if (verifiedTrait) {
+          primaryObjectLabel = `${verifiedTrait.name} · ${verifiedTrait.category}`;
+        }
+      }
+    }
+
     return jsonResponse({
       success: true,
       telemetry: {
@@ -189,6 +259,8 @@ export class TokenApiHandlers {
         byteMap: decoded.byteMap,
         traits: visualTraitRegistry.evaluateGrid(decoded.vqIndices),
         headerHexPreview: headerHexPreview.trim(),
+        objectAnnotations,
+        primaryObjectLabel,
       },
     });
   }

@@ -186,12 +186,13 @@ export class VisualTraitRegistry {
             source: "human_verified",
             confidence: 1.0,
             version: 1,
+            observationCount: 1,
             createdAt: item.createdAt || new Date().toISOString(),
             updatedAt: item.createdAt || new Date().toISOString(),
           });
         } else {
           const rec = recipeMap.get(recipeId)!;
-          rec.version += 1;
+          rec.observationCount = (rec.observationCount || 1) + 1;
           rec.dominantCentroidDist = this.blendDistributions(rec.dominantCentroidDist, dist);
           rec.updatedAt = item.createdAt || new Date().toISOString();
         }
@@ -331,10 +332,15 @@ export class VisualTraitRegistry {
 
     if (recipeIndex >= 0) {
       const existing = recipes[recipeIndex]!;
+      const blendedDist = this.blendDistributions(existing.dominantCentroidDist, currentDist);
+      const drift = this.computeDistributionDrift(existing.dominantCentroidDist, blendedDist);
+      const isMaterialShift = drift > 0.10 || existing.category !== category;
+
       recipe = {
         ...existing,
-        version: existing.version + 1,
-        dominantCentroidDist: this.blendDistributions(existing.dominantCentroidDist, currentDist),
+        version: isMaterialShift ? existing.version + 1 : existing.version,
+        observationCount: (existing.observationCount || 1) + 1,
+        dominantCentroidDist: blendedDist,
         source,
         confidence,
         updatedAt: utcTimestamp,
@@ -350,6 +356,7 @@ export class VisualTraitRegistry {
         source,
         confidence,
         version: 1,
+        observationCount: 1,
         createdAt: utcTimestamp,
         updatedAt: utcTimestamp,
       };
@@ -581,6 +588,59 @@ export class VisualTraitRegistry {
       }
     }
     return blended;
+  }
+
+  /**
+   * Computes the Total Variation Distance (drift) between two normalized centroid distributions (0.0 to 1.0).
+   */
+  public computeDistributionDrift(
+    distA: Record<number, number>,
+    distB: Record<number, number>,
+  ): number {
+    const keys = new Set([...Object.keys(distA).map(Number), ...Object.keys(distB).map(Number)]);
+    let sumAbsDiff = 0;
+    for (const k of keys) {
+      const a = distA[k] ?? 0;
+      const b = distB[k] ?? 0;
+      sumAbsDiff += Math.abs(a - b);
+    }
+    return sumAbsDiff / 2;
+  }
+
+  /**
+   * Matches a token's VQ indices against known abstract object recipes.
+   * Returns the best matching recipe if similarity exceeds minSimilarity (default 0.20).
+   */
+  public matchObjectRecipe(
+    vqIndices: Uint8Array,
+    recipes: AbstractObjectRecipe[],
+    minSimilarity = 0.20,
+  ): { recipe: AbstractObjectRecipe; similarity: number } | null {
+    if (!vqIndices || vqIndices.length === 0 || recipes.length === 0) return null;
+    const tokenDist = this.computeCentroidDistribution(Array.from(vqIndices));
+
+    let bestRecipe: AbstractObjectRecipe | null = null;
+    let highestScore = 0;
+
+    for (const recipe of recipes) {
+      if (!recipe.dominantCentroidDist) continue;
+      let overlap = 0;
+      for (const [cidStr, weight] of Object.entries(recipe.dominantCentroidDist)) {
+        const cid = Number(cidStr);
+        const tokenWeight = tokenDist[cid] ?? 0;
+        overlap += Math.min(weight, tokenWeight);
+      }
+
+      if (overlap > highestScore) {
+        highestScore = overlap;
+        bestRecipe = recipe;
+      }
+    }
+
+    if (bestRecipe && highestScore >= minSimilarity) {
+      return { recipe: bestRecipe, similarity: Math.round(highestScore * 100) / 100 };
+    }
+    return null;
   }
 }
 

@@ -156,14 +156,33 @@
     /* Search & Action Bar */
     .toolbar {
       display: flex;
-      flex-wrap: wrap;
-      gap: 0.5rem;
+      flex-direction: column;
+      gap: 0.4rem;
       margin-bottom: 0.75rem;
     }
 
-    .search-input {
+    .toolbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      width: 100%;
+    }
+
+    .toolbar-actions .btn {
       flex: 1;
-      min-width: 200px;
+      justify-content: center;
+      text-align: center;
+      white-space: nowrap;
+      padding: 0.38rem 0.6rem;
+    }
+
+    .toolbar-actions #btn-clear-sim {
+      flex: 0 0 auto;
+      min-width: 58px;
+    }
+
+    .search-input {
+      width: 100%;
       background: rgba(10, 16, 30, 0.85);
       border: 1px solid var(--border-subtle);
       color: var(--text-high);
@@ -525,6 +544,27 @@
       font-family: inherit;
     }
 
+    .existing-label-pill {
+      background: rgba(56, 189, 248, 0.15);
+      border: 1px solid rgba(56, 189, 248, 0.45);
+      border-radius: 4px;
+      padding: 2px 7px;
+      color: #bae6fd;
+      cursor: pointer;
+      font-size: 0.68rem;
+      transition: all 0.12s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+    }
+
+    .existing-label-pill:hover {
+      background: rgba(56, 189, 248, 0.32);
+      border-color: var(--cyan-bright);
+      color: #ffffff;
+      transform: translateY(-1px);
+    }
+
     /* Semantic Visual Traits Section */
     .traits-box {
       background: linear-gradient(170deg, rgba(20, 30, 52, 0.7) 0%, rgba(10, 15, 28, 0.85) 100%);
@@ -718,16 +758,18 @@
           placeholder="Search 25KB tokens by OCR text, filename, or ID..."
           autocomplete="off"
         />
-        <button id="btn-clear-sim" class="btn btn-action-cyan mono" style="display:none;" title="Exit VQ ADC similarity mode">
-          × Clear Similar
-        </button>
-        <button id="btn-rebuild" class="btn mono" title="Re-scan and rebuild ./data/tokens.zip">
-          🔄 Re-Index Assets
-        </button>
-        <label id="btn-upload-archive" class="btn mono" title="Directly ingest and swap tokens.zip archive (Learnings preserved)" style="cursor:pointer;display:inline-flex;align-items:center;gap:0.25rem;">
-          📦 Ingest Archive
-          <input type="file" id="archive-file-input" accept=".zip" style="display:none;" />
-        </label>
+        <div class="toolbar-actions">
+          <button id="btn-clear-sim" class="btn mono" title="Clear search query or similarity filter">
+            Clear
+          </button>
+          <button id="btn-rebuild" class="btn mono" title="Re-scan and rebuild ./data/tokens.zip">
+            🔄 Re-Index
+          </button>
+          <label id="btn-upload-archive" class="btn mono" title="Directly ingest and swap tokens.zip archive (Learnings preserved)" style="cursor:pointer;display:inline-flex;align-items:center;">
+            📦 Ingest Archive
+            <input type="file" id="archive-file-input" accept=".zip" style="display:none;" />
+          </label>
+        </div>
       </div>
 
       <div id="token-grid" class="token-grid"></div>
@@ -752,6 +794,7 @@
 
       <!-- Expanded Luminous Viewer Stage -->
       <div id="viewer-stage" class="viewer-stage" draggable="false" ondragstart="return false;">
+        <div id="stage-existing-labels" class="mono" style="display:none;position:absolute;top:8px;left:8px;right:8px;z-index:30;background:rgba(9,14,26,0.92);border:1px solid rgba(56,189,248,0.4);border-radius:6px;padding:6px 10px;box-shadow:0 4px 16px rgba(0,0,0,0.6);backdrop-filter:blur(6px);align-items:center;flex-wrap:wrap;gap:6px;font-size:0.7rem;"></div>
         <img id="viewer-img" class="viewer-media" alt="Token Preview" draggable="false" ondragstart="return false;" style="display:none;" />
         <iframe id="viewer-pdf" title="Document Source Viewer" style="width:100%;height:100%;border:none;display:none;"></iframe>
         <canvas id="viewer-vq-canvas" width="16" height="16" class="viewer-media pixelated" draggable="false" ondragstart="return false;" style="width:360px;height:360px;display:none;"></canvas>
@@ -777,11 +820,12 @@
                 ✓ Teach
               </button>
             </div>
+            <div id="popover-existing-labels" style="display:none;margin-top:0.4rem;font-size:0.62rem;border-top:1px solid rgba(56,189,248,0.2);padding-top:0.35rem;color:var(--text-medium);"></div>
           </div>
         </div>
         <div class="viewer-hud mono">
           <span id="viewer-dim-badge" class="hud-badge">-- × --</span>
-          <span id="viewer-slice-badge" class="hud-badge">SLICE: -- ms</span>
+          <span id="viewer-slice-badge" class="hud-badge">-- · --</span>
         </div>
       </div>
 
@@ -864,7 +908,6 @@
   </main>
 
   <script>
-    let codebook = [];
     let currentHits = [];
     let selectedTokenId = null;
     let currentTokenDetail = null;
@@ -895,14 +938,42 @@
       })[c]);
     }
 
+    function generateDefaultCodebook() {
+      const cb = [];
+      const rLevels = [12, 60, 108, 156, 204, 248];
+      const gLevels = [10, 48, 88, 128, 168, 208, 248];
+      const bLevels = [16, 64, 112, 160, 208, 250];
+      for (const r of rLevels) {
+        for (const g of gLevels) {
+          for (const b of bLevels) {
+            cb.push({ r, g, b });
+          }
+        }
+      }
+      cb.push({ r: 0, g: 0, b: 0 });
+      cb.push({ r: 85, g: 85, b: 85 });
+      cb.push({ r: 170, g: 170, b: 170 });
+      cb.push({ r: 255, g: 255, b: 255 });
+      return cb;
+    }
+
+    let codebook = generateDefaultCodebook();
+
     function renderVqHexToCanvas(vqHex, canvas) {
-      if (!canvas || !vqHex || codebook.length === 0) return;
+      if (!canvas) return;
+      if (!codebook || codebook.length === 0) codebook = generateDefaultCodebook();
       const ctx = canvas.getContext('2d');
+      if (!ctx) return;
       const imgData = ctx.createImageData(16, 16);
       const data = imgData.data;
+      const hex = typeof vqHex === 'string' ? vqHex : '';
       for (let i = 0; i < 256; i++) {
-        const idx = parseInt(vqHex.slice(i * 2, i * 2 + 2), 16) || 0;
-        const c = codebook[idx] || { r: 13, g: 15, b: 22 };
+        let idx = 0;
+        if (hex.length >= (i + 1) * 2) {
+          idx = parseInt(hex.slice(i * 2, i * 2 + 2), 16);
+          if (Number.isNaN(idx)) idx = 0;
+        }
+        const c = codebook[idx] || codebook[idx % codebook.length] || { r: 120, g: 120, b: 120 };
         const p = i * 4;
         data[p] = c.r;
         data[p + 1] = c.g;
@@ -913,12 +984,22 @@
     }
 
     async function loadStatsAndCodebook() {
-      const [statsRes, cbRes] = await Promise.all([
-        fetch('/api/stats').then(r => r.json()),
-        codebook.length ? Promise.resolve({ centroids: codebook }) : fetch('/api/codebook').then(r => r.json())
-      ]);
+      try {
+        const [statsRes, cbRes] = await Promise.all([
+          fetch('/api/stats').then(r => r.json()).catch(() => null),
+          fetch('/api/codebook').then(r => r.json()).catch(() => null)
+        ]);
 
-      if (cbRes.centroids) codebook = cbRes.centroids;
+        if (cbRes && Array.isArray(cbRes.centroids) && cbRes.centroids.length === 256) {
+          codebook = cbRes.centroids;
+          renderGrid();
+          if (currentTokenDetail) {
+            renderVqHexToCanvas(currentTokenDetail.vqHex, elViewerCanvas);
+          }
+        }
+      } catch (err) {
+        console.warn('loadStatsAndCodebook error:', err);
+      }
     }
 
     async function runSearch() {
@@ -989,11 +1070,23 @@
       const t = res.token;
       const tel = res.telemetry;
 
-      // Update Viewer HUD
+      // Update Viewer HUD - Display object registry intelligence: label · category
       document.getElementById('viewer-dim-badge').textContent =
         `${t.width}×${t.height} • ${t.previewFormat} • ${(t.originalFileSize / 1024).toFixed(1)} KB`;
-      document.getElementById('viewer-slice-badge').textContent =
-        `SLICE: ${tel.sliceExtractTimeMs}ms | VERIFY: ${tel.rsAndSnarkVerifyTimeMs}ms`;
+
+      const objBadge = document.getElementById('viewer-slice-badge');
+      const primaryLabel = t.primaryObjectLabel || (t.objectAnnotations && t.objectAnnotations.length > 0 ? `${t.objectAnnotations[0].label} · ${t.objectAnnotations[0].category}` : null);
+      if (primaryLabel) {
+        objBadge.textContent = primaryLabel;
+        objBadge.style.color = 'var(--cyan-bright)';
+        objBadge.style.borderColor = 'rgba(56, 189, 248, 0.5)';
+        objBadge.title = `Object Registry: ${primaryLabel}`;
+      } else {
+        objBadge.textContent = 'Unassigned · Object';
+        objBadge.style.color = 'var(--text-dim)';
+        objBadge.style.borderColor = 'rgba(255, 255, 255, 0.12)';
+        objBadge.title = 'No object registry label assigned to this token yet';
+      }
 
       // Update 25 KB Byte-Map Bar
       const bm = t.byteMap;
@@ -1043,8 +1136,33 @@
       // Update Semantic Visual Traits
       renderTraits(t.traits || []);
 
-      document.getElementById('ocr-readout').textContent =
-        `${t.metadata.ocrText}\n\n[Header Hex 0..63]: ${t.headerHexPreview}`;
+      // Extracted OCR & Object Registry Metadata (Header hex omitted)
+      const objs = t.objectAnnotations || [];
+      let objSection = '';
+      if (objs.length > 0) {
+        objSection = objs.map((obj, i) => {
+          const confPct = Math.round((obj.confidence ?? 1.0) * 100);
+          return `[Object Registry #${i + 1}]
+Recipe ID:   ${obj.recipeId || '—'}
+Label:       ${obj.label} · ${obj.category}
+Model Ver:   v${obj.version ?? 1} (${obj.observationCount ?? 1} sighting${(obj.observationCount ?? 1) === 1 ? '' : 's'})
+Source:      ${obj.source || 'human_verified'}
+Confidence:  ${obj.confidence ?? 1.0} (${confPct}%)
+Created At:  ${obj.createdAt || '—'}
+Updated At:  ${obj.updatedAt || '—'}`;
+        }).join('\n\n');
+      } else {
+        objSection = `[Object Registry]
+No object recipe associated with this token yet. Click [✎ Label] to teach.`;
+      }
+
+      const cleanOcr = t.metadata?.ocrText ? `[Extracted OCR & Content]\n${t.metadata.ocrText}` : '';
+      document.getElementById('ocr-readout').textContent = `${objSection}${cleanOcr ? '\n\n' + cleanOcr : ''}`;
+
+      // Refresh existing labels banner if label mode is currently active
+      if (isLabelMode) {
+        toggleLabelMode(true);
+      }
 
       updateViewerStage();
     }
@@ -1097,10 +1215,21 @@
           elViewerImg.src = currentTokenDetail.metadata.sourcePath;
         }
       } else {
-        elViewerCanvas.style.display = 'none';
+        // PREVIEW mode with failover to VQ Canvas so viewer is NEVER black
         elViewerPdf.style.display = 'none';
-        elViewerImg.style.display = 'block';
-        elViewerImg.src = currentTokenDetail.previewUrl;
+        const hasRaster = (currentTokenDetail.byteMap?.section3PreviewBytes || 0) > 0;
+        if (!hasRaster) {
+          elViewerImg.style.display = 'none';
+          elViewerCanvas.style.display = 'block';
+        } else {
+          elViewerCanvas.style.display = 'none';
+          elViewerImg.style.display = 'block';
+          elViewerImg.onerror = () => {
+            elViewerImg.style.display = 'none';
+            elViewerCanvas.style.display = 'block';
+          };
+          elViewerImg.src = currentTokenDetail.previewUrl;
+        }
       }
       applyZoomTransform();
     }
@@ -1152,11 +1281,31 @@
     const elBtnClosePopover = document.getElementById('btn-close-popover');
     const elLabelInfo = document.getElementById('label-covered-info');
 
+    window.prefillLabel = (name, cat) => {
+      if (elInputLabelName) elInputLabelName.value = name;
+      if (elSelectLabelCat && cat) elSelectLabelCat.value = cat;
+      if (elInputLabelName) elInputLabelName.focus();
+    };
+
     function toggleLabelMode(force) {
       isLabelMode = force !== undefined ? force : !isLabelMode;
       elBtnLabel.classList.toggle('btn-active', isLabelMode);
       stage.style.cursor = isLabelMode ? 'crosshair' : 'grab';
-      if (!isLabelMode) {
+
+      const existingBanner = document.getElementById('stage-existing-labels');
+      if (isLabelMode) {
+        const objs = currentTokenDetail?.objectAnnotations || [];
+        if (objs.length > 0) {
+          const chips = objs.map(a =>
+            `<span class="existing-label-pill" onclick="prefillLabel('${escapeHtml(a.label)}', '${escapeHtml(a.category)}')">🏷️ ${escapeHtml(a.label)} · ${escapeHtml(a.category)}</span>`
+          ).join(' ');
+          existingBanner.innerHTML = `<span style="color:var(--cyan-bright);font-weight:600;display:inline-flex;align-items:center;gap:4px;">Existing Labels:</span> ${chips}`;
+        } else {
+          existingBanner.innerHTML = `<span style="color:var(--text-low);">No existing labels on this token. Drag or click on image to define bounding box.</span>`;
+        }
+        existingBanner.style.display = 'flex';
+      } else {
+        if (existingBanner) existingBanner.style.display = 'none';
         hideLabelPopover();
       }
     }
@@ -1199,6 +1348,7 @@
           renderTraits(res.traits);
           hideLabelPopover();
           toggleLabelMode(false);
+          await selectToken(selectedTokenId);
         } else {
           alert(res.error || 'Failed to teach object');
         }
@@ -1333,6 +1483,19 @@
 
           elLabelInfo.textContent = `Region: ${((cellCount / 256) * 100).toFixed(1)}% of grid • ${currentSelectedCentroids.length} VQ Centroid(s)`;
           elInputLabelName.value = '';
+
+          const popExisting = document.getElementById('popover-existing-labels');
+          const objs = currentTokenDetail?.objectAnnotations || [];
+          if (objs.length > 0) {
+            const chips = objs.map(a =>
+              `<span class="existing-label-pill" onclick="prefillLabel('${escapeHtml(a.label)}', '${escapeHtml(a.category)}')">🏷️ ${escapeHtml(a.label)} · ${escapeHtml(a.category)}</span>`
+            ).join(' ');
+            popExisting.innerHTML = `<span style="color:var(--cyan-bright);font-weight:600;display:inline-flex;align-items:center;gap:3px;margin-bottom:2px;">Existing:</span> ${chips}`;
+            popExisting.style.display = 'block';
+          } else {
+            popExisting.style.display = 'none';
+          }
+
           setTimeout(() => elInputLabelName.focus(), 30);
         } else {
           hideLabelPopover();
@@ -1348,14 +1511,18 @@
     document.getElementById('btn-find-similar').onclick = () => {
       if (!selectedTokenId) return;
       activeSimilarTo = selectedTokenId;
-      document.getElementById('btn-clear-sim').style.display = 'inline-flex';
-      document.getElementById('btn-clear-sim').textContent = `× Clear (${selectedTokenId.slice(0, 10)})`;
+      const clearBtn = document.getElementById('btn-clear-sim');
+      clearBtn.classList.add('btn-active');
+      clearBtn.title = `Similarity filter active on ${selectedTokenId}. Click to clear.`;
       runSearch();
     };
 
     document.getElementById('btn-clear-sim').onclick = () => {
       activeSimilarTo = '';
-      document.getElementById('btn-clear-sim').style.display = 'none';
+      elSearch.value = '';
+      const clearBtn = document.getElementById('btn-clear-sim');
+      clearBtn.classList.remove('btn-active');
+      clearBtn.title = 'Clear search query or similarity filter';
       runSearch();
     };
 

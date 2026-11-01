@@ -46,7 +46,8 @@ export interface AbstractObjectRecipe {
   boundingBoxAspectRatio?: number; // Normalized width / height ratio
   source: LearningSource;
   confidence: number; // 1.0 for human_verified, 0.3 for suggestion
-  version: number; // Starts at 1, increments when recipe is updated/consolidated
+  version: number; // Model generation: increments on material shift or consolidation
+  observationCount: number; // Running count of concrete sightings across all tokens
   createdAt: string;
   updatedAt: string;
 }

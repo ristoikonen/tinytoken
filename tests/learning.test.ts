@@ -128,6 +128,18 @@ describe("Persistent Knowledge Layer & Transactional Archive Ingestion", () => {
     expect((teachRes2.recipe as any).tokenId).toBeUndefined();
     expect(teachRes2.evidence.observedTokenId).toBe("tok_beta");
 
+    // 3b. Repeated observation without material distribution drift increments observationCount without inflating version
+    const teachRes3 = await visualRegistry.teachObject(
+      "tok_gamma",
+      "Charred Pine Bark",
+      "Texture",
+      [0.2, 0.2, 0.4, 0.4],
+      [222, 180],
+      { confidence: 1.0 },
+    );
+    expect(teachRes3.recipe.version).toBe(2); // Stable model version (not eagerly inflated)
+    expect(teachRes3.recipe.observationCount).toBe(3); // Tracks concrete sightings accurately
+
     // 4. Query recipes and evidence
     const recipes = await visualRegistry.getRecipes();
     expect(recipes.length).toBeGreaterThanOrEqual(1);
