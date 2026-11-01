@@ -64,6 +64,7 @@ export class TokenApiHandlers {
       dinoRamFootprintBytes: dinoRamBytes,
       bootIndexTimeMs: this.engine.lastBootIndexMs,
       codebookSize: VQ_CODEBOOK.length,
+      useMyGooglePhotos: Bun.env.USE_MY_GOOGLE_PHOTOS === "true",
     });
   }
 

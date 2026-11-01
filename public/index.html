@@ -676,41 +676,99 @@
       color: var(--text-low);
     }
 
-    /* Luminous Telemetry KV Readout Grid */
-    .kv-grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 0.4rem;
-      font-size: 0.7rem;
-    }
-
-    .kv-item {
-      background: linear-gradient(160deg, rgba(22, 33, 56, 0.55) 0%, rgba(12, 18, 32, 0.75) 100%);
-      border: 1px solid rgba(56, 189, 248, 0.12);
-      border-radius: 6px;
-      padding: 0.38rem 0.55rem;
-      transition: all 0.14s ease;
-    }
-
-    .kv-item:hover {
-      border-color: rgba(56, 189, 248, 0.3);
-      background: linear-gradient(160deg, rgba(26, 40, 68, 0.65) 0%, rgba(14, 22, 38, 0.85) 100%);
-    }
-
-    .kv-label {
-      font-size: 0.58rem;
-      color: var(--text-low);
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-    }
-
-    .kv-val {
-      color: var(--text-high);
-      font-weight: 500;
+    /* Tactical Terminal Window Style Debug Console */
+    .terminal-debug-window {
+      background: #060913;
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      border-radius: 8px;
       overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      margin-top: 1px;
+      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.65), inset 0 0 12px rgba(56, 189, 248, 0.04);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .terminal-header {
+      background: linear-gradient(90deg, rgba(15, 23, 42, 0.95) 0%, rgba(9, 14, 26, 0.98) 100%);
+      padding: 0.35rem 0.6rem;
+      border-bottom: 1px solid rgba(56, 189, 248, 0.15);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      user-select: none;
+    }
+
+    .terminal-dots {
+      display: flex;
+      gap: 5px;
+      align-items: center;
+    }
+
+    .terminal-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .terminal-dot.red { background: #ef4444; box-shadow: 0 0 5px rgba(239, 68, 68, 0.6); }
+    .terminal-dot.yellow { background: #eab308; box-shadow: 0 0 5px rgba(234, 179, 8, 0.6); }
+    .terminal-dot.green { background: #10b981; box-shadow: 0 0 5px rgba(16, 185, 129, 0.6); }
+
+    .terminal-title {
+      font-size: 0.62rem;
+      letter-spacing: 0.05em;
+      color: var(--cyan-bright);
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .terminal-clear-btn {
+      background: transparent;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: var(--text-dim);
+      font-size: 0.58rem;
+      cursor: pointer;
+      padding: 1px 5px;
+      border-radius: 3px;
+    }
+    .terminal-clear-btn:hover {
+      color: var(--text-high);
+      background: rgba(255, 255, 255, 0.08);
+      border-color: var(--cyan-bright);
+    }
+
+    .terminal-body {
+      padding: 0.5rem 0.6rem;
+      height: 135px;
+      max-height: 165px;
+      overflow-y: auto;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.63rem;
+      line-height: 1.45;
+      color: #94a3b8;
+      background: radial-gradient(circle at 50% 0%, rgba(56, 189, 248, 0.03) 0%, transparent 70%), #060913;
+    }
+
+    .terminal-line {
+      margin-bottom: 2px;
+      word-break: break-word;
+      white-space: pre-wrap;
+    }
+    .terminal-line.info { color: #94a3b8; }
+    .terminal-line.success { color: var(--status-emerald); }
+    .terminal-line.cyan { color: var(--cyan-bright); }
+    .terminal-line.warning { color: #f59e0b; }
+    .terminal-line.error { color: #f87171; }
+    .terminal-prompt {
+      color: var(--cyan-bright);
+      font-weight: 600;
+      margin-right: 5px;
+    }
+    .terminal-time {
+      color: var(--text-dim);
+      margin-right: 6px;
+      font-size: 0.56rem;
     }
 
     /* OCR Box */
@@ -721,7 +779,7 @@
       padding: 0.55rem;
       font-size: 0.7rem;
       color: var(--text-medium);
-      max-height: 85px;
+      max-height: 120px;
       overflow-y: auto;
       line-height: 1.4;
     }
@@ -836,6 +894,9 @@
         <button id="btn-homomorphic" class="btn mono" title="Apply blind GF(2^8) linear state mask directly on raw 25KB token slice">
           ⊕ GF(2⁸) Mask
         </button>
+        <button id="btn-index-google-photos" class="btn btn-action-emerald mono" style="display:none;" title="Fetch and index 50 Google Photos into TinyToken">
+          Index 50 Google Photos
+        </button>
       </div>
 
       <!-- Semantic Visual Traits (Human-in-the-Loop Explainable Registry) -->
@@ -869,31 +930,21 @@
         </div>
       </div>
 
-      <!-- Cryptographic & Galois Telemetry Readout -->
-      <div class="kv-grid mono">
-        <div class="kv-item">
-          <div class="kv-label">Token ID / Page</div>
-          <div id="kv-id" class="kv-val">—</div>
+      <!-- Tactical Terminal Window Style Debug Console -->
+      <div class="terminal-debug-window mono">
+        <div class="terminal-header">
+          <div class="terminal-dots">
+            <span class="terminal-dot red"></span>
+            <span class="terminal-dot yellow"></span>
+            <span class="terminal-dot green"></span>
+          </div>
+          <div class="terminal-title">
+            <span>SYS_DEBUG_CONSOLE • TTY1</span>
+          </div>
+          <button id="btn-clear-debug" class="terminal-clear-btn" type="button" title="Clear console">CLR</button>
         </div>
-        <div class="kv-item">
-          <div class="kv-label">GF(2⁸) RS Parity (64B)</div>
-          <div id="kv-rs" class="kv-val" style="color:var(--status-emerald);">—</div>
-        </div>
-        <div class="kv-item">
-          <div class="kv-label">Ed25519 Attestation</div>
-          <div id="kv-snark" class="kv-val" style="color:var(--cyan-bright);">—</div>
-        </div>
-        <div class="kv-item">
-          <div class="kv-label">ZIP Slice / CRC32</div>
-          <div id="kv-zip" class="kv-val">—</div>
-        </div>
-        <div class="kv-item">
-          <div class="kv-label">SHA-256 Merkle Root</div>
-          <div id="kv-merkle" class="kv-val">—</div>
-        </div>
-        <div class="kv-item">
-          <div class="kv-label">GF(2⁸) State Tag</div>
-          <div id="kv-homo" class="kv-val">—</div>
+        <div id="terminal-debug-log" class="terminal-body">
+          <div class="terminal-line cyan"><span class="terminal-time">SYS</span>TinyToken GF(2⁸) runtime active • PID 3000</div>
         </div>
       </div>
 
@@ -902,7 +953,9 @@
           <div class="kv-label mono" style="margin-bottom:0;">Extracted OCR & Metadata</div>
           <span id="ocr-timestamp" class="mono" style="font-size:0.65rem;color:var(--cyan-bright);font-weight:500;"></span>
         </div>
-        <div id="ocr-readout" class="ocr-box mono">Select a token to inspect its 25 KB binary envelope, VQ 16×16 neural codebook, and provenance proof.</div>
+        <div id="ocr-readout" class="ocr-box mono">Token ID: tok_00007_MurramarangRuuLightlyEdited.jpg
+
+Select a token to inspect its 25 KB binary envelope, VQ 16×16 neural codebook, and provenance proof.</div>
       </div>
     </aside>
   </main>
@@ -936,6 +989,22 @@
         '"': '&quot;',
         "'": '&#39;'
       })[c]);
+    }
+
+    function logDebug(msg, type = 'info') {
+      const elLog = document.getElementById('terminal-debug-log');
+      if (!elLog) return;
+      const now = new Date();
+      const timeStr = now.toTimeString().split(' ')[0];
+      const lines = String(msg).split('\n');
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        const lineEl = document.createElement('div');
+        lineEl.className = `terminal-line ${type}`;
+        lineEl.innerHTML = `<span class="terminal-time">${timeStr}</span><span class="terminal-prompt">&gt;</span>${escapeHtml(line)}`;
+        elLog.appendChild(lineEl);
+      }
+      elLog.scrollTop = elLog.scrollHeight;
     }
 
     function generateDefaultCodebook() {
@@ -989,6 +1058,15 @@
           fetch('/api/stats').then(r => r.json()).catch(() => null),
           fetch('/api/codebook').then(r => r.json()).catch(() => null)
         ]);
+
+        if (statsRes) {
+          if (statsRes.useMyGooglePhotos) {
+            const btnGp = document.getElementById('btn-index-google-photos');
+            if (btnGp) btnGp.style.display = 'inline-flex';
+            logDebug('[ENV] USE_MY_GOOGLE_PHOTOS enabled. Ingestion button armed.', 'cyan');
+          }
+          logDebug(`[SYS] TinyToken active • ${statsRes.tokenCount || 0} tokens in RAM (${((statsRes.archiveSizeBytes || 0)/1024).toFixed(1)} KB)`);
+        }
 
         if (cbRes && Array.isArray(cbRes.centroids) && cbRes.centroids.length === 256) {
           codebook = cbRes.centroids;
@@ -1103,19 +1181,11 @@
       document.getElementById('lbl-s2').textContent = `${bm.section2MetaBytes}B`;
       document.getElementById('lbl-s3').textContent = `${bm.section3PreviewBytes}B`;
 
-      // Update Cryptographic & Galois Readouts
-      document.getElementById('kv-id').textContent = `${t.id} (P.${t.page}/${t.metadata.totalPages})`;
-      document.getElementById('kv-rs').textContent =
-        t.rsParityValid ? `VALID (${t.rsCorrectedErrors} healed)` : 'CORRUPTED';
-      document.getElementById('kv-snark').textContent =
-        t.snarkAttestation.valid
-          ? `ED25519 OK (${t.snarkAttestation.verifiedInUs}µs • ${(t.snarkAttestation.signerKeyIdHex || '').slice(0, 8)})`
-          : `INVALID (${t.snarkAttestation.failureReason || 'TAMPERED'})`;
-      document.getElementById('kv-zip').textContent =
-        `@${tel.zipDataOffset} • CRC ${tel.zipCrc32Hex}`;
-      document.getElementById('kv-merkle').textContent = t.merkleRootHex.slice(0, 24) + '…';
-      document.getElementById('kv-homo').textContent =
-        `${t.homomorphicTagHex} ${t.flagLabels.homomorphicMasked ? '(MASKED)' : '(CLEAN)'}`;
+      // Output Live Telemetry to Terminal Debug Area
+      logDebug(`[TOKEN] Selected ${t.id} (P.${t.page}/${t.metadata?.totalPages || 1})`, 'cyan');
+      logDebug(`[SNARK] ${t.snarkAttestation?.valid ? `Ed25519 Verified (${t.snarkAttestation.verifiedInUs}µs • key ${(t.snarkAttestation.signerKeyIdHex || '').slice(0, 8)})` : `INVALID (${t.snarkAttestation?.failureReason || 'TAMPERED'})`}`, t.snarkAttestation?.valid ? 'info' : 'error');
+      logDebug(`[RS-GF28] ${t.rsParityValid ? `Parity VALID (${t.rsCorrectedErrors} healed)` : 'Parity CORRUPTED'} | Merkle: ${(t.merkleRootHex || '').slice(0, 16)}…`, t.rsParityValid ? 'success' : 'error');
+      logDebug(`[ZIP] Slice @${tel.zipDataOffset} • CRC32: ${tel.zipCrc32Hex} • Tag: ${t.homomorphicTagHex} ${t.flagLabels?.homomorphicMasked ? '(MASKED)' : '(CLEAN)'}`);
 
       // Date / Time in Extracted OCR & Metadata
       const createdAt = t.metadata?.createdAt;
@@ -1157,8 +1227,9 @@ Updated At:  ${obj.updatedAt || '—'}`;
 No object recipe associated with this token yet. Click [✎ Label] to teach.`;
       }
 
+      const tokenIdHeader = `Token ID:    ${t.id}`;
       const cleanOcr = t.metadata?.ocrText ? `[Extracted OCR & Content]\n${t.metadata.ocrText}` : '';
-      document.getElementById('ocr-readout').textContent = `${objSection}${cleanOcr ? '\n\n' + cleanOcr : ''}`;
+      document.getElementById('ocr-readout').textContent = `${tokenIdHeader}\n\n${objSection}${cleanOcr ? '\n\n' + cleanOcr : ''}`;
 
       // Refresh existing labels banner if label mode is currently active
       if (isLabelMode) {
@@ -1530,6 +1601,7 @@ No object recipe associated with this token yet. Click [✎ Label] to teach.`;
     // Homomorphic GF(2^8) state mutation
     document.getElementById('btn-homomorphic').onclick = async () => {
       if (!selectedTokenId) return;
+      logDebug(`[GF28] Applying linear state mask to ${selectedTokenId}...`, 'cyan');
       await fetch(`/api/token/${encodeURIComponent(selectedTokenId)}/mutate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1537,6 +1609,48 @@ No object recipe associated with this token yet. Click [✎ Label] to teach.`;
       });
       await selectToken(selectedTokenId);
     };
+
+    // Google Photos Batch Ingestion
+    const elBtnGooglePhotos = document.getElementById('btn-index-google-photos');
+    if (elBtnGooglePhotos) {
+      elBtnGooglePhotos.onclick = async () => {
+        elBtnGooglePhotos.disabled = true;
+        const origText = elBtnGooglePhotos.textContent;
+        elBtnGooglePhotos.textContent = '⏳ Indexing...';
+        logDebug('[PHOTOS] Initiating Google Photos fetch (batch: 50)...', 'cyan');
+
+        try {
+          const res = await fetch('/api/photos/index-batch', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+          }).then(r => r.json());
+
+          if (res.success && Array.isArray(res.messages)) {
+            for (const msg of res.messages) {
+              logDebug(msg, 'success');
+            }
+          } else {
+            logDebug(`[ERROR] ${res.error || 'Failed to fetch Google Photos'}`, 'error');
+            if (Array.isArray(res.messages)) {
+              for (const m of res.messages) logDebug(m, 'warning');
+            }
+          }
+        } catch (err) {
+          logDebug(`[ERROR] Network failure: ${err.message || String(err)}`, 'error');
+        } finally {
+          elBtnGooglePhotos.disabled = false;
+          elBtnGooglePhotos.textContent = origText;
+        }
+      };
+    }
+
+    // Terminal Debug Clear
+    document.getElementById('btn-clear-debug')?.addEventListener('click', () => {
+      const elLog = document.getElementById('terminal-debug-log');
+      if (elLog) {
+        elLog.innerHTML = `<div class="terminal-line cyan"><span class="terminal-time">${new Date().toTimeString().split(' ')[0]}</span><span class="terminal-prompt">&gt;</span>Debug console cleared.</div>`;
+      }
+    });
 
     // Live Index Rebuild button (re-scans and rebuilds archive)
     async function triggerRebuild() {

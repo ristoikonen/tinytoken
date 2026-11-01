@@ -3,7 +3,8 @@ import { LearningHandlers } from "./handlers/learningHandlers";
 import { TokenApiHandlers } from "./handlers/tokenHandlers";
 import { ArchiveManager } from "./utils/archiveManager";
 import { Win11TokenPipeline } from "./utils/indexer";
-import { errorResponse } from "./utils/response";
+import { errorResponse, jsonResponse, verifySameOriginMutation } from "./utils/response";
+import { fetchAndIndexGooglePhotos } from "./utils/googlePhotos";
 import { visualTraitRegistry } from "./utils/visualTraitRegistry";
 import { VqInvertedIndexEngine } from "./utils/vqInvertedIndex";
 import { CompressedTokenSearchEngine } from "./utils/zipEngine";
@@ -141,6 +142,16 @@ const server = serve({
       },
       OPTIONS: (req: BunRequest) => corsResponse(req),
     },
+    "/api/photos/index-batch": {
+      POST: async (req: BunRequest) => {
+        await ensureInitialized();
+        const forbidden = verifySameOriginMutation(req);
+        if (forbidden) return forbidden;
+        const res = await fetchAndIndexGooglePhotos();
+        return jsonResponse(res);
+      },
+      OPTIONS: (req: BunRequest) => corsResponse(req),
+    },
   },
 
   async fetch(req: BunRequest) {
@@ -194,6 +205,13 @@ const server = serve({
       if (path === "/api/learning/evidence") {
         if (req.method === "POST") return learningHandlers.handleRecordEvidence(req);
         return learningHandlers.handleGetEvidence();
+      }
+
+      if (path === "/api/photos/index-batch" && req.method === "POST") {
+        const forbidden = verifySameOriginMutation(req);
+        if (forbidden) return forbidden;
+        const res = await fetchAndIndexGooglePhotos();
+        return jsonResponse(res);
       }
 
       if (path.startsWith("/api/token/")) {

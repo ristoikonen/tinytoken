@@ -1676,5 +1676,1341 @@
     "observedAt": "2026-11-01T06:48:27.288Z",
     "source": "human_verified",
     "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793515928645_ae6i9",
+    "recipeId": "rcp_ocean",
+    "label": "Ocean",
+    "category": "Silhouette",
+    "observedTokenId": "tok_00002_DSCN8245.JPG",
+    "boundingBox": [
+      0.30107427978647533,
+      0.48051632653061227,
+      0.355471029370448,
+      0.13673469387755102
+    ],
+    "observedCentroids": [
+      57,
+      56,
+      105,
+      63
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-01T06:52:08.643Z",
+    "observedAt": "2026-11-01T06:52:08.643Z",
+    "source": "human_verified",
+    "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793515937852_5kwzx",
+    "recipeId": "rcp_ocean",
+    "label": "Ocean",
+    "category": "Silhouette",
+    "observedTokenId": "tok_00003_DSCN8246.JPG",
+    "boundingBox": [
+      0.2900090337360334,
+      0.41725102040816325,
+      0.40388148084113157,
+      0.3673469387755102
+    ],
+    "observedCentroids": [
+      105,
+      63,
+      57,
+      111,
+      153
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-01T06:52:17.850Z",
+    "observedAt": "2026-11-01T06:52:17.850Z",
+    "source": "human_verified",
+    "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793515962396_ehu9c",
+    "recipeId": "rcp_ocean",
+    "label": "Ocean",
+    "category": "Silhouette",
+    "observedTokenId": "tok_00044_DSCN9132.JPG",
+    "boundingBox": [
+      0.46566981478679953,
+      0.3356183673469388,
+      0.30706057789976443,
+      0.17959183673469387
+    ],
+    "observedCentroids": [
+      63,
+      105,
+      154,
+      203,
+      57,
+      251,
+      202,
+      56
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-01T06:52:42.395Z",
+    "observedAt": "2026-11-01T06:52:42.395Z",
+    "source": "human_verified",
+    "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793515972117_hj2it",
+    "recipeId": "rcp_ocean",
+    "label": "Ocean",
+    "category": "Silhouette",
+    "observedTokenId": "tok_00042_DSCN9125.JPG",
+    "boundingBox": [
+      0.22500071318968684,
+      0.466230612244898,
+      0.18534287134490285,
+      0.07142857142857142
+    ],
+    "observedCentroids": [
+      112,
+      63,
+      104,
+      97
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-01T06:52:52.115Z",
+    "observedAt": "2026-11-01T06:52:52.115Z",
+    "source": "human_verified",
+    "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793515984028_a1qsk",
+    "recipeId": "rcp_ocean",
+    "label": "Ocean",
+    "category": "Silhouette",
+    "observedTokenId": "tok_00044_DSCN9132.JPG",
+    "boundingBox": [
+      0.4642866590304943,
+      0.33357755102040815,
+      0.3084437336560697,
+      0.1816326530612245
+    ],
+    "observedCentroids": [
+      63,
+      105,
+      154,
+      203,
+      57,
+      251,
+      202,
+      56
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-01T06:53:04.027Z",
+    "observedAt": "2026-11-01T06:53:04.027Z",
+    "source": "human_verified",
+    "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793515997525_vgle6",
+    "recipeId": "rcp_tree",
+    "label": "Tree",
+    "category": "Silhouette",
+    "observedTokenId": "tok_00054_DSCN9280.JPG",
+    "boundingBox": [
+      0.3978951827278425,
+      0.26214897959183675,
+      0.22545438827775496,
+      0.45918367346938777
+    ],
+    "observedCentroids": [
+      49,
+      104,
+      56,
+      55,
+      98,
+      48,
+      0,
+      6
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-01T06:53:17.523Z",
+    "observedAt": "2026-11-01T06:53:17.523Z",
+    "source": "human_verified",
+    "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793516031813_jiyen",
+    "recipeId": "rcp_tree_trunk",
+    "label": "Tree trunk",
+    "category": "Silhouette",
+    "observedTokenId": "tok_00060_DSCN9399.JPG",
+    "boundingBox": [
+      0.23053333621490782,
+      0.2050061224489796,
+      0.3485552505889218,
+      0.18571428571428572
+    ],
+    "observedCentroids": [
+      146,
+      195,
+      194,
+      152,
+      188
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-01T06:53:51.811Z",
+    "observedAt": "2026-11-01T06:53:51.811Z",
+    "source": "human_verified",
+    "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793516061558_w7qc9",
+    "recipeId": "rcp_risto",
+    "label": "Risto",
+    "category": "Silhouette",
+    "observedTokenId": "tok_00045_DSCN9153.JPG",
+    "boundingBox": [
+      0.4089604287782845,
+      0.43153673469387754,
+      0.2047070519331763,
+      0.43673469387755104
+    ],
+    "observedCentroids": [
+      161,
+      154,
+      203,
+      146,
+      97,
+      153,
+      91,
+      188,
+      194,
+      139,
+      55,
+      105,
+      98,
+      57,
+      8,
+      50
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-01T06:54:21.556Z",
+    "observedAt": "2026-11-01T06:54:21.556Z",
+    "source": "human_verified",
+    "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793516083070_rnpqo",
+    "recipeId": "rcp_eucaluptys_leaves",
+    "label": "Eucaluptys leaves",
+    "category": "Silhouette",
+    "observedTokenId": "tok_00039_DSCN8392.JPG",
+    "boundingBox": [
+      0.3909794039463163,
+      0.22541428571428573,
+      0.2655659052106071,
+      0.5775510204081633
+    ],
+    "observedCentroids": [
+      97,
+      139,
+      146,
+      104,
+      145,
+      152,
+      201,
+      243,
+      194,
+      187
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-01T06:54:43.068Z",
+    "observedAt": "2026-11-01T06:54:43.068Z",
+    "source": "human_verified",
+    "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793516123390_5t0is",
+    "recipeId": "rcp_gray_kangaroo",
+    "label": "Gray Kangaroo",
+    "category": "Silhouette",
+    "observedTokenId": "tok_00013_DSCN8264.JPG",
+    "boundingBox": [
+      0.38821309243370583,
+      0.39684285714285716,
+      0.12171770655486158,
+      0.11632653061224489
+    ],
+    "observedCentroids": [
+      49,
+      97,
+      104,
+      55
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-01T06:55:23.388Z",
+    "observedAt": "2026-11-01T06:55:23.388Z",
+    "source": "human_verified",
+    "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793516131142_e2z6t",
+    "recipeId": "rcp_gray_kangaroo",
+    "label": "Gray Kangaroo",
+    "category": "Silhouette",
+    "observedTokenId": "tok_00013_DSCN8264.JPG",
+    "boundingBox": [
+      0.5970696116357979,
+      0.39276122448979595,
+      0.055326230252209806,
+      0.07959183673469387
+    ],
+    "observedCentroids": [
+      97,
+      55
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-01T06:55:31.140Z",
+    "observedAt": "2026-11-01T06:55:31.140Z",
+    "source": "human_verified",
+    "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793516147166_trc2g",
+    "recipeId": "rcp_eucaluptys_leaves",
+    "label": "Eucaluptys leaves",
+    "category": "Silhouette",
+    "observedTokenId": "tok_00012_DSCN8263.JPG",
+    "boundingBox": [
+      0.3826804694084848,
+      0.26214897959183675,
+      0.23513647857189168,
+      0.22857142857142856
+    ],
+    "observedCentroids": [
+      104,
+      146,
+      103,
+      152,
+      110,
+      153
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-01T06:55:47.164Z",
+    "observedAt": "2026-11-01T06:55:47.164Z",
+    "source": "human_verified",
+    "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793516170815_l7xl0",
+    "recipeId": "rcp_gray_kangaroos",
+    "label": "Gray Kangaroos",
+    "category": "Silhouette",
+    "observedTokenId": "tok_00008_DSCN8258.JPG",
+    "boundingBox": [
+      0.406194117265674,
+      0.46827142857142856,
+      0.12171770655486158,
+      0.05102040816326531
+    ],
+    "observedCentroids": [
+      201,
+      152,
+      104,
+      97
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-01T06:56:10.813Z",
+    "observedAt": "2026-11-01T06:56:10.813Z",
+    "source": "human_verified",
+    "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793516191839_xs1ln",
+    "recipeId": "rcp_ocean",
+    "label": "Ocean",
+    "category": "Silhouette",
+    "observedTokenId": "tok_00050_DSCN9224.JPG",
+    "boundingBox": [
+      0.2236175574333816,
+      0.5192918367346939,
+      0.5491128352531823,
+      0.2571428571428571
+    ],
+    "observedCentroids": [
+      147,
+      105,
+      104,
+      98
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-01T06:56:31.837Z",
+    "observedAt": "2026-11-01T06:56:31.837Z",
+    "source": "human_verified",
+    "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793516206935_o6by2",
+    "recipeId": "rcp_cloudy_sky",
+    "label": "Cloudy sky",
+    "category": "Silhouette",
+    "observedTokenId": "tok_00050_DSCN9224.JPG",
+    "boundingBox": [
+      0.2236175574333816,
+      0.19276142857142858,
+      0.5518791467657929,
+      0.3224489795918367
+    ],
+    "observedCentroids": [
+      153,
+      147,
+      105,
+      195,
+      104
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-01T06:56:46.933Z",
+    "observedAt": "2026-11-01T06:56:46.933Z",
+    "source": "human_verified",
+    "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793516224688_uxez1",
+    "recipeId": "rcp_forest",
+    "label": "Forest",
+    "category": "Silhouette",
+    "observedTokenId": "tok_00049_DSCN9186.JPG",
+    "boundingBox": [
+      0.3481015755008537,
+      0.1968430612244898,
+      0.2959953318493225,
+      0.35918367346938773
+    ],
+    "observedCentroids": [
+      98,
+      56,
+      55,
+      49,
+      104,
+      153
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-01T06:57:04.686Z",
+    "observedAt": "2026-11-01T06:57:04.686Z",
+    "source": "human_verified",
+    "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793516251728_r9d8c",
+    "recipeId": "rcp_cloud",
+    "label": "Cloud",
+    "category": "Silhouette",
+    "observedTokenId": "tok_00057_DSCN9386.JPG",
+    "boundingBox": [
+      0.47258559356832575,
+      0.27643469387755104,
+      0.214389142227313,
+      0.13673469387755102
+    ],
+    "observedCentroids": [
+      202,
+      244,
+      153,
+      201,
+      195
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-01T06:57:31.726Z",
+    "observedAt": "2026-11-01T06:57:31.726Z",
+    "source": "human_verified",
+    "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793516315672_s1onp",
+    "recipeId": "rcp_tree",
+    "label": "Tree",
+    "category": "Silhouette",
+    "observedTokenId": "tok_00063_HenriCD.jpg",
+    "boundingBox": [
+      0.24159858226534978,
+      0.2519448979591837,
+      0.14799766592466124,
+      0.21224489795918366
+    ],
+    "observedCentroids": [
+      48,
+      97,
+      244,
+      146,
+      145,
+      201
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-01T06:58:35.670Z",
+    "observedAt": "2026-11-01T06:58:35.670Z",
+    "source": "human_verified",
+    "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793516327016_ah71v",
+    "recipeId": "rcp_evening_sky",
+    "label": "Evening Sky",
+    "category": "Silhouette",
+    "observedTokenId": "tok_00063_HenriCD.jpg",
+    "boundingBox": [
+      0.22500071318968684,
+      0.13561857142857145,
+      0.23928594584080742,
+      0.09183673469387756
+    ],
+    "observedCentroids": [
+      146,
+      195,
+      202,
+      42,
+      244
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-01T06:58:47.013Z",
+    "observedAt": "2026-11-01T06:58:47.013Z",
+    "source": "human_verified",
+    "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793516338424_m65fi",
+    "recipeId": "rcp_henri",
+    "label": "Henri",
+    "category": "Silhouette",
+    "observedTokenId": "tok_00063_HenriCD.jpg",
+    "boundingBox": [
+      0.4767350608372415,
+      0.4090877551020408,
+      0.055326230252209806,
+      0.27755102040816326
+    ],
+    "observedCentroids": [
+      146,
+      195,
+      97,
+      49,
+      0
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-01T06:58:58.422Z",
+    "observedAt": "2026-11-01T06:58:58.422Z",
+    "source": "human_verified",
+    "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793516349112_seg3v",
+    "recipeId": "rcp_christine",
+    "label": "Christine",
+    "category": "Silhouette",
+    "observedTokenId": "tok_00063_HenriCD.jpg",
+    "boundingBox": [
+      0.5818548983164401,
+      0.41725102040816325,
+      0.07469041084048324,
+      0.39387755102040817
+    ],
+    "observedCentroids": [
+      250,
+      195,
+      251,
+      139,
+      201,
+      90,
+      42,
+      48,
+      0
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-01T06:59:09.111Z",
+    "observedAt": "2026-11-01T06:59:09.111Z",
+    "source": "human_verified",
+    "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793523517143_j4glg",
+    "recipeId": "rcp_car_door",
+    "label": "Car door",
+    "category": "Silhouette",
+    "observedTokenId": "tok_00001_20260728_113237.jpg",
+    "boundingBox": [
+      0.25266382831579176,
+      0.0968430612244898,
+      0.48687082621944633,
+      0.8326530612244898
+    ],
+    "observedCentroids": [
+      202,
+      154,
+      196,
+      153,
+      147,
+      195,
+      104,
+      98,
+      56,
+      146,
+      0
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-01T08:58:37.141Z",
+    "observedAt": "2026-11-01T08:58:37.141Z",
+    "source": "human_verified",
+    "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793523526870_3xeas",
+    "recipeId": "rcp_spider",
+    "label": "Spider",
+    "category": "Silhouette",
+    "observedTokenId": "tok_00002_20260823_181102.jpg",
+    "boundingBox": [
+      0.4310909208791684,
+      0.5152102040816327,
+      0.12310086231116682,
+      0.17346938775510204
+    ],
+    "observedCentroids": [
+      153,
+      146,
+      49,
+      147
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-01T08:58:46.868Z",
+    "observedAt": "2026-11-01T08:58:46.868Z",
+    "source": "human_verified",
+    "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793523538838_ryuuf",
+    "recipeId": "rcp_risto",
+    "label": "Risto",
+    "category": "Silhouette",
+    "observedTokenId": "tok_00006_CanberraKenttaHerra.jpg",
+    "boundingBox": [
+      0.6537789976443129,
+      0.45806734693877554,
+      0.1037366817228934,
+      0.4204081632653061
+    ],
+    "observedCentroids": [
+      48,
+      49,
+      97,
+      0,
+      146,
+      91,
+      103,
+      7
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-01T08:58:58.837Z",
+    "observedAt": "2026-11-01T08:58:58.837Z",
+    "source": "human_verified",
+    "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793523559071_ksz5a",
+    "recipeId": "rcp_bogong_moth",
+    "label": "Bogong Moth",
+    "category": "Silhouette",
+    "observedTokenId": "tok_00005_BogongMoth.png",
+    "boundingBox": [
+      0.33565317369410647,
+      0.10704714285714285,
+      0.35823734088305853,
+      0.8571428571428571
+    ],
+    "observedCentroids": [
+      148,
+      154,
+      147,
+      146,
+      140,
+      195,
+      194,
+      153,
+      98,
+      97,
+      104,
+      49,
+      48,
+      0,
+      55,
+      50,
+      92
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-01T08:59:19.069Z",
+    "observedAt": "2026-11-01T08:59:19.069Z",
+    "source": "human_verified",
+    "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793523570799_ecf32",
+    "recipeId": "rcp_bogong_moth",
+    "label": "Bogong Moth",
+    "category": "Silhouette",
+    "observedTokenId": "tok_00009_PXL_20260925_035411831.jpg",
+    "boundingBox": [
+      0.3425689524756327,
+      0.10908795918367346,
+      0.5228328758833827,
+      0.6122448979591837
+    ],
+    "observedCentroids": [
+      190,
+      196,
+      238,
+      202,
+      195,
+      244,
+      97,
+      146,
+      98,
+      147,
+      189,
+      91,
+      140,
+      49,
+      42,
+      0,
+      148,
+      43,
+      141
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-01T08:59:30.797Z",
+    "observedAt": "2026-11-01T08:59:30.797Z",
+    "source": "human_verified",
+    "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793523579879_a5hnm",
+    "recipeId": "rcp_bogong_moth",
+    "label": "Bogong Moth",
+    "category": "Silhouette",
+    "observedTokenId": "tok_00010_PXL_20260925_035429003.jpg",
+    "boundingBox": [
+      0.35916682155129565,
+      0.07439408163265306,
+      0.3527047178578375,
+      0.7612244897959184
+    ],
+    "observedCentroids": [
+      154,
+      148,
+      147,
+      146,
+      188,
+      195,
+      153,
+      98,
+      189,
+      99,
+      97,
+      49
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-01T08:59:39.877Z",
+    "observedAt": "2026-11-01T08:59:39.877Z",
+    "source": "human_verified",
+    "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793523592455_wvwev",
+    "recipeId": "rcp_car",
+    "label": "Car",
+    "category": "Silhouette",
+    "observedTokenId": "tok_00012_Sparta.png",
+    "boundingBox": [
+      0.3093732143243068,
+      0.2682714285714286,
+      0.44122668626137324,
+      0.3469387755102041
+    ],
+    "observedCentroids": [
+      55,
+      97,
+      145,
+      54,
+      96,
+      193,
+      192,
+      234,
+      146,
+      138,
+      187,
+      144,
+      186,
+      0,
+      90,
+      48,
+      49,
+      252
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-01T08:59:52.453Z",
+    "observedAt": "2026-11-01T08:59:52.453Z",
+    "source": "human_verified",
+    "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793523610168_vrk3v",
+    "recipeId": "rcp_kangaroo",
+    "label": "Kangaroo",
+    "category": "Silhouette",
+    "observedTokenId": "tok_00011_Portinvartijat.jpg",
+    "boundingBox": [
+      0.259579607097318,
+      0.5886795918367347,
+      0.055326230252209806,
+      0.1489795918367347
+    ],
+    "observedCentroids": [
+      97,
+      91,
+      55
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-01T09:00:10.166Z",
+    "observedAt": "2026-11-01T09:00:10.166Z",
+    "source": "human_verified",
+    "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793523640840_k5e3e",
+    "recipeId": "rcp_tree",
+    "label": "Tree",
+    "category": "Silhouette",
+    "observedTokenId": "tok_00033_dell_dark_background2.jpg",
+    "boundingBox": [
+      0.3688489118454324,
+      0.2397,
+      0.42601197294201554,
+      0.5040816326530613
+    ],
+    "observedCentroids": [
+      154,
+      105,
+      49,
+      6,
+      55,
+      196,
+      202,
+      147,
+      98,
+      104,
+      195,
+      146,
+      97,
+      0,
+      153,
+      48,
+      103,
+      194,
+      145,
+      96,
+      139,
+      187,
+      192,
+      90
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-01T09:00:40.838Z",
+    "observedAt": "2026-11-01T09:00:40.838Z",
+    "source": "human_verified",
+    "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793523656264_8i9so",
+    "recipeId": "rcp_grass_field",
+    "label": "Grass Field",
+    "category": "Silhouette",
+    "observedTokenId": "tok_00033_dell_dark_background2.jpg",
+    "boundingBox": [
+      0.1406282120550669,
+      0.6233734693877551,
+      0.42739512869832075,
+      0.17551020408163265
+    ],
+    "observedCentroids": [
+      97,
+      55,
+      48,
+      145,
+      103,
+      91,
+      139,
+      187,
+      192,
+      96,
+      49
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-01T09:00:56.262Z",
+    "observedAt": "2026-11-01T09:00:56.262Z",
+    "source": "human_verified",
+    "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793523674485_43270",
+    "recipeId": "rcp_grass_field",
+    "label": "Grass Field",
+    "category": "Silhouette",
+    "observedTokenId": "tok_00011_Portinvartijat.jpg",
+    "boundingBox": [
+      0.4089604287782845,
+      0.5335775510204082,
+      0.32227529121912213,
+      0.19795918367346937
+    ],
+    "observedCentroids": [
+      97,
+      48,
+      91,
+      139,
+      98,
+      140,
+      55
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-01T09:01:14.483Z",
+    "observedAt": "2026-11-01T09:01:14.483Z",
+    "source": "human_verified",
+    "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793523695440_2xuo2",
+    "recipeId": "rcp_eucaluptys_tree",
+    "label": "Eucaluptys Tree",
+    "category": "Silhouette",
+    "observedTokenId": "tok_00011_Portinvartijat.jpg",
+    "boundingBox": [
+      0.19457128655097145,
+      0.1621491836734694,
+      0.26141643794169134,
+      0.2816326530612245
+    ],
+    "observedCentroids": [
+      145,
+      139,
+      146,
+      243,
+      244,
+      195,
+      140,
+      98,
+      97,
+      49,
+      0,
+      48,
+      252
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-01T09:01:35.438Z",
+    "observedAt": "2026-11-01T09:01:35.438Z",
+    "source": "human_verified",
+    "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793523714008_tds92",
+    "recipeId": "rcp_beach",
+    "label": "Beach",
+    "category": "Silhouette",
+    "observedTokenId": "tok_00025_bg-nat-2.jpg",
+    "boundingBox": [
+      0.2913921894923386,
+      0.42949591836734696,
+      0.3153595124375959,
+      0.2571428571428571
+    ],
+    "observedCentroids": [
+      146,
+      147,
+      105,
+      153,
+      196,
+      195,
+      202,
+      154
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-01T09:01:54.006Z",
+    "observedAt": "2026-11-01T09:01:54.006Z",
+    "source": "human_verified",
+    "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793523723960_7e6iy",
+    "recipeId": "rcp_ocean",
+    "label": "Ocean",
+    "category": "Silhouette",
+    "observedTokenId": "tok_00025_bg-nat-2.jpg",
+    "boundingBox": [
+      0.44077301117330514,
+      0.4417408163265306,
+      0.4149467268915736,
+      0.0653061224489796
+    ],
+    "observedCentroids": [
+      202,
+      154,
+      196,
+      153
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-01T09:02:03.958Z",
+    "observedAt": "2026-11-01T09:02:03.958Z",
+    "source": "human_verified",
+    "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793523736472_ss33a",
+    "recipeId": "rcp_kangaroo",
+    "label": "Kangaroo",
+    "category": "Silhouette",
+    "observedTokenId": "tok_00036_harakkaKengurut.jpg",
+    "boundingBox": [
+      0.37299837911434813,
+      0.42541428571428574,
+      0.05947569752112554,
+      0.13673469387755102
+    ],
+    "observedCentroids": [
+      49,
+      7,
+      98,
+      0
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-01T09:02:16.471Z",
+    "observedAt": "2026-11-01T09:02:16.471Z",
+    "source": "human_verified",
+    "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793523756953_s7o7a",
+    "recipeId": "rcp_hector",
+    "label": "Hector",
+    "category": "Silhouette",
+    "observedTokenId": "tok_00007_Hector.jpg",
+    "boundingBox": [
+      0.3093732143243068,
+      0.14378183673469389,
+      0.3928162347906896,
+      0.7653061224489796
+    ],
+    "observedCentroids": [
+      244,
+      202,
+      97,
+      91,
+      48,
+      146,
+      250,
+      104,
+      140,
+      237,
+      194,
+      195,
+      188,
+      139,
+      49,
+      98,
+      153,
+      201,
+      189,
+      147,
+      145,
+      187
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-01T09:02:36.951Z",
+    "observedAt": "2026-11-01T09:02:36.951Z",
+    "source": "human_verified",
+    "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793524195671_zuwo7",
+    "recipeId": "rcp_henri",
+    "label": "Henri",
+    "category": "Silhouette",
+    "observedTokenId": "tok_00002_HenkkaJaRoo.jpg",
+    "boundingBox": [
+      0.6081348576862398,
+      0.2213326530612245,
+      0.17566078105076613,
+      0.6673469387755102
+    ],
+    "observedCentroids": [
+      104,
+      147,
+      105,
+      153,
+      98,
+      154
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-01T09:09:55.667Z",
+    "observedAt": "2026-11-01T09:09:55.667Z",
+    "source": "human_verified",
+    "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793524208380_0r8jp",
+    "recipeId": "rcp_henri",
+    "label": "Henri",
+    "category": "Silhouette",
+    "observedTokenId": "tok_00005_HneriOopperaa.jpg",
+    "boundingBox": [
+      0.29830796827386485,
+      0.549904081632653,
+      0.08160618962200947,
+      0.37142857142857144
+    ],
+    "observedCentroids": [
+      147,
+      98,
+      104,
+      42,
+      0,
+      49,
+      55,
+      48
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-01T09:10:08.378Z",
+    "observedAt": "2026-11-01T09:10:08.378Z",
+    "source": "human_verified",
+    "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793524220196_urvug",
+    "recipeId": "rcp_hector",
+    "label": "Hector",
+    "category": "Silhouette",
+    "observedTokenId": "tok_00010_hector.png",
+    "boundingBox": [
+      0.3370363294504117,
+      0.1294961224489796,
+      0.38036783298394244,
+      0.6918367346938775
+    ],
+    "observedCentroids": [
+      244,
+      146,
+      0,
+      42,
+      202,
+      48,
+      139,
+      187,
+      97,
+      153,
+      188,
+      55,
+      104,
+      49,
+      91,
+      90,
+      181,
+      195,
+      201,
+      145,
+      138
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-01T09:10:20.194Z",
+    "observedAt": "2026-11-01T09:10:20.194Z",
+    "source": "human_verified",
+    "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793524228748_hcg2e",
+    "recipeId": "rcp_hector",
+    "label": "Hector",
+    "category": "Silhouette",
+    "observedTokenId": "tok_00012_hector3.png",
+    "boundingBox": [
+      0.5057813317196517,
+      0.13765938775510206,
+      0.29046270882410147,
+      0.44081632653061226
+    ],
+    "observedCentroids": [
+      0,
+      48,
+      90,
+      252,
+      42,
+      54,
+      97,
+      91
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-01T09:10:28.746Z",
+    "observedAt": "2026-11-01T09:10:28.746Z",
+    "source": "human_verified",
+    "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793524237956_uqjg7",
+    "recipeId": "rcp_risto",
+    "label": "Risto",
+    "category": "Silhouette",
+    "observedTokenId": "tok_00009_hOLDINGpASSPORT.png",
+    "boundingBox": [
+      0.3370363294504117,
+      0.19072061224489797,
+      0.23651963432819692,
+      0.5265306122448979
+    ],
+    "observedCentroids": [
+      153,
+      146,
+      196,
+      195,
+      188,
+      140,
+      189,
+      202,
+      97,
+      147
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-01T09:10:37.954Z",
+    "observedAt": "2026-11-01T09:10:37.954Z",
+    "source": "human_verified",
+    "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793524245604_v9ao4",
+    "recipeId": "rcp_risto",
+    "label": "Risto",
+    "category": "Silhouette",
+    "observedTokenId": "tok_00015_ri.jpeg",
+    "boundingBox": [
+      0.3674657560891271,
+      0.21316938775510205,
+      0.2296038555466707,
+      0.46938775510204084
+    ],
+    "observedCentroids": [
+      113,
+      112,
+      105,
+      154,
+      140,
+      139,
+      98,
+      146,
+      49,
+      161,
+      155,
+      91,
+      0,
+      7,
+      56,
+      1,
+      99
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-01T09:10:45.602Z",
+    "observedAt": "2026-11-01T09:10:45.602Z",
+    "source": "human_verified",
+    "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793524282101_yjh9u",
+    "recipeId": "rcp_ocean",
+    "label": "Ocean",
+    "category": "Silhouette",
+    "observedTokenId": "tok_00007_MurramarangRuuLightlyEdited.jpg",
+    "boundingBox": [
+      0.45322141298005236,
+      0.28051632653061226,
+      0.31950897970651165,
+      0.09183673469387756
+    ],
+    "observedCentroids": [
+      209,
+      251,
+      255,
+      250,
+      244
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-01T09:11:22.099Z",
+    "observedAt": "2026-11-01T09:11:22.099Z",
+    "source": "human_verified",
+    "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793532646232_fvww4",
+    "recipeId": "rcp_red_kangaroo_juvenile",
+    "label": "Red Kangaroo Juvenile",
+    "category": "Silhouette",
+    "observedTokenId": "tok_test_01",
+    "boundingBox": [
+      0.2,
+      0.3,
+      0.4,
+      0.5
+    ],
+    "observedCentroids": [
+      108,
+      132
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-01T11:30:46.230Z",
+    "observedAt": "2026-11-01T11:30:46.230Z",
+    "source": "human_verified",
+    "confidence": 1
   }
 ]

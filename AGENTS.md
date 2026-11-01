@@ -200,3 +200,56 @@ When modifying or extending this codebase, agents must strictly follow these rul
    - All tests must pass: `bun test`.
    - Ensure both `tests/token.test.ts` and `tests/learning.test.ts` pass with zero regressions.
 
+
+## Learning
+
+#### The Dual-Score Metric (Color + Semantic Geometry)
+
+In a new environment, lighting or camera white balance will shift raw RGB values, but the underlying object semantics remain stable. You evaluate matches using a fused score combining Level 1/2 VQ Centroid 		​
+
+Histogram Intersection (VQ Overlap): Measures whether the same material/color pigments (e.g. umber charcoal #222, terracotta clay #97) are present in the new scene.
+DINOv2 Cosine Similarity: Invariant to illumination and viewpoint changes; ensures the candidate actually has the shape and semantic structure of the entity.
+Set 
+𝛼
+=
+0.60
+α=0.60 for illumination-robust matching, or 
+𝛼
+=
+0.30
+α=0.30 when material color fidelity is critical.
+Step 2. Operational Evaluation Protocol
+
+After hot-swapping to a new tokens.zip via the Ingest Archive button:
+
+┌────────────────────────────────────────────────────────────────────────┐
+│                        EVALUATION WORKFLOW                             │
+│                                                                        │
+│  1. Pick Recipe   ──►  2. Rank Archive  ──►  3. Inspect Top Hits       │
+│     (e.g. "Kangaroo")    (ADC + DINO)          (Precision @ K)         │
+│                                                      │                 │
+│                                                      ▼                 │
+│                                              4. Drift Audit            │
+│                                           (Confirmed vs Shifted)       │
+└────────────────────────────────────────────────────────────────────────┘
+#### Rank the New Archive
+
+Compute the fused score for every token in the newly swapped archive against your recipe (e.g. "Charred Tree Trunk").
+Sort the tokens in descending order of similarity score.
+
+#### Measure Precision @ K (e.g. Top 5 / Top 10 Hits)
+
+True Positives: Top-ranked hits that genuinely contain the entity 
+⟹
+⟹ High generalization.
+False Positives: Top-ranked hits that contain similar colors but the wrong entity (e.g. reddish soil mistaken for kangaroo fur) 
+⟹ Centroid over-reliance; increase DINOv2 weight 𝛼
+α or add spatial adjacency priors.
+
+#### Calculate Centroid Distribution Drift (Δ)
+
+For the verified instances in the new environment, calculate their centroid histogram 𝑃 new  versus the baseline recipe  𝑃 old
+
+
+
+> Outcome: The recipe becomes multi-environmental — robust to both the original baseline and the new lighting/terrain conditions.
