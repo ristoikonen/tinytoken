@@ -918,5 +918,763 @@
     "observedAt": "2026-11-01T06:05:13.273Z",
     "source": "human_verified",
     "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793514419792_tz6fd",
+    "recipeId": "rcp_red_kangaroo_juvenile",
+    "label": "Red Kangaroo Juvenile",
+    "category": "Silhouette",
+    "observedTokenId": "tok_test_01",
+    "boundingBox": [
+      0.2,
+      0.3,
+      0.4,
+      0.5
+    ],
+    "observedCentroids": [
+      108,
+      132
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-01T06:26:59.791Z",
+    "observedAt": "2026-11-01T06:26:59.791Z",
+    "source": "human_verified",
+    "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793514441363_k5e12",
+    "recipeId": "rcp_red_kangaroo_juvenile",
+    "label": "Red Kangaroo Juvenile",
+    "category": "Silhouette",
+    "observedTokenId": "tok_test_01",
+    "boundingBox": [
+      0.2,
+      0.3,
+      0.4,
+      0.5
+    ],
+    "observedCentroids": [
+      108,
+      132
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-01T06:27:21.361Z",
+    "observedAt": "2026-11-01T06:27:21.361Z",
+    "source": "human_verified",
+    "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793514517152_mm2wn",
+    "recipeId": "rcp_salt_lake",
+    "label": "Salt lake",
+    "category": "Silhouette",
+    "observedTokenId": "tok_00046_DSCN9461.JPG",
+    "boundingBox": [
+      0.22500071318968684,
+      0.4560265306122449,
+      0.5463465237405718,
+      0.17551020408163265
+    ],
+    "observedCentroids": [
+      196,
+      202,
+      153,
+      146
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-01T06:28:37.149Z",
+    "observedAt": "2026-11-01T06:28:37.149Z",
+    "source": "human_verified",
+    "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793514557559_gg779",
+    "recipeId": "rcp_henri",
+    "label": "Henri",
+    "category": "Silhouette",
+    "observedTokenId": "tok_00033_DSCN9058.JPG",
+    "boundingBox": [
+      0.45322141298005236,
+      0.5172510204081633,
+      0.08160618962200947,
+      0.22040816326530613
+    ],
+    "observedCentroids": [
+      48,
+      0,
+      252,
+      42
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-01T06:29:17.557Z",
+    "observedAt": "2026-11-01T06:29:17.557Z",
+    "source": "human_verified",
+    "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793514587759_bz2j0",
+    "recipeId": "rcp_gray_kangaroo",
+    "label": "Gray Kangaroo",
+    "category": "Silhouette",
+    "observedTokenId": "tok_00023_DSCN8553.JPG",
+    "boundingBox": [
+      0.3937457154589268,
+      0.4601081632653061,
+      0.21992176525253399,
+      0.20408163265306123
+    ],
+    "observedCentroids": [
+      153,
+      98,
+      104,
+      146,
+      49,
+      97,
+      55
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-01T06:29:47.756Z",
+    "observedAt": "2026-11-01T06:29:47.756Z",
+    "source": "human_verified",
+    "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793514898978_x4zmg",
+    "recipeId": "rcp_sky_with_few_clouds",
+    "label": "Sky with few clouds",
+    "category": "Silhouette",
+    "observedTokenId": "tok_00003_DSCN0015.JPG",
+    "boundingBox": [
+      0.2637290743662337,
+      0.07847571428571429,
+      0.4675066456311729,
+      0.25918367346938775
+    ],
+    "observedCentroids": [
+      106,
+      112,
+      161,
+      203,
+      113,
+      107,
+      154,
+      153
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-01T06:34:58.976Z",
+    "observedAt": "2026-11-01T06:34:58.976Z",
+    "source": "human_verified",
+    "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793514923577_8hwqr",
+    "recipeId": "rcp_clear_sky",
+    "label": "Clear sky",
+    "category": "Silhouette",
+    "observedTokenId": "tok_00044_DSCN9457.JPG",
+    "boundingBox": [
+      0.18627235201313996,
+      0.15398591836734696,
+      0.6293358691188866,
+      0.20408163265306123
+    ],
+    "observedCentroids": [
+      112,
+      154,
+      153,
+      98,
+      146,
+      147,
+      196,
+      202
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-01T06:35:23.576Z",
+    "observedAt": "2026-11-01T06:35:23.576Z",
+    "source": "human_verified",
+    "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793514937018_kfwuj",
+    "recipeId": "rcp_clear_sky",
+    "label": "Clear sky",
+    "category": "Silhouette",
+    "observedTokenId": "tok_00043_DSCN9431.JPG",
+    "boundingBox": [
+      0.1835060405005295,
+      0.15398591836734696,
+      0.6238032460936656,
+      0.2938775510204082
+    ],
+    "observedCentroids": [
+      112,
+      113,
+      155,
+      161,
+      147,
+      153,
+      154,
+      160
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-01T06:35:37.016Z",
+    "observedAt": "2026-11-01T06:35:37.016Z",
+    "source": "human_verified",
+    "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793514967459_6m9hk",
+    "recipeId": "rcp_clear_sky",
+    "label": "Clear sky",
+    "category": "Silhouette",
+    "observedTokenId": "tok_00046_DSCN9461.JPG",
+    "boundingBox": [
+      0.1835060405005295,
+      0.15806755102040818,
+      0.6307190248751918,
+      0.2653061224489796
+    ],
+    "observedCentroids": [
+      112,
+      106,
+      111,
+      105,
+      147,
+      153
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-01T06:36:07.457Z",
+    "observedAt": "2026-11-01T06:36:07.457Z",
+    "source": "human_verified",
+    "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793515002410_1vx6p",
+    "recipeId": "rcp_clear_sky_in_the_evening",
+    "label": "Clear sky in the evening",
+    "category": "Silhouette",
+    "observedTokenId": "tok_00042_DSCN9430.JPG",
+    "boundingBox": [
+      0.19595444230727668,
+      0.14990428571428574,
+      0.6099716885306131,
+      0.3163265306122449
+    ],
+    "observedCentroids": [
+      1,
+      7,
+      8,
+      49,
+      50,
+      56
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-01T06:36:42.408Z",
+    "observedAt": "2026-11-01T06:36:42.408Z",
+    "source": "human_verified",
+    "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793515329119_8vwnz",
+    "recipeId": "rcp_possum",
+    "label": "Possum",
+    "category": "Silhouette",
+    "observedTokenId": "tok_00003_DSCN7370.JPG",
+    "boundingBox": [
+      0.2360659592401288,
+      0.42133265306122447,
+      0.24343541310972316,
+      0.3
+    ],
+    "observedCentroids": [
+      252,
+      97,
+      49,
+      6,
+      91,
+      0,
+      146,
+      139,
+      195,
+      194,
+      153,
+      243,
+      201
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-01T06:42:09.117Z",
+    "observedAt": "2026-11-01T06:42:09.117Z",
+    "source": "human_verified",
+    "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793515344014_48f5l",
+    "recipeId": "rcp_possum",
+    "label": "Possum",
+    "category": "Silhouette",
+    "observedTokenId": "tok_00005_DSCN7374.JPG",
+    "boundingBox": [
+      0.3066069028116963,
+      0.3539857142857143,
+      0.2047070519331763,
+      0.14285714285714285
+    ],
+    "observedCentroids": [
+      49,
+      48,
+      42,
+      0,
+      153,
+      146,
+      98,
+      194,
+      97
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-01T06:42:24.012Z",
+    "observedAt": "2026-11-01T06:42:24.012Z",
+    "source": "human_verified",
+    "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793515366047_u9whp",
+    "recipeId": "rcp_christine",
+    "label": "Christine",
+    "category": "Silhouette",
+    "observedTokenId": "tok_00018_DSCN8110.JPG",
+    "boundingBox": [
+      0.30522374705539107,
+      0.3866387755102041,
+      0.1438481986557455,
+      0.17142857142857143
+    ],
+    "observedCentroids": [
+      139,
+      42,
+      252,
+      0,
+      132,
+      126,
+      91,
+      216,
+      84
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-01T06:42:46.045Z",
+    "observedAt": "2026-11-01T06:42:46.045Z",
+    "source": "human_verified",
+    "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793515377239_n0hlw",
+    "recipeId": "rcp_risto",
+    "label": "Risto",
+    "category": "Silhouette",
+    "observedTokenId": "tok_00023_DSCN8209.JPG",
+    "boundingBox": [
+      0.4214088305850317,
+      0.41521020408163267,
+      0.11480192777333535,
+      0.19795918367346937
+    ],
+    "observedCentroids": [
+      194,
+      195,
+      97,
+      146,
+      188,
+      139
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-01T06:42:57.237Z",
+    "observedAt": "2026-11-01T06:42:57.237Z",
+    "source": "human_verified",
+    "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793515413031_okeq1",
+    "recipeId": "rcp_possum",
+    "label": "Possum",
+    "category": "Silhouette",
+    "observedTokenId": "tok_00004_DSCN7371.JPG",
+    "boundingBox": [
+      0.2900090337360334,
+      0.40296530612244896,
+      0.1770439368070714,
+      0.15306122448979592
+    ],
+    "observedCentroids": [
+      104,
+      48,
+      0,
+      195,
+      152,
+      97,
+      194
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-01T06:43:33.029Z",
+    "observedAt": "2026-11-01T06:43:33.029Z",
+    "source": "human_verified",
+    "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793515422686_nx7ya",
+    "recipeId": "rcp_christine",
+    "label": "Christine",
+    "category": "Silhouette",
+    "observedTokenId": "tok_00004_DSCN7371.JPG",
+    "boundingBox": [
+      0.603985390417324,
+      0.1968430612244898,
+      0.1507639774372717,
+      0.20204081632653062
+    ],
+    "observedCentroids": [
+      0,
+      252,
+      195,
+      97,
+      49
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-01T06:43:42.684Z",
+    "observedAt": "2026-11-01T06:43:42.684Z",
+    "source": "human_verified",
+    "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793515464743_lgtyi",
+    "recipeId": "rcp_evening_sky",
+    "label": "Evening Sky",
+    "category": "Silhouette",
+    "observedTokenId": "tok_00013_DSCN7727.JPG",
+    "boundingBox": [
+      0.3066069028116963,
+      0.10092469387755101,
+      0.36515311966458475,
+      0.42244897959183675
+    ],
+    "observedCentroids": [
+      1,
+      2,
+      8,
+      50,
+      51,
+      98,
+      99,
+      146,
+      188,
+      140,
+      139,
+      91,
+      187,
+      229,
+      235,
+      138,
+      0
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-01T06:44:24.741Z",
+    "observedAt": "2026-11-01T06:44:24.741Z",
+    "source": "human_verified",
+    "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793515484449_tuvii",
+    "recipeId": "rcp_evening_sky",
+    "label": "Evening Sky",
+    "category": "Silhouette",
+    "observedTokenId": "tok_00041_DSCN9430.JPG",
+    "boundingBox": [
+      0.22500071318968684,
+      0.1948022448979592,
+      0.5767759503792872,
+      0.2714285714285714
+    ],
+    "observedCentroids": [
+      7,
+      1,
+      8,
+      49,
+      50,
+      56
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-01T06:44:44.446Z",
+    "observedAt": "2026-11-01T06:44:44.446Z",
+    "source": "human_verified",
+    "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793515521688_hqfth",
+    "recipeId": "rcp_forest",
+    "label": "Forest",
+    "category": "Silhouette",
+    "observedTokenId": "tok_00026_DSCN8215.JPG",
+    "boundingBox": [
+      0.2664953858788442,
+      0.23357755102040817,
+      0.4509087765555099,
+      0.5122448979591837
+    ],
+    "observedCentroids": [
+      146,
+      152,
+      153,
+      104,
+      97,
+      103,
+      98,
+      55,
+      48
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-01T06:45:21.686Z",
+    "observedAt": "2026-11-01T06:45:21.686Z",
+    "source": "human_verified",
+    "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793515534977_y6c51",
+    "recipeId": "rcp_forest",
+    "label": "Forest",
+    "category": "Silhouette",
+    "observedTokenId": "tok_00025_DSCN8214.JPG",
+    "boundingBox": [
+      0.27064485314775993,
+      0.09276142857142856,
+      0.46335717836225715,
+      0.8653061224489796
+    ],
+    "observedCentroids": [
+      202,
+      251,
+      153,
+      104,
+      147,
+      154,
+      152,
+      146,
+      195,
+      103,
+      97,
+      196,
+      255,
+      98,
+      49,
+      55
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-01T06:45:34.975Z",
+    "observedAt": "2026-11-01T06:45:34.975Z",
+    "source": "human_verified",
+    "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793515546736_6zpgj",
+    "recipeId": "rcp_forest",
+    "label": "Forest",
+    "category": "Silhouette",
+    "observedTokenId": "tok_00026_DSCN8215.JPG",
+    "boundingBox": [
+      0.26787854163514946,
+      0.24582244897959185,
+      0.45782455533703614,
+      0.5040816326530613
+    ],
+    "observedCentroids": [
+      146,
+      152,
+      153,
+      104,
+      97,
+      103,
+      98,
+      55,
+      48
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-01T06:45:46.734Z",
+    "observedAt": "2026-11-01T06:45:46.734Z",
+    "source": "human_verified",
+    "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793515562376_bi352",
+    "recipeId": "rcp_forest",
+    "label": "Forest",
+    "category": "Silhouette",
+    "observedTokenId": "tok_00027_DSCN8575.JPG",
+    "boundingBox": [
+      0.26234591860992845,
+      0.24990408163265307,
+      0.2545006591601651,
+      0.22448979591836735
+    ],
+    "observedCentroids": [
+      49,
+      55,
+      98,
+      97,
+      146,
+      152,
+      195
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-01T06:46:02.375Z",
+    "observedAt": "2026-11-01T06:46:02.375Z",
+    "source": "human_verified",
+    "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793515586625_3x5yy",
+    "recipeId": "rcp_evening_sky",
+    "label": "Evening Sky",
+    "category": "Silhouette",
+    "observedTokenId": "tok_00031_DSCN9053.JPG",
+    "boundingBox": [
+      0.43247407663547366,
+      0.15194510204081635,
+      0.3845173002528582,
+      0.38979591836734695
+    ],
+    "observedCentroids": [
+      104,
+      105,
+      97
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-01T06:46:26.623Z",
+    "observedAt": "2026-11-01T06:46:26.623Z",
+    "source": "human_verified",
+    "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793515617113_pe76p",
+    "recipeId": "rcp_ocean",
+    "label": "Ocean",
+    "category": "Silhouette",
+    "observedTokenId": "tok_00016_DSCN7739.JPG",
+    "boundingBox": [
+      0.18627235201313996,
+      0.7274551020408163,
+      0.6127380000432237,
+      0.10816326530612246
+    ],
+    "observedCentroids": [
+      153,
+      202,
+      154,
+      55,
+      147,
+      104,
+      98
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-01T06:46:57.111Z",
+    "observedAt": "2026-11-01T06:46:57.111Z",
+    "source": "human_verified",
+    "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793515628673_mauwa",
+    "recipeId": "rcp_ocean",
+    "label": "Ocean",
+    "category": "Silhouette",
+    "observedTokenId": "tok_00015_DSCN7737.JPG",
+    "boundingBox": [
+      0.18488919625683473,
+      0.5090877551020409,
+      0.3402563160510903,
+      0.20816326530612245
+    ],
+    "observedCentroids": [
+      105,
+      153,
+      99,
+      98
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-01T06:47:08.671Z",
+    "observedAt": "2026-11-01T06:47:08.671Z",
+    "source": "human_verified",
+    "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793515675298_wtskb",
+    "recipeId": "rcp_ocean",
+    "label": "Ocean",
+    "category": "Silhouette",
+    "observedTokenId": "tok_00019_DSCN8178.JPG",
+    "boundingBox": [
+      0.18488919625683473,
+      0.5845979591836734,
+      0.6182706230684446,
+      0.0836734693877551
+    ],
+    "observedCentroids": [
+      105,
+      154,
+      57
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-01T06:47:55.296Z",
+    "observedAt": "2026-11-01T06:47:55.296Z",
+    "source": "human_verified",
+    "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793515707290_g4tng",
+    "recipeId": "rcp_ocean",
+    "label": "Ocean",
+    "category": "Silhouette",
+    "observedTokenId": "tok_00016_DSCN7739.JPG",
+    "boundingBox": [
+      0.18073972898791899,
+      0.5743938775510203,
+      0.15214713319357698,
+      0.25918367346938775
+    ],
+    "observedCentroids": [
+      250,
+      202,
+      195,
+      251,
+      153,
+      147
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-01T06:48:27.288Z",
+    "observedAt": "2026-11-01T06:48:27.288Z",
+    "source": "human_verified",
+    "confidence": 1
   }
 ]

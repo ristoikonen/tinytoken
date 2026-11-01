@@ -181,39 +181,10 @@ export class TokenApiHandlers {
       };
     });
 
-    let primaryObjectLabel: string | null = null;
-    if (objectAnnotations.length > 0) {
-      primaryObjectLabel = `${objectAnnotations[0]!.label} · ${objectAnnotations[0]!.category}`;
-    } else {
-      // 1. Level 2/3: Try zero-shot abstract object recipe matching against VQ grid
-      const matched = visualTraitRegistry.matchObjectRecipe(decoded.vqIndices, recipes, 0.20);
-      if (matched) {
-        primaryObjectLabel = `${matched.recipe.label} · ${matched.recipe.category}`;
-        objectAnnotations.push({
-          id: `inferred_${matched.recipe.recipeId}`,
-          recipeId: matched.recipe.recipeId,
-          label: matched.recipe.label,
-          category: matched.recipe.category,
-          boundingBox: [0, 0, 1, 1],
-          centroidIds: Object.keys(matched.recipe.dominantCentroidDist).map(Number),
-          source: "recipe_inferred",
-          confidence: matched.similarity,
-          version: matched.recipe.version,
-          observationCount: matched.recipe.observationCount ?? 1,
-          createdAt: matched.recipe.createdAt,
-          updatedAt: matched.recipe.updatedAt,
-          latitude: DEFAULT_OBSERVATION_LATITUDE,
-          longitude: DEFAULT_OBSERVATION_LONGITUDE,
-        });
-      } else {
-        // 2. Level 1: Try dominant verified trait matching from manual registry
-        const evaluatedTraits = visualTraitRegistry.evaluateGrid(decoded.vqIndices);
-        const verifiedTrait = evaluatedTraits.find((tr) => tr.isManuallyVerified && tr.percentage >= 5.0);
-        if (verifiedTrait) {
-          primaryObjectLabel = `${verifiedTrait.name} · ${verifiedTrait.category}`;
-        }
-      }
-    }
+    const primaryObjectLabel =
+      objectAnnotations.length > 0
+        ? `${objectAnnotations[0]!.label} · ${objectAnnotations[0]!.category}`
+        : null;
 
     return jsonResponse({
       success: true,

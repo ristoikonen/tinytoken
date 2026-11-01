@@ -1058,6 +1058,7 @@
 
     async function selectToken(id) {
       selectedTokenId = id;
+      hideLabelPopover();
       for (const [idx, hit] of currentHits.entries()) {
         const card = elGrid.children[idx];
         if (card) card.classList.toggle('selected', hit.id === id);
