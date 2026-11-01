@@ -163,7 +163,7 @@ const server = serve({
         req.headers.get("x-matched-path") ||
         req.headers.get("x-invoke-path");
       if (forwarded && forwarded.startsWith("/api/")) {
-        path = forwarded.split("?")[0];
+        path = forwarded.split("?")[0]!;
       }
     }
 
