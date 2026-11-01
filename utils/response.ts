@@ -61,7 +61,7 @@ function constantTimeEquals(a: string, b: string): boolean {
  * against cross-origin browser requests (`fetch`, `XMLHttpRequest`, `<form>`, and `mode: "no-cors"`).
  * Returns a `403`/`401`/`415` error `Response` when blocked, or `null` when safe to proceed.
  */
-export function verifySameOriginMutation(req?: Request): Response | null {
+export function verifySameOriginMutation(req?: Request, allowedContentTypes?: string[]): Response | null {
   if (!req) {
     return errorResponse("Missing request context for mutating operation", 403);
   }
@@ -111,11 +111,13 @@ export function verifySameOriginMutation(req?: Request): Response | null {
     }
   }
 
-  // 4. Require `Content-Type: application/json` so HTML `<form>` and `fetch(..., { mode: "no-cors" })`
+  // 4. Require non-simple Content-Type so HTML `<form>` and `fetch(..., { mode: "no-cors" })`
   //    simple cross-origin requests cannot bypass preflight checks.
   const contentType = (req.headers.get("content-type") ?? "").toLowerCase();
-  if (!contentType.includes("application/json")) {
-    return errorResponse("Mutating endpoints require Content-Type: application/json", 415);
+  const allowed = allowedContentTypes ?? ["application/json"];
+  const matches = allowed.some((type) => contentType.includes(type));
+  if (!matches) {
+    return errorResponse(`Mutating endpoints require Content-Type: ${allowed.join(" or ")}`, 415);
   }
 
   return null;

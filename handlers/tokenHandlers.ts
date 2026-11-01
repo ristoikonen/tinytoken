@@ -258,12 +258,19 @@ export class TokenApiHandlers {
         targetCentroids = Array.from(extracted);
       }
 
-      const { taughtCentroids, annotation } = await visualTraitRegistry.teachObject(
+      const geo = decoded.metadata?.geoCoordinates;
+      const { taughtCentroids, annotation, evidence, recipe } = await visualTraitRegistry.teachObject(
         id,
         label,
         category,
         boundingBox,
         targetCentroids,
+        {
+          latitude: geo?.latitude ?? (body as any).latitude,
+          longitude: geo?.longitude ?? (body as any).longitude,
+          source: (body as any).source,
+          confidence: (body as any).confidence,
+        },
       );
 
       const updatedTraits = visualTraitRegistry.evaluateGrid(decoded.vqIndices);
@@ -274,6 +281,8 @@ export class TokenApiHandlers {
         annotation,
         taughtCentroids,
         traits: updatedTraits,
+        evidence,
+        recipe,
       });
     } catch (err: any) {
       return errorResponse(`Failed to teach object: ${err?.message || String(err)}`, 500);

@@ -1,8 +1,16 @@
 {
   "0": {
-    "name": "Christine",
+    "name": "Henri",
     "category": "Silhouette",
-    "isManuallyVerified": true
+    "isManuallyVerified": true,
+    "rgb": [
+      12,
+      10,
+      16
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T04:00:15.124Z"
   },
   "12": {
     "name": "Dense Foliage Greenery",
@@ -14,10 +22,31 @@
     "category": "ColorSpace",
     "isManuallyVerified": true
   },
-  "48": {
-    "name": "Banksia flower",
+  "42": {
+    "name": "Henri",
     "category": "Silhouette",
-    "isManuallyVerified": true
+    "isManuallyVerified": true,
+    "rgb": [
+      60,
+      10,
+      16
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T04:00:15.124Z"
+  },
+  "48": {
+    "name": "Henri",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      60,
+      48,
+      16
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T04:00:15.124Z"
   },
   "49": {
     "name": "Banksia flower",
@@ -49,10 +78,44 @@
     "category": "ColorSpace",
     "isManuallyVerified": true
   },
-  "90": {
-    "name": "Banksia flower",
+  "84": {
+    "name": "Henri",
     "category": "Silhouette",
-    "isManuallyVerified": true
+    "isManuallyVerified": true,
+    "rgb": [
+      108,
+      10,
+      16
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T04:00:15.124Z"
+  },
+  "90": {
+    "name": "Henri",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      108,
+      48,
+      16
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T04:00:15.124Z"
+  },
+  "91": {
+    "name": "Gumnut",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      108,
+      48,
+      64
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T03:59:31.204Z"
   },
   "96": {
     "name": "Banksia flower",
@@ -60,9 +123,17 @@
     "isManuallyVerified": true
   },
   "97": {
-    "name": "Gray Kangaroo",
+    "name": "Gumnut",
     "category": "Silhouette",
-    "isManuallyVerified": true
+    "isManuallyVerified": true,
+    "rgb": [
+      108,
+      88,
+      64
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T03:59:31.204Z"
   },
   "98": {
     "name": "Gray Kangaroo",
@@ -70,9 +141,17 @@
     "isManuallyVerified": true
   },
   "103": {
-    "name": "Banksia flower",
+    "name": "Gumnut",
     "category": "Silhouette",
-    "isManuallyVerified": true
+    "isManuallyVerified": true,
+    "rgb": [
+      108,
+      128,
+      64
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T03:59:31.204Z"
   },
   "104": {
     "name": "Gray Kangaroo",
@@ -94,15 +173,36 @@
     "category": "Silhouette",
     "isManuallyVerified": true
   },
+  "133": {
+    "name": "Gumnut",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      156,
+      48,
+      64
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T03:59:31.204Z"
+  },
   "138": {
     "name": "Banksia flower",
     "category": "Silhouette",
     "isManuallyVerified": true
   },
   "139": {
-    "name": "Banksia flower",
+    "name": "Gumnut",
     "category": "Silhouette",
-    "isManuallyVerified": true
+    "isManuallyVerified": true,
+    "rgb": [
+      156,
+      88,
+      64
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T03:59:31.204Z"
   },
   "145": {
     "name": "Christine",
@@ -110,9 +210,17 @@
     "isManuallyVerified": true
   },
   "146": {
-    "name": "Gray Kangaroo",
+    "name": "Gumnut",
     "category": "Silhouette",
-    "isManuallyVerified": true
+    "isManuallyVerified": true,
+    "rgb": [
+      156,
+      128,
+      112
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T03:59:31.204Z"
   },
   "147": {
     "name": "Gray Kangaroo",
@@ -184,6 +292,19 @@
     "category": "Silhouette",
     "isManuallyVerified": true
   },
+  "203": {
+    "name": "Gumnut",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      204,
+      208,
+      250
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T03:59:31.204Z"
+  },
   "215": {
     "name": "Risto Ikonen (Facial Alignment Structure)",
     "category": "Silhouette",
@@ -208,6 +329,19 @@
     "name": "Charred Tree Trunk",
     "category": "Silhouette",
     "isManuallyVerified": true
+  },
+  "244": {
+    "name": "Gumnut",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      248,
+      208,
+      208
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T03:59:31.204Z"
   },
   "252": {
     "name": "Pure Ink Line & Typography Anchor",

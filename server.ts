@@ -1,7 +1,10 @@
 import { serve, type BunRequest } from "bun";
+import { LearningHandlers } from "./handlers/learningHandlers";
 import { TokenApiHandlers } from "./handlers/tokenHandlers";
+import { ArchiveManager } from "./utils/archiveManager";
 import { Win11TokenPipeline } from "./utils/indexer";
 import { errorResponse } from "./utils/response";
+import { visualTraitRegistry } from "./utils/visualTraitRegistry";
 import { VqInvertedIndexEngine } from "./utils/vqInvertedIndex";
 import { CompressedTokenSearchEngine } from "./utils/zipEngine";
 import { corsResponse } from "./utils/response";
@@ -38,6 +41,8 @@ const pipeline = new Win11TokenPipeline({
 
 const searchEngine = new CompressedTokenSearchEngine(ZIP_ARCHIVE_PATH);
 const invertedIndex = new VqInvertedIndexEngine(":memory:");
+const archiveManager = new ArchiveManager(searchEngine, ZIP_ARCHIVE_PATH, invertedIndex);
+const learningHandlers = new LearningHandlers(archiveManager, visualTraitRegistry);
 const apiHandlers = new TokenApiHandlers(
   searchEngine,
   pipeline,
@@ -110,6 +115,32 @@ const server = serve({
       },
       OPTIONS: (req: BunRequest) => corsResponse(req),
     },
+    "/api/archive/swap": {
+      POST: async (req: BunRequest) => {
+        await ensureInitialized();
+        return learningHandlers.handleArchiveSwap(req);
+      },
+      OPTIONS: (req: BunRequest) => corsResponse(req),
+    },
+    "/api/archive/status": async () => {
+      await ensureInitialized();
+      return learningHandlers.handleArchiveStatus();
+    },
+    "/api/learning/recipes": async () => {
+      await ensureInitialized();
+      return learningHandlers.handleGetRecipes();
+    },
+    "/api/learning/evidence": {
+      GET: async () => {
+        await ensureInitialized();
+        return learningHandlers.handleGetEvidence();
+      },
+      POST: async (req: BunRequest) => {
+        await ensureInitialized();
+        return learningHandlers.handleRecordEvidence(req);
+      },
+      OPTIONS: (req: BunRequest) => corsResponse(req),
+    },
   },
 
   async fetch(req: BunRequest) {
@@ -157,6 +188,13 @@ const server = serve({
       if (path === "/api/search") return apiHandlers.handleSearch(url);
       if (path === "/api/search/pattern") return apiHandlers.handlePatternSearch(url);
       if (path === "/api/index/rebuild" && req.method === "POST") return apiHandlers.handleRebuildIndex(req);
+      if (path === "/api/archive/swap" && req.method === "POST") return learningHandlers.handleArchiveSwap(req);
+      if (path === "/api/archive/status") return learningHandlers.handleArchiveStatus();
+      if (path === "/api/learning/recipes") return learningHandlers.handleGetRecipes();
+      if (path === "/api/learning/evidence") {
+        if (req.method === "POST") return learningHandlers.handleRecordEvidence(req);
+        return learningHandlers.handleGetEvidence();
+      }
 
       if (path.startsWith("/api/token/")) {
         const rest = path.slice("/api/token/".length);

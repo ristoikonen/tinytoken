@@ -724,6 +724,10 @@
         <button id="btn-rebuild" class="btn mono" title="Re-scan and rebuild ./data/tokens.zip">
           🔄 Re-Index Assets
         </button>
+        <label id="btn-upload-archive" class="btn mono" title="Directly ingest and swap tokens.zip archive (Learnings preserved)" style="cursor:pointer;display:inline-flex;align-items:center;gap:0.25rem;">
+          📦 Ingest Archive
+          <input type="file" id="archive-file-input" accept=".zip" style="display:none;" />
+        </label>
       </div>
 
       <div id="token-grid" class="token-grid"></div>
@@ -1387,6 +1391,40 @@
     }
 
     document.getElementById('btn-rebuild').onclick = () => triggerRebuild();
+
+    document.getElementById('archive-file-input')?.addEventListener('change', async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      if (!confirm(`Transactionally swap active archive with '${file.name}'?\nAll learned visual traits and object recipes will remain persistent.`)) {
+        e.target.value = '';
+        return;
+      }
+
+      const btn = document.getElementById('btn-upload-archive');
+      const origText = btn.innerHTML;
+      btn.innerText = '⏳ Validating & Swapping...';
+
+      try {
+        const res = await fetch('/api/archive/swap', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/zip' },
+          body: file,
+        });
+        const data = await res.json();
+        if (data.success) {
+          alert(`✓ Ingested Archive Generation ${data.generation} (${data.totalTokens} tokens).\nAll ${data.activeRecipesCount || 0} object recipes and visual traits preserved!`);
+          await loadStatsAndCodebook();
+          await runSearch();
+        } else {
+          alert(`Archive swap failed: ${data.error || 'Unknown error'}`);
+        }
+      } catch (err) {
+        alert(`Upload error: ${err.message || String(err)}`);
+      } finally {
+        btn.innerHTML = origText;
+        e.target.value = '';
+      }
+    });
 
     // Keyboard navigation (Left/Right arrows)
     window.addEventListener('keydown', (e) => {
