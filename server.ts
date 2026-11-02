@@ -4,7 +4,11 @@ import { TokenApiHandlers } from "./handlers/tokenHandlers";
 import { ArchiveManager } from "./utils/archiveManager";
 import { Win11TokenPipeline } from "./utils/indexer";
 import { errorResponse, jsonResponse, verifySameOriginMutation } from "./utils/response";
-import { fetchAndIndexGooglePhotos } from "./utils/googlePhotos";
+import {
+  fetchAndIndexGooglePhotos,
+  getGooglePhotosAuthUrl,
+  GOOGLE_PHOTOS_READ_SCOPES,
+} from "./utils/googlePhotos";
 import { visualTraitRegistry } from "./utils/visualTraitRegistry";
 import { VqInvertedIndexEngine } from "./utils/vqInvertedIndex";
 import { CompressedTokenSearchEngine } from "./utils/zipEngine";
@@ -142,12 +146,39 @@ const server = serve({
       },
       OPTIONS: (req: BunRequest) => corsResponse(req),
     },
+    "/api/photos/auth-url": {
+      GET: () => {
+        return jsonResponse({
+          success: true,
+          authUrl: getGooglePhotosAuthUrl(),
+          scope: GOOGLE_PHOTOS_READ_SCOPES[0],
+        });
+      },
+    },
     "/api/photos/index-batch": {
       POST: async (req: BunRequest) => {
+        console.log('ix batch');
         await ensureInitialized();
         const forbidden = verifySameOriginMutation(req);
         if (forbidden) return forbidden;
-        const res = await fetchAndIndexGooglePhotos();
+        let token: string | undefined;
+        let code: string | undefined;
+        try {
+          const body = (await req.json()) as { token?: string; code?: string };
+          token = body?.token;
+          code = body?.code;
+        } catch {
+          // empty body ok
+        }
+        console.log('fetchAndIndexGooglePhotos');
+        const res = await fetchAndIndexGooglePhotos(token, code, {
+          pipeline,
+          searchEngine,
+          invertedIndex,
+          archiveManager,
+          zipArchivePath: ZIP_ARCHIVE_PATH,
+        });
+        console.log('done fetchAndIndexGooglePhotos');
         return jsonResponse(res);
       },
       OPTIONS: (req: BunRequest) => corsResponse(req),
@@ -207,10 +238,34 @@ const server = serve({
         return learningHandlers.handleGetEvidence();
       }
 
+      if (path === "/api/photos/auth-url" && req.method === "GET") {
+        return jsonResponse({
+          success: true,
+          authUrl: getGooglePhotosAuthUrl(),
+          scope: GOOGLE_PHOTOS_READ_SCOPES[0],
+        });
+      }
+
       if (path === "/api/photos/index-batch" && req.method === "POST") {
         const forbidden = verifySameOriginMutation(req);
         if (forbidden) return forbidden;
-        const res = await fetchAndIndexGooglePhotos();
+        let token: string | undefined;
+        let code: string | undefined;
+        try {
+          const body = (await req.json()) as { token?: string; code?: string };
+          token = body?.token;
+          code = body?.code;
+        } catch {
+          // empty body ok
+        }
+        const res = await fetchAndIndexGooglePhotos(token, code, {
+          pipeline,
+          searchEngine,
+          invertedIndex,
+          archiveManager,
+          zipArchivePath: ZIP_ARCHIVE_PATH,
+        });
+        console.log(res);
         return jsonResponse(res);
       }
 
@@ -254,7 +309,7 @@ const server = serve({
   },
 });
 
-console.log(`🚀 TinyToken Server running at http://${server.hostname}:${server.port}`);
+console.log(`TinyToken Server running at http://${server.hostname}:${server.port}`);
 
 async function directoryExists(dir: string): Promise<boolean> {
   try {

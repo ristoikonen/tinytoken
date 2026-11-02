@@ -1,12 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>TinyToken • Tactical Mission Asset Console</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+    rel="stylesheet" />
   <style>
     :root {
       /* Raktor Luminous Tactical Palette (with Nuclear Hazard / Danger Glow) */
@@ -14,7 +17,7 @@
       --bg-panel: linear-gradient(165deg, rgba(22, 34, 58, 0.78) 0%, rgba(14, 22, 39, 0.88) 60%, rgba(9, 14, 26, 0.96) 100%);
       --bg-elevated: #1a2744;
       --bg-inset: rgba(10, 15, 28, 0.75);
-      
+
       --border-subtle: rgba(56, 189, 248, 0.14);
       --border-light: rgba(56, 189, 248, 0.28);
       --border-accent: rgba(56, 189, 248, 0.55);
@@ -22,7 +25,7 @@
       --cyan-bright: #38bdf8;
       --cyan-muted: #0284c7;
       --cyan-glow: rgba(56, 189, 248, 0.25);
-      
+
       --amber-hazard: #f59e0b;
       --amber-glow: rgba(245, 158, 11, 0.28);
 
@@ -68,13 +71,16 @@
       width: 5px;
       height: 5px;
     }
+
     ::-webkit-scrollbar-track {
       background: rgba(9, 14, 26, 0.8);
     }
+
     ::-webkit-scrollbar-thumb {
       background: rgba(56, 189, 248, 0.2);
       border-radius: 3px;
     }
+
     ::-webkit-scrollbar-thumb:hover {
       background: rgba(56, 189, 248, 0.38);
     }
@@ -138,7 +144,8 @@
 
     @media (min-width: 1024px) {
       .workspace {
-        grid-template-columns: 5fr 6fr; /* Expanded to 55% for right viewer */
+        grid-template-columns: 5fr 6fr;
+        /* Expanded to 55% for right viewer */
         align-items: start;
       }
     }
@@ -283,7 +290,7 @@
       background: var(--bg-elevated);
       color: var(--cyan-bright);
       font-weight: 600;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.4), 0 0 8px var(--cyan-glow);
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4), 0 0 8px var(--cyan-glow);
     }
 
     /* Token Grid */
@@ -403,7 +410,8 @@
     /* Expanded & Luminous Raktor Nuclear Hazard Viewer Stage */
     .viewer-stage {
       width: 100%;
-      height: 490px; /* Vastly enlarged from 290px -> 490px */
+      height: 490px;
+      /* Vastly enlarged from 290px -> 490px */
       background:
         radial-gradient(circle at 50% 25%, rgba(56, 189, 248, 0.12) 0%, transparent 60%),
         radial-gradient(circle at 85% 85%, rgba(245, 158, 11, 0.08) 0%, transparent 50%),
@@ -436,7 +444,8 @@
       user-select: none;
       -webkit-user-select: none;
       -webkit-user-drag: none;
-      pointer-events: none; /* Prevents browser native image dragging */
+      pointer-events: none;
+      /* Prevents browser native image dragging */
     }
 
     .pixelated {
@@ -675,13 +684,25 @@
       display: flex;
       margin: 0.35rem 0;
       border: 1px solid rgba(56, 189, 248, 0.15);
-      box-shadow: inset 0 1px 3px rgba(0,0,0,0.5);
+      box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);
     }
 
-    .bm-seg-s1 { background: #cbd5e1; }
-    .bm-seg-vq { background: #64748b; }
-    .bm-seg-s2 { background: var(--cyan-bright); box-shadow: 0 0 6px var(--cyan-glow); }
-    .bm-seg-s3 { background: #334155; }
+    .bm-seg-s1 {
+      background: #cbd5e1;
+    }
+
+    .bm-seg-vq {
+      background: #64748b;
+    }
+
+    .bm-seg-s2 {
+      background: var(--cyan-bright);
+      box-shadow: 0 0 6px var(--cyan-glow);
+    }
+
+    .bm-seg-s3 {
+      background: #334155;
+    }
 
     .bytemap-legend {
       display: flex;
@@ -724,9 +745,21 @@
       border-radius: 50%;
       display: inline-block;
     }
-    .terminal-dot.red { background: #ef4444; box-shadow: 0 0 5px rgba(239, 68, 68, 0.6); }
-    .terminal-dot.yellow { background: #eab308; box-shadow: 0 0 5px rgba(234, 179, 8, 0.6); }
-    .terminal-dot.green { background: #10b981; box-shadow: 0 0 5px rgba(16, 185, 129, 0.6); }
+
+    .terminal-dot.red {
+      background: #ef4444;
+      box-shadow: 0 0 5px rgba(239, 68, 68, 0.6);
+    }
+
+    .terminal-dot.yellow {
+      background: #eab308;
+      box-shadow: 0 0 5px rgba(234, 179, 8, 0.6);
+    }
+
+    .terminal-dot.green {
+      background: #10b981;
+      box-shadow: 0 0 5px rgba(16, 185, 129, 0.6);
+    }
 
     .terminal-title {
       font-size: 0.62rem;
@@ -747,6 +780,7 @@
       padding: 1px 5px;
       border-radius: 3px;
     }
+
     .terminal-clear-btn:hover {
       color: var(--text-high);
       background: rgba(255, 255, 255, 0.08);
@@ -770,16 +804,33 @@
       word-break: break-word;
       white-space: pre-wrap;
     }
-    .terminal-line.info { color: #94a3b8; }
-    .terminal-line.success { color: var(--status-emerald); }
-    .terminal-line.cyan { color: var(--cyan-bright); }
-    .terminal-line.warning { color: #f59e0b; }
-    .terminal-line.error { color: #f87171; }
+
+    .terminal-line.info {
+      color: #94a3b8;
+    }
+
+    .terminal-line.success {
+      color: var(--status-emerald);
+    }
+
+    .terminal-line.cyan {
+      color: var(--cyan-bright);
+    }
+
+    .terminal-line.warning {
+      color: #f59e0b;
+    }
+
+    .terminal-line.error {
+      color: #f87171;
+    }
+
     .terminal-prompt {
       color: var(--cyan-bright);
       font-weight: 600;
       margin-right: 5px;
     }
+
     .terminal-time {
       color: var(--text-dim);
       margin-right: 6px;
@@ -800,14 +851,19 @@
     }
   </style>
 </head>
+
 <body>
   <header>
     <div class="header-row">
       <div class="brand">
-        <div class="logo-box flex items-center justify-center flex-shrink-0" style="width:34px;height:34px;background:transparent;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-          <svg version="1.0" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 128.000000 128.000000" preserveAspectRatio="xMidYMid meet" style="filter:drop-shadow(0 0 6px rgba(56,189,248,0.5));">
+        <div class="logo-box flex items-center justify-center flex-shrink-0"
+          style="width:34px;height:34px;background:transparent;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <svg version="1.0" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%"
+            viewBox="0 0 128.000000 128.000000" preserveAspectRatio="xMidYMid meet"
+            style="filter:drop-shadow(0 0 6px rgba(56,189,248,0.5));">
             <g transform="translate(0.000000,128.000000) scale(0.100000,-0.100000)" fill="#38bdf8" stroke="none">
-              <path d="M1130 1261 c-5 -11 -10 -25 -10 -31 0 -19 -50 -113 -73 -138 -25 -27 -155 -109 -272 -172 -44 -23 -93 -52 -109 -63 -70 -49 -301 -185 -308 -181 -4 3 23 51 60 108 l66 104 65 7 c85 9 155 53 204 127 20 29 52 68 72 85 37 33 44 65 15 71 -13 2 -64 -44 -197 -180 -55 -56 -158 -66 -165 -15 -2 12 -11 23 -20 25 -15 3 -18 -4 -18 -35 0 -30 -13 -57 -64 -133 -84 -124 -154 -210 -192 -235 -17 -11 -65 -29 -107 -39 l-77 -18 0 -55 c0 -51 1 -54 22 -48 11 4 54 8 93 8 56 0 82 -5 114 -21 23 -12 49 -22 58 -22 20 0 348 -169 407 -209 23 -16 48 -36 55 -45 8 -9 21 -16 30 -16 33 0 61 -43 61 -93 0 -40 3 -47 19 -47 16 0 20 8 23 38 4 51 26 52 125 2 65 -32 91 -40 137 -40 48 0 56 3 56 18 0 14 -24 30 -88 60 -48 23 -95 42 -105 42 -23 0 -243 114 -287 149 -19 16 -46 32 -60 36 -37 11 -300 147 -300 155 0 8 450 33 550 30 41 -1 139 -2 218 -1 140 1 142 1 142 24 0 46 -7 47 -181 48 -90 0 -295 -3 -455 -7 -198 -5 -293 -4 -297 3 -9 14 28 41 213 154 85 53 218 134 295 181 77 48 166 98 197 111 31 14 74 37 95 51 20 14 48 26 61 26 30 0 82 39 82 62 0 24 -29 23 -91 -3 -27 -12 -52 -19 -56 -16 -3 3 6 36 21 72 14 36 26 70 26 75 0 18 -39 10 -50 -9z" />
+              <path
+                d="M1130 1261 c-5 -11 -10 -25 -10 -31 0 -19 -50 -113 -73 -138 -25 -27 -155 -109 -272 -172 -44 -23 -93 -52 -109 -63 -70 -49 -301 -185 -308 -181 -4 3 23 51 60 108 l66 104 65 7 c85 9 155 53 204 127 20 29 52 68 72 85 37 33 44 65 15 71 -13 2 -64 -44 -197 -180 -55 -56 -158 -66 -165 -15 -2 12 -11 23 -20 25 -15 3 -18 -4 -18 -35 0 -30 -13 -57 -64 -133 -84 -124 -154 -210 -192 -235 -17 -11 -65 -29 -107 -39 l-77 -18 0 -55 c0 -51 1 -54 22 -48 11 4 54 8 93 8 56 0 82 -5 114 -21 23 -12 49 -22 58 -22 20 0 348 -169 407 -209 23 -16 48 -36 55 -45 8 -9 21 -16 30 -16 33 0 61 -43 61 -93 0 -40 3 -47 19 -47 16 0 20 8 23 38 4 51 26 52 125 2 65 -32 91 -40 137 -40 48 0 56 3 56 18 0 14 -24 30 -88 60 -48 23 -95 42 -105 42 -23 0 -243 114 -287 149 -19 16 -46 32 -60 36 -37 11 -300 147 -300 155 0 8 450 33 550 30 41 -1 139 -2 218 -1 140 1 142 1 142 24 0 46 -7 47 -181 48 -90 0 -295 -3 -455 -7 -198 -5 -293 -4 -297 3 -9 14 28 41 213 154 85 53 218 134 295 181 77 48 166 98 197 111 31 14 74 37 95 51 20 14 48 26 61 26 30 0 82 39 82 62 0 24 -29 23 -91 -3 -27 -12 -52 -19 -56 -16 -3 3 6 36 21 72 14 36 26 70 26 75 0 18 -39 10 -50 -9z" />
             </g>
           </svg>
         </div>
@@ -824,13 +880,8 @@
     <!-- Left Column: Search & Instant VQ Neural Grid -->
     <section class="panel">
       <div class="toolbar">
-        <input
-          id="search-input"
-          class="search-input mono"
-          type="text"
-          placeholder="Search 25KB tokens by OCR text, filename, or ID..."
-          autocomplete="off"
-        />
+        <input id="search-input" class="search-input mono" type="text"
+          placeholder="Search 25KB tokens by OCR text, filename, or ID..." autocomplete="off" />
         <div class="toolbar-actions">
           <button id="btn-clear-sim" class="btn mono" title="Clear search query or similarity filter">
             Clear
@@ -838,7 +889,9 @@
           <button id="btn-rebuild" class="btn mono" title="Re-scan and rebuild ./data/tokens.zip">
             🔄 Re-Index
           </button>
-          <label id="btn-upload-archive" class="btn mono" title="Directly ingest and swap tokens.zip archive (Learnings preserved)" style="cursor:pointer;display:inline-flex;align-items:center;">
+          <label id="btn-upload-archive" class="btn mono"
+            title="Directly ingest and swap tokens.zip archive (Learnings preserved)"
+            style="cursor:pointer;display:inline-flex;align-items:center;">
             📦 Ingest Archive
             <input type="file" id="archive-file-input" accept=".zip" style="display:none;" />
           </label>
@@ -854,10 +907,12 @@
         <div class="segmented-ctrl mono">
           <button id="mode-preview" class="segmented-btn btn-active">PREVIEW</button>
           <button id="mode-vq" class="segmented-btn">VQ 16×16</button>
-          <button id="mode-full" class="segmented-btn" disabled style="opacity:0.35;cursor:not-allowed;" title="Source full-res view currently disabled">SOURCE</button>
+          <button id="mode-full" class="segmented-btn" disabled style="opacity:0.35;cursor:not-allowed;"
+            title="Source full-res view currently disabled">SOURCE</button>
         </div>
         <div style="display:flex;gap:0.25rem;align-items:center;">
-          <button id="btn-label-mode" class="btn mono" title="Draw bounding box on image to name/teach an object">✎ Label</button>
+          <button id="btn-label-mode" class="btn mono" title="Draw bounding box on image to name/teach an object">✎
+            Label</button>
           <button id="zoom-out" class="btn mono" title="Zoom Out">−</button>
           <button id="zoom-reset" class="btn mono" title="Reset Zoom">1.25x</button>
           <button id="zoom-in" class="btn mono" title="Zoom In">+</button>
@@ -867,10 +922,15 @@
 
       <!-- Expanded Luminous Viewer Stage -->
       <div id="viewer-stage" class="viewer-stage" draggable="false" ondragstart="return false;">
-        <div id="stage-existing-labels" class="mono" style="display:none;position:absolute;top:8px;left:8px;right:8px;z-index:30;background:rgba(9,14,26,0.92);border:1px solid rgba(56,189,248,0.4);border-radius:6px;padding:6px 10px;box-shadow:0 4px 16px rgba(0,0,0,0.6);backdrop-filter:blur(6px);align-items:center;flex-wrap:wrap;gap:6px;font-size:0.7rem;"></div>
-        <img id="viewer-img" class="viewer-media" alt="Token Preview" draggable="false" ondragstart="return false;" style="display:none;" />
-        <iframe id="viewer-pdf" title="Document Source Viewer" style="width:100%;height:100%;border:none;display:none;"></iframe>
-        <canvas id="viewer-vq-canvas" width="16" height="16" class="viewer-media pixelated" draggable="false" ondragstart="return false;" style="width:360px;height:360px;display:none;"></canvas>
+        <div id="stage-existing-labels" class="mono"
+          style="display:none;position:absolute;top:8px;left:8px;right:8px;z-index:30;background:rgba(9,14,26,0.92);border:1px solid rgba(56,189,248,0.4);border-radius:6px;padding:6px 10px;box-shadow:0 4px 16px rgba(0,0,0,0.6);backdrop-filter:blur(6px);align-items:center;flex-wrap:wrap;gap:6px;font-size:0.7rem;">
+        </div>
+        <img id="viewer-img" class="viewer-media" alt="Token Preview" draggable="false" ondragstart="return false;"
+          style="display:none;" />
+        <iframe id="viewer-pdf" title="Document Source Viewer"
+          style="width:100%;height:100%;border:none;display:none;"></iframe>
+        <canvas id="viewer-vq-canvas" width="16" height="16" class="viewer-media pixelated" draggable="false"
+          ondragstart="return false;" style="width:360px;height:360px;display:none;"></canvas>
         <div id="label-box" class="label-bounding-box" style="display:none;"></div>
         <div id="label-popover" class="label-popover" style="display:none;">
           <div class="popover-title mono">
@@ -881,7 +941,8 @@
             <div id="label-covered-info" style="font-size:0.62rem;color:var(--text-medium);margin-bottom:0.35rem;">
               Region: 0% • 0 VQ Centroids
             </div>
-            <input id="label-input-name" class="popover-input" type="text" placeholder="Object name (e.g. Red Kangaroo)" maxlength="40" />
+            <input id="label-input-name" class="popover-input" type="text" placeholder="Object name (e.g. Red Kangaroo)"
+              maxlength="40" />
             <div style="display:flex;gap:0.35rem;margin-top:0.4rem;">
               <select id="label-input-cat" class="popover-select">
                 <option value="Silhouette">Silhouette</option>
@@ -889,11 +950,14 @@
                 <option value="ColorSpace">ColorSpace</option>
                 <option value="StructuralGrid">StructuralGrid</option>
               </select>
-              <button id="btn-submit-label" class="btn btn-action-cyan" type="button" style="padding:0.25rem 0.65rem;font-size:0.68rem;white-space:nowrap;">
+              <button id="btn-submit-label" class="btn btn-action-cyan" type="button"
+                style="padding:0.25rem 0.65rem;font-size:0.68rem;white-space:nowrap;">
                 ✓ Teach
               </button>
             </div>
-            <div id="popover-existing-labels" style="display:none;margin-top:0.4rem;font-size:0.62rem;border-top:1px solid rgba(56,189,248,0.2);padding-top:0.35rem;color:var(--text-medium);"></div>
+            <div id="popover-existing-labels"
+              style="display:none;margin-top:0.4rem;font-size:0.62rem;border-top:1px solid rgba(56,189,248,0.2);padding-top:0.35rem;color:var(--text-medium);">
+            </div>
           </div>
         </div>
         <div class="viewer-hud mono">
@@ -906,10 +970,12 @@
         <button id="btn-find-similar" class="btn btn-action-cyan mono">
           ◈ Find Visually Similar
         </button>
-        <button id="btn-homomorphic" class="btn mono" title="Apply blind GF(2^8) linear state mask directly on raw 25KB token slice">
+        <button id="btn-homomorphic" class="btn mono"
+          title="Apply blind GF(2^8) linear state mask directly on raw 25KB token slice">
           ⊕ GF(2⁸) Mask
         </button>
-        <button id="btn-index-google-photos" class="btn btn-action-emerald mono" style="display:none;" title="Fetch and index 50 Google Photos into TinyToken">
+        <button id="btn-index-google-photos" class="btn btn-action-emerald mono" style="display:none;"
+          title="Fetch and index 50 Google Photos into TinyToken">
           Index 50 Google Photos
         </button>
       </div>
@@ -917,7 +983,8 @@
       <!-- Semantic Visual Traits (Human-in-the-Loop Explainable Registry) -->
       <div class="traits-box">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.35rem;" class="mono">
-          <span style="color:var(--text-high);font-weight:600;font-size:0.65rem;letter-spacing:0.04em;">SEMANTIC VISUAL TRAITS</span>
+          <span style="color:var(--text-high);font-weight:600;font-size:0.65rem;letter-spacing:0.04em;">SEMANTIC VISUAL
+            TRAITS</span>
           <span id="traits-status" style="color:var(--cyan-bright);font-size:0.62rem;font-weight:500;">0 DETECTED</span>
         </div>
         <div id="traits-similarity-debug" class="traits-sim-row mono" style="display:none;"></div>
@@ -960,18 +1027,20 @@
           <button id="btn-clear-debug" class="terminal-clear-btn" type="button" title="Clear console">CLR</button>
         </div>
         <div id="terminal-debug-log" class="terminal-body">
-          <div class="terminal-line cyan"><span class="terminal-time">SYS</span>TinyToken GF(2⁸) runtime active • PID 3000</div>
+          <div class="terminal-line cyan"><span class="terminal-time">SYS</span>TinyToken GF(2⁸) runtime active • PID
+            3000</div>
         </div>
       </div>
 
       <div>
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.25rem;">
           <div class="kv-label mono" style="margin-bottom:0;">Extracted OCR & Metadata</div>
-          <span id="ocr-timestamp" class="mono" style="font-size:0.65rem;color:var(--cyan-bright);font-weight:500;"></span>
+          <span id="ocr-timestamp" class="mono"
+            style="font-size:0.65rem;color:var(--cyan-bright);font-weight:500;"></span>
         </div>
         <div id="ocr-readout" class="ocr-box mono">Token ID: tok_00007_MurramarangRuuLightlyEdited.jpg
 
-Select a token to inspect its 25 KB binary envelope, VQ 16×16 neural codebook, and provenance proof.</div>
+          Select a token to inspect its 25 KB binary envelope, VQ 16×16 neural codebook, and provenance proof.</div>
       </div>
     </aside>
   </main>
@@ -1081,7 +1150,7 @@ Select a token to inspect its 25 KB binary envelope, VQ 16×16 neural codebook, 
             if (btnGp) btnGp.style.display = 'inline-flex';
             logDebug('[ENV] USE_MY_GOOGLE_PHOTOS enabled. Ingestion button armed.', 'cyan');
           }
-          logDebug(`[SYS] TinyToken active • ${statsRes.tokenCount || 0} tokens in RAM (${((statsRes.archiveSizeBytes || 0)/1024).toFixed(1)} KB)`);
+          logDebug(`[SYS] TinyToken active • ${statsRes.tokenCount || 0} tokens in RAM (${((statsRes.archiveSizeBytes || 0) / 1024).toFixed(1)} KB)`);
         }
 
         if (cbRes && Array.isArray(cbRes.centroids) && cbRes.centroids.length === 256) {
@@ -1681,12 +1750,21 @@ No object recipe associated with this token yet. Click [✎ Label] to teach.`;
             headers: { 'Content-Type': 'application/json' },
           }).then(r => r.json());
 
-          if (res.success && Array.isArray(res.messages)) {
-            for (const msg of res.messages) {
-              logDebug(msg, 'success');
+          logDebug(JSON.stringify(res), 'cyan');
+
+          if (res.success) {
+            if (Array.isArray(res.messages)) {
+              for (const msg of res.messages) {
+                logDebug(msg, 'success');
+              }
             }
+            await loadStatsAndCodebook();
+            await runSearch();
           } else {
             logDebug(`[ERROR] ${res.error || 'Failed to fetch Google Photos'}`, 'error');
+            if (res.authUrl) {
+              logDebug(`[AUTH] Authorize read access at: ${res.authUrl}`, 'cyan');
+            }
             if (Array.isArray(res.messages)) {
               for (const m of res.messages) logDebug(m, 'warning');
             }
@@ -1784,4 +1862,5 @@ No object recipe associated with this token yet. Click [✎ Label] to teach.`;
     })();
   </script>
 </body>
+
 </html>

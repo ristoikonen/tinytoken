@@ -169,22 +169,26 @@ export class Win11TokenPipeline {
   }
 
   /**
-   * Tokenizes a single image or SVG file from `sourceDirectory` (`./images`), generating:
+   * Tokenizes an in-memory image buffer (e.g. from Google Photos or dynamic ingestion):
    * - Lean 320x320 WebP raster preview (Section III)
    * - True decoded 16x16 RGB VQ codebook grid (Section I, 256B)
-   * - Real 384B Int8 `Xenova/dinov2-small` ViT-S/14 CLS semantic embedding (Section II, modelId=0x02)
+   * - Real 384B Int8 Meta DINOv3 ViT-S/16 CLS semantic embedding (Section II, modelId=0x02)
+   * - Ed25519 signature + GF(2^8) Reed-Solomon parity in a 25 KB envelope
    */
-  public async tokenizeImageFile(
-    fullPath: string,
+  public async tokenizeBuffer(
+    rawBytes: Uint8Array,
+    filename: string,
     tokenCounter: number,
-  ): Promise<ArchiveTokenItem | null> {
-    const bunFile = Bun.file(fullPath);
-    if (!(await bunFile.exists())) return null;
-
-    const rawBytes = new Uint8Array(await bunFile.arrayBuffer());
-    const filename = fullPath.split("/").pop() ?? "asset.bin";
+    options?: {
+      createdAt?: string;
+      sourcePath?: string;
+      mimeType?: string;
+      tags?: string[];
+      ocrNote?: string;
+    },
+  ): Promise<ArchiveTokenItem> {
     const dotIdx = filename.lastIndexOf(".");
-    const ext = dotIdx !== -1 ? filename.slice(dotIdx).toLowerCase() : "";
+    const ext = dotIdx !== -1 ? filename.slice(dotIdx).toLowerCase() : ".jpg";
 
     const id = `tok_${String(tokenCounter).padStart(5, "0")}_${filename.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
     const entryName = `${id}.token`;
@@ -192,17 +196,20 @@ export class Win11TokenPipeline {
     const bundle = await rasterizeAssetToWebpAndTensors(rawBytes, ext, filename, 1, 1);
     const dinoEmbeddingHex = dinoEmbeddingToHex(bundle.dinoEmbedding);
 
-    const createdAt = new Date(bunFile.lastModified || Date.now()).toISOString();
+    const createdAt = options?.createdAt || new Date().toISOString();
+    const sourcePath = options?.sourcePath || `/api/image/${encodeURIComponent(filename)}`;
+    const mimeType = options?.mimeType || (ext === ".svg" ? "image/svg+xml" : "image/jpeg");
     const svgTextNote = bundle.svgExtractedText ? ` | SVG Text: ${bundle.svgExtractedText}` : "";
+    const extraOcr = options?.ocrNote ? ` | ${options.ocrNote}` : "";
     const ocrText =
       `Image Asset: ${filename} | Dimensions: ${bundle.width}x${bundle.height} (${bundle.colorDepth}-bit ${ext.replace(".", "").toUpperCase()} -> 320x320 WebP ${bundle.previewBytes.length}B)` +
-      `${svgTextNote} | DINOv2-ViT-S14-384B + 16x16 VQ + 256B SHARK/SNARK. Source path: ${fullPath}`;
+      `${svgTextNote}${extraOcr} | DINOv3-ViT-S16-384B + 16x16 VQ + 256B SHARK/SNARK. Source path: ${sourcePath}`;
 
     const metadata: TokenMetadataPayload = {
       id,
       filename,
-      sourcePath: `/api/image/${encodeURIComponent(filename)}`,
-      mimeType: bunFile.type || (ext === ".svg" ? "image/svg+xml" : "image/jpeg"),
+      sourcePath,
+      mimeType,
       page: 1,
       totalPages: 1,
       width: bundle.width,
@@ -211,7 +218,7 @@ export class Win11TokenPipeline {
       createdAt,
       ocrText,
       dinoEmbeddingHex,
-      tags: ["local-image", ext.replace(".", ""), "dinov2-vit-s14", "webp-preview", "verified"],
+      tags: options?.tags || ["google-photos", ext.replace(".", ""), "dinov3-vit-s16", "webp-preview", "verified"],
     };
 
     const tokenBytes = await encodeBinaryToken({
@@ -254,6 +261,33 @@ export class Win11TokenPipeline {
         embeddingModelId: bundle.embeddingModelId,
       },
     };
+  }
+
+  /**
+   * Tokenizes a single image or SVG file from `sourceDirectory` (`./images`), generating:
+   * - Lean 320x320 WebP raster preview (Section III)
+   * - True decoded 16x16 RGB VQ codebook grid (Section I, 256B)
+   * - Real 384B Int8 Meta DINOv3 ViT-S/16 CLS semantic embedding (Section II, modelId=0x02)
+   */
+  public async tokenizeImageFile(
+    fullPath: string,
+    tokenCounter: number,
+  ): Promise<ArchiveTokenItem | null> {
+    const bunFile = Bun.file(fullPath);
+    if (!(await bunFile.exists())) return null;
+
+    const rawBytes = new Uint8Array(await bunFile.arrayBuffer());
+    const filename = fullPath.split("/").pop() ?? "asset.bin";
+    const dotIdx = filename.lastIndexOf(".");
+    const ext = dotIdx !== -1 ? filename.slice(dotIdx).toLowerCase() : "";
+
+    return this.tokenizeBuffer(rawBytes, filename, tokenCounter, {
+      createdAt: new Date(bunFile.lastModified || Date.now()).toISOString(),
+      sourcePath: `/api/image/${encodeURIComponent(filename)}`,
+      mimeType: bunFile.type || (ext === ".svg" ? "image/svg+xml" : "image/jpeg"),
+      tags: ["local-image", ext.replace(".", ""), "dinov3-vit-s16", "webp-preview", "verified"],
+      ocrNote: `Source path: ${fullPath}`,
+    });
   }
 
   /**

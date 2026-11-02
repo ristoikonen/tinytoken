@@ -1,6 +1,6 @@
 {
   "0": {
-    "name": "Hector",
+    "name": "Magpie",
     "category": "Silhouette",
     "isManuallyVerified": true,
     "rgb": [
@@ -10,7 +10,7 @@
     ],
     "source": "human_verified",
     "confidence": 1,
-    "updatedAt": "2026-11-01T21:48:11.120Z"
+    "updatedAt": "2026-11-02T03:29:33.688Z"
   },
   "1": {
     "name": "Risto",
@@ -127,7 +127,7 @@
     "updatedAt": "2026-11-01T21:48:11.120Z"
   },
   "49": {
-    "name": "Risto",
+    "name": "Magpie",
     "category": "Silhouette",
     "isManuallyVerified": true,
     "rgb": [
@@ -137,7 +137,7 @@
     ],
     "source": "human_verified",
     "confidence": 1,
-    "updatedAt": "2026-11-01T09:10:45.602Z"
+    "updatedAt": "2026-11-02T03:29:33.688Z"
   },
   "50": {
     "name": "Bogong Moth",
@@ -319,7 +319,7 @@
     "updatedAt": "2026-11-01T21:48:11.120Z"
   },
   "98": {
-    "name": "Hector",
+    "name": "Magpie",
     "category": "Silhouette",
     "isManuallyVerified": true,
     "rgb": [
@@ -329,7 +329,7 @@
     ],
     "source": "human_verified",
     "confidence": 1,
-    "updatedAt": "2026-11-01T21:48:11.120Z"
+    "updatedAt": "2026-11-02T03:29:33.688Z"
   },
   "99": {
     "name": "Risto",
@@ -1074,7 +1074,7 @@
     "updatedAt": "2026-11-01T09:11:22.099Z"
   },
   "252": {
-    "name": "Hector",
+    "name": "Magpie",
     "category": "Silhouette",
     "isManuallyVerified": true,
     "rgb": [
@@ -1084,7 +1084,7 @@
     ],
     "source": "human_verified",
     "confidence": 1,
-    "updatedAt": "2026-11-01T09:10:28.746Z"
+    "updatedAt": "2026-11-02T03:29:33.688Z"
   },
   "253": {
     "name": "Dark Shadow & Boundary Horizon",

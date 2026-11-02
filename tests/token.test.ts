@@ -482,5 +482,44 @@ describe("TinyToken GF(2^8) + VQ + SHARK/SNARK Pipeline", () => {
       await Bun.write("./data/test_manual_token_registry.json", "{}");
     }
   });
+
+  test("Google Photos Ingestion uses google-auth-library with photoslibrary.readonly scope", async () => {
+    const {
+      GOOGLE_PHOTOS_READ_SCOPES,
+      getGooglePhotosAuthUrl,
+      resolveGooglePhotosAuth,
+      fetchAndIndexGooglePhotos,
+    } = await import("../utils/googlePhotos");
+
+    // 1. Verify read access scope
+    expect(GOOGLE_PHOTOS_READ_SCOPES).toEqual([
+      "https://www.googleapis.com/auth/photoslibrary.readonly",
+    ]);
+
+    // 2. Verify OAuth2 consent URL generation
+    const authUrl = getGooglePhotosAuthUrl();
+    expect(authUrl).toBeDefined();
+    expect(authUrl).toContain("accounts.google.com/o/oauth2/v2/auth");
+    expect(authUrl).toContain("access_type=offline");
+    expect(authUrl).toContain("photoslibrary.readonly");
+
+    // 3. Verify override token resolution
+    const authRes = await resolveGooglePhotosAuth("test_bearer_token");
+    expect(authRes.accessToken).toBe("test_bearer_token");
+    expect(authRes.source).toBe("override_token");
+
+    // 4. Verify batch fetch telemetry formatting
+    const prevFlag = Bun.env.USE_MY_GOOGLE_PHOTOS;
+    try {
+      Bun.env.USE_MY_GOOGLE_PHOTOS = "true";
+      const result = await fetchAndIndexGooglePhotos();
+      expect(result.messages.length).toBeGreaterThanOrEqual(3);
+      expect(result.messages.some((m) => m.startsWith("Fertched "))).toBe(true);
+      expect(result.messages).toContain("Set Indexed.");
+      expect(result.messages).toContain("No traits added.");
+    } finally {
+      Bun.env.USE_MY_GOOGLE_PHOTOS = prevFlag;
+    }
+  });
 });
 

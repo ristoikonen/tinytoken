@@ -11,8 +11,8 @@
     "confidence": 1,
     "version": 1,
     "createdAt": "2026-11-01T02:14:13.469Z",
-    "updatedAt": "2026-11-01T23:17:51.387Z",
-    "observationCount": 28
+    "updatedAt": "2026-11-02T04:21:45.948Z",
+    "observationCount": 34
   },
   {
     "recipeId": "rcp_charred_tree_trunk",
@@ -78,19 +78,21 @@
     "label": "Magpie",
     "category": "Silhouette",
     "dominantCentroidDist": {
-      "49": 0.083,
-      "55": 0.25,
-      "97": 0.083,
+      "0": 0.125,
+      "49": 0.167,
+      "55": 0.125,
+      "97": 0.042,
       "98": 0.25,
-      "104": 0.25,
-      "147": 0.083
+      "104": 0.125,
+      "147": 0.042,
+      "252": 0.125
     },
     "source": "human_verified",
     "confidence": 1,
-    "version": 1,
+    "version": 2,
     "createdAt": "2026-11-01T02:28:44.485Z",
-    "updatedAt": "2026-11-01T02:28:55.324Z",
-    "observationCount": 2
+    "updatedAt": "2026-11-02T03:29:33.688Z",
+    "observationCount": 3
   },
   {
     "recipeId": "rcp_christine",
