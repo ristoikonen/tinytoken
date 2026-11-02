@@ -574,6 +574,21 @@
       box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
     }
 
+    .traits-sim-row {
+      display: flex;
+      align-items: center;
+      padding: 0.35rem 0.65rem;
+      margin-bottom: 0.4rem;
+      border-radius: 5px;
+      font-size: 0.72rem;
+      line-height: 1.4;
+      background: rgba(6, 9, 19, 0.85);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      color: var(--text-medium);
+      word-break: break-all;
+      font-weight: 500;
+    }
+
     .traits-container {
       display: flex;
       flex-wrap: wrap;
@@ -905,6 +920,7 @@
           <span style="color:var(--text-high);font-weight:600;font-size:0.65rem;letter-spacing:0.04em;">SEMANTIC VISUAL TRAITS</span>
           <span id="traits-status" style="color:var(--cyan-bright);font-size:0.62rem;font-weight:500;">0 DETECTED</span>
         </div>
+        <div id="traits-similarity-debug" class="traits-sim-row mono" style="display:none;"></div>
         <div id="traits-container" class="traits-container">
           <span class="trait-empty mono">Select a token to inspect its visual traits</span>
         </div>
@@ -1181,8 +1197,33 @@ Select a token to inspect its 25 KB binary envelope, VQ 16×16 neural codebook, 
       document.getElementById('lbl-s2').textContent = `${bm.section2MetaBytes}B`;
       document.getElementById('lbl-s3').textContent = `${bm.section3PreviewBytes}B`;
 
-      // Output Live Telemetry to Terminal Debug Area
+      // Output Live Telemetry to Terminal Debug Area & Visual Traits Debug Row
       logDebug(`[TOKEN] Selected ${t.id} (P.${t.page}/${t.metadata?.totalPages || 1})`, 'cyan');
+      const elSimRow = document.getElementById('traits-similarity-debug');
+      if (activeSimilarTo) {
+        const hit = currentHits.find(h => h.id === id);
+        if (hit && (hit.adcDistance !== undefined || hit.similarityScore !== undefined)) {
+          let simMsg = '';
+          if (id === activeSimilarTo) {
+            simMsg = `[SIMILARITY] Anchor Token: ${id} • Similarity Score: 100% • ADC Distance (VQ): 0`;
+            logDebug(simMsg, 'info');
+          } else {
+            const adcFormatted = typeof hit.adcDistance === 'number' ? hit.adcDistance.toLocaleString() : (hit.adcDistance ?? 0);
+            const simScore = hit.similarityScore !== undefined ? `${hit.similarityScore}%` : 'N/A';
+            const dinoPart = hit.dinoSimilarity !== undefined ? ` • DINOv3: ${hit.dinoSimilarity}%` : '';
+            simMsg = `[SIMILARITY] ADC Distance (VQ): ${adcFormatted} • Similarity Score: ${simScore}${dinoPart} (vs ${activeSimilarTo})`;
+            logDebug(simMsg, 'success');
+          }
+          if (elSimRow) {
+            elSimRow.textContent = simMsg;
+            elSimRow.style.display = 'flex';
+          }
+        } else if (elSimRow) {
+          elSimRow.style.display = 'none';
+        }
+      } else if (elSimRow) {
+        elSimRow.style.display = 'none';
+      }
       logDebug(`[SNARK] ${t.snarkAttestation?.valid ? `Ed25519 Verified (${t.snarkAttestation.verifiedInUs}µs • key ${(t.snarkAttestation.signerKeyIdHex || '').slice(0, 8)})` : `INVALID (${t.snarkAttestation?.failureReason || 'TAMPERED'})`}`, t.snarkAttestation?.valid ? 'info' : 'error');
       logDebug(`[RS-GF28] ${t.rsParityValid ? `Parity VALID (${t.rsCorrectedErrors} healed)` : 'Parity CORRUPTED'} | Merkle: ${(t.merkleRootHex || '').slice(0, 16)}…`, t.rsParityValid ? 'success' : 'error');
       logDebug(`[ZIP] Slice @${tel.zipDataOffset} • CRC32: ${tel.zipCrc32Hex} • Tag: ${t.homomorphicTagHex} ${t.flagLabels?.homomorphicMasked ? '(MASKED)' : '(CLEAN)'}`);
@@ -1586,15 +1627,30 @@ No object recipe associated with this token yet. Click [✎ Label] to teach.`;
       const clearBtn = document.getElementById('btn-clear-sim');
       clearBtn.classList.add('btn-active');
       clearBtn.title = `Similarity filter active on ${selectedTokenId}. Click to clear.`;
+      const initMsg = `[SIMILARITY] Anchor set to ${selectedTokenId}. Ranking archive by VQ ADC + DINOv3...`;
+      logDebug(initMsg, 'cyan');
+      const elSimRow = document.getElementById('traits-similarity-debug');
+      if (elSimRow) {
+        elSimRow.textContent = initMsg;
+        elSimRow.style.display = 'flex';
+      }
       runSearch();
     };
 
     document.getElementById('btn-clear-sim').onclick = () => {
+      if (activeSimilarTo) {
+        logDebug(`[SIMILARITY] Cleared similarity filter (was: ${activeSimilarTo})`, 'info');
+      }
       activeSimilarTo = '';
       elSearch.value = '';
       const clearBtn = document.getElementById('btn-clear-sim');
       clearBtn.classList.remove('btn-active');
       clearBtn.title = 'Clear search query or similarity filter';
+      const elSimRow = document.getElementById('traits-similarity-debug');
+      if (elSimRow) {
+        elSimRow.style.display = 'none';
+        elSimRow.textContent = '';
+      }
       runSearch();
     };
 

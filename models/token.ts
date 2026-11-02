@@ -46,7 +46,8 @@ export enum PreviewFormat {
 export enum EmbeddingModelId {
   NONE = 0x00,
   COLOR_HOG_FALLBACK = 0x01, // Synchronous 384B Color/HOG fallback descriptor
-  DINOV2_VIT_S14_Q8 = 0x02,  // Real Meta/Xenova DINOv2 ViT-S/14 ONNX (384-dim CLS int8)
+  DINOV3_VITS16_Q8 = 0x02,   // Real Meta DINOv3 ViT-S/16 ONNX (384-dim CLS int8)
+  DINOV2_VIT_S14_Q8 = 0x02,  // Legacy alias for DINOv2
 }
 
 export interface TokenMetadataPayload {

@@ -1,9 +1,9 @@
 /**
- * Real DINOv2 ViT-S/14 ONNX (`Xenova/dinov2-small`, 384-Dim Int8 CLS) Semantic Visual Embedding Engine
+ * Real DINOv3 ViT-S/16 ONNX (`onnx-community/dinov3-vits16-pretrain-lvd1689m-ONNX`, 384-Dim Int8 CLS) Semantic Visual Embedding Engine
  * + Synchronous Color/HOG Fallback (`EmbeddingModelId.COLOR_HOG_FALLBACK = 0x01`)
  *
- * - Primary (`EmbeddingModelId.DINOV2_VIT_S14_Q8 = 0x02`):
- *   Runs Meta's self-supervised DINOv2 ViT-S/14 vision transformer via `@huggingface/transformers`
+ * - Primary (`EmbeddingModelId.DINOV3_VITS16_Q8 = 0x02`):
+ *   Runs Meta's self-supervised DINOv3 ViT-S/16 vision transformer via `@huggingface/transformers`
  *   + `onnxruntime-node` (`q8` quantized ONNX cached in `./.cache/transformers`), extracting the
  *   384-dimensional `[CLS]` token (`last_hidden_state[0, 0, 0..383]`), L2-normalizing it, and
  *   scalar-quantizing to `Int8Array(384)` (max cosine drift < 0.0015).
@@ -16,8 +16,8 @@ import { EmbeddingModelId } from "../models/token";
 
 export const DINO_EMBEDDING_DIMS = 384;
 export const DINO_IMAGE_SIZE = 224;
-export const DINO_PATCH_SIZE = 14;
-export const DINO_PATCH_GRID = 16;
+export const DINO_PATCH_SIZE = 16;
+export const DINO_PATCH_GRID = 14;
 
 env.cacheDir = "./.cache/transformers";
 
@@ -25,11 +25,15 @@ env.cacheDir = "./.cache/transformers";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let dinoExtractorPromise: Promise<any> | null = null;
 
-async function getDinoV2Extractor() {
+async function getDinoV3Extractor() {
   if (!dinoExtractorPromise) {
-    dinoExtractorPromise = pipeline("image-feature-extraction", "Xenova/dinov2-small", {
-      dtype: "q8",
-    });
+    dinoExtractorPromise = pipeline(
+      "image-feature-extraction",
+      "onnx-community/dinov3-vits16-pretrain-lvd1689m-ONNX",
+      {
+        dtype: "q8",
+      },
+    );
   }
   return dinoExtractorPromise;
 }
@@ -61,10 +65,10 @@ export function quantizeFloat32ToInt8(vec: Float32Array): Int8Array<ArrayBuffer>
 }
 
 /**
- * Runs real `Xenova/dinov2-small` ONNX inference on an RGB pixel buffer (`width x height x 3`)
- * and returns the 384-byte `Int8Array(384)` `[CLS]` semantic embedding + `EmbeddingModelId.DINOV2_VIT_S14_Q8`.
+ * Runs real `onnx-community/dinov3-vits16-pretrain-lvd1689m-ONNX` inference on an RGB pixel buffer (`width x height x 3`)
+ * and returns the 384-byte `Int8Array(384)` `[CLS]` semantic embedding + `EmbeddingModelId.DINOV3_VITS16_Q8`.
  */
-export async function extractRealDinoV2Embedding(
+export async function extractRealDinoEmbedding(
   rgbBytes: Uint8Array,
   width: number,
   height: number,
@@ -73,7 +77,7 @@ export async function extractRealDinoV2Embedding(
   modelId: EmbeddingModelId;
 }> {
   try {
-    const extractor = await getDinoV2Extractor();
+    const extractor = await getDinoV3Extractor();
     const rawImg = new RawImage(
       new Uint8ClampedArray(rgbBytes.buffer, rgbBytes.byteOffset, rgbBytes.byteLength),
       width,
@@ -85,16 +89,19 @@ export async function extractRealDinoV2Embedding(
     const clsFloat32 = Float32Array.from(rawData.subarray(0, DINO_EMBEDDING_DIMS));
     return {
       embedding: quantizeFloat32ToInt8(clsFloat32),
-      modelId: EmbeddingModelId.DINOV2_VIT_S14_Q8,
+      modelId: EmbeddingModelId.DINOV3_VITS16_Q8,
     };
   } catch (err) {
-    console.warn("DINOv2 ONNX fallback triggered:", err);
+    console.warn("DINOv3 ONNX fallback triggered:", err);
     return {
       embedding: extractColorHogFallbackFromRgb224(rgbBytes),
       modelId: EmbeddingModelId.COLOR_HOG_FALLBACK,
     };
   }
 }
+
+export const extractRealDinoV3Embedding = extractRealDinoEmbedding;
+export const extractRealDinoV2Embedding = extractRealDinoEmbedding;
 
 /**
  * Synchronous 384-byte Color/HOG/Gram fallback descriptor (`EmbeddingModelId.COLOR_HOG_FALLBACK = 0x01`)

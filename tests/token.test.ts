@@ -255,7 +255,7 @@ describe("TinyToken GF(2^8) + VQ + SHARK/SNARK Pipeline", () => {
     expect(decoded.id).toBe(firstId);
     expect(decoded.snarkAttestation.valid).toBe(true);
     expect(decoded.snarkAttestation.signatureVerified).toBe(true);
-    expect(decoded.embeddingModelId).toBe(EmbeddingModelId.DINOV2_VIT_S14_Q8);
+    expect(decoded.embeddingModelId).toBe(EmbeddingModelId.DINOV3_VITS16_Q8);
     expect(decoded.metadata.sourcePath.startsWith("/api/document/")).toBe(true);
 
     // Verify native bun:sqlite VQ Inverted Index Engine + FTS5 full-text search

@@ -52,8 +52,8 @@ export async function fetchAndIndexGooglePhotos(
     Bun.env.ACCESS_TOKEN;
 
   let mediaItems: GooglePhotoItem[] = [];
-  let startDateStr = "1/1/2001";
-  let endDateStr = "1/1/2003";
+  let startDateStr = "1/1/2022";
+  let endDateStr = "1/1/2025";
 
   if (accessToken) {
     try {

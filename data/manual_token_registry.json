@@ -1,6 +1,6 @@
 {
   "0": {
-    "name": "Risto",
+    "name": "Hector",
     "category": "Silhouette",
     "isManuallyVerified": true,
     "rgb": [
@@ -10,7 +10,7 @@
     ],
     "source": "human_verified",
     "confidence": 1,
-    "updatedAt": "2026-11-01T09:10:45.602Z"
+    "updatedAt": "2026-11-01T21:48:11.120Z"
   },
   "1": {
     "name": "Risto",
@@ -98,7 +98,7 @@
     ],
     "source": "human_verified",
     "confidence": 1,
-    "updatedAt": "2026-11-01T09:10:28.746Z"
+    "updatedAt": "2026-11-01T21:48:11.120Z"
   },
   "43": {
     "name": "Bogong Moth",
@@ -124,7 +124,7 @@
     ],
     "source": "human_verified",
     "confidence": 1,
-    "updatedAt": "2026-11-01T09:10:28.746Z"
+    "updatedAt": "2026-11-01T21:48:11.120Z"
   },
   "49": {
     "name": "Risto",
@@ -264,10 +264,10 @@
     ],
     "source": "human_verified",
     "confidence": 1,
-    "updatedAt": "2026-11-01T09:10:28.746Z"
+    "updatedAt": "2026-11-01T21:48:11.120Z"
   },
   "91": {
-    "name": "Risto",
+    "name": "Hector",
     "category": "Silhouette",
     "isManuallyVerified": true,
     "rgb": [
@@ -277,7 +277,7 @@
     ],
     "source": "human_verified",
     "confidence": 1,
-    "updatedAt": "2026-11-01T09:10:45.602Z"
+    "updatedAt": "2026-11-01T21:48:11.120Z"
   },
   "92": {
     "name": "Bogong Moth",
@@ -306,7 +306,7 @@
     "updatedAt": "2026-11-01T09:00:56.262Z"
   },
   "97": {
-    "name": "Risto",
+    "name": "Hector",
     "category": "Silhouette",
     "isManuallyVerified": true,
     "rgb": [
@@ -316,10 +316,10 @@
     ],
     "source": "human_verified",
     "confidence": 1,
-    "updatedAt": "2026-11-01T09:10:37.954Z"
+    "updatedAt": "2026-11-01T21:48:11.120Z"
   },
   "98": {
-    "name": "Risto",
+    "name": "Hector",
     "category": "Silhouette",
     "isManuallyVerified": true,
     "rgb": [
@@ -329,7 +329,7 @@
     ],
     "source": "human_verified",
     "confidence": 1,
-    "updatedAt": "2026-11-01T09:10:45.602Z"
+    "updatedAt": "2026-11-01T21:48:11.120Z"
   },
   "99": {
     "name": "Risto",
@@ -493,7 +493,7 @@
     "updatedAt": "2026-11-01T06:42:46.045Z"
   },
   "133": {
-    "name": "Gumnut",
+    "name": "Hector",
     "category": "Silhouette",
     "isManuallyVerified": true,
     "rgb": [
@@ -503,7 +503,7 @@
     ],
     "source": "human_verified",
     "confidence": 1,
-    "updatedAt": "2026-11-01T03:59:31.204Z"
+    "updatedAt": "2026-11-01T21:48:11.120Z"
   },
   "138": {
     "name": "Hector",
@@ -516,10 +516,10 @@
     ],
     "source": "human_verified",
     "confidence": 1,
-    "updatedAt": "2026-11-01T09:10:20.194Z"
+    "updatedAt": "2026-11-01T21:48:11.120Z"
   },
   "139": {
-    "name": "Risto",
+    "name": "Hector",
     "category": "Silhouette",
     "isManuallyVerified": true,
     "rgb": [
@@ -529,10 +529,10 @@
     ],
     "source": "human_verified",
     "confidence": 1,
-    "updatedAt": "2026-11-01T09:10:45.602Z"
+    "updatedAt": "2026-11-01T21:48:11.120Z"
   },
   "140": {
-    "name": "Risto",
+    "name": "Hector",
     "category": "Silhouette",
     "isManuallyVerified": true,
     "rgb": [
@@ -542,7 +542,7 @@
     ],
     "source": "human_verified",
     "confidence": 1,
-    "updatedAt": "2026-11-01T09:10:45.602Z"
+    "updatedAt": "2026-11-01T21:48:11.120Z"
   },
   "141": {
     "name": "Bogong Moth",
@@ -581,10 +581,10 @@
     ],
     "source": "human_verified",
     "confidence": 1,
-    "updatedAt": "2026-11-01T09:10:20.194Z"
+    "updatedAt": "2026-11-01T21:48:11.120Z"
   },
   "146": {
-    "name": "Risto",
+    "name": "Hector",
     "category": "Silhouette",
     "isManuallyVerified": true,
     "rgb": [
@@ -594,7 +594,7 @@
     ],
     "source": "human_verified",
     "confidence": 1,
-    "updatedAt": "2026-11-01T09:10:45.602Z"
+    "updatedAt": "2026-11-01T21:48:11.120Z"
   },
   "147": {
     "name": "Risto",
@@ -726,7 +726,20 @@
     ],
     "source": "human_verified",
     "confidence": 1,
-    "updatedAt": "2026-11-01T09:10:20.194Z"
+    "updatedAt": "2026-11-01T21:48:11.120Z"
+  },
+  "182": {
+    "name": "Hector",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      204,
+      88,
+      112
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T21:48:11.120Z"
   },
   "186": {
     "name": "Car",
@@ -752,10 +765,10 @@
     ],
     "source": "human_verified",
     "confidence": 1,
-    "updatedAt": "2026-11-01T09:10:20.194Z"
+    "updatedAt": "2026-11-01T21:48:11.120Z"
   },
   "188": {
-    "name": "Risto",
+    "name": "Hector",
     "category": "Silhouette",
     "isManuallyVerified": true,
     "rgb": [
@@ -765,7 +778,7 @@
     ],
     "source": "human_verified",
     "confidence": 1,
-    "updatedAt": "2026-11-01T09:10:37.954Z"
+    "updatedAt": "2026-11-01T21:48:11.120Z"
   },
   "189": {
     "name": "Risto",
@@ -833,7 +846,7 @@
     "updatedAt": "2026-11-01T09:02:36.951Z"
   },
   "195": {
-    "name": "Risto",
+    "name": "Hector",
     "category": "Silhouette",
     "isManuallyVerified": true,
     "rgb": [
@@ -843,7 +856,7 @@
     ],
     "source": "human_verified",
     "confidence": 1,
-    "updatedAt": "2026-11-01T09:10:37.954Z"
+    "updatedAt": "2026-11-01T21:48:11.120Z"
   },
   "196": {
     "name": "Risto",

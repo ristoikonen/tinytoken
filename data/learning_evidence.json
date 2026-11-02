@@ -3012,5 +3012,113 @@
     "observedAt": "2026-11-01T11:30:46.230Z",
     "source": "human_verified",
     "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793569408066_slahi",
+    "recipeId": "rcp_red_kangaroo_juvenile",
+    "label": "Red Kangaroo Juvenile",
+    "category": "Silhouette",
+    "observedTokenId": "tok_test_01",
+    "boundingBox": [
+      0.2,
+      0.3,
+      0.4,
+      0.5
+    ],
+    "observedCentroids": [
+      108,
+      132
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-01T21:43:28.064Z",
+    "observedAt": "2026-11-01T21:43:28.064Z",
+    "source": "human_verified",
+    "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793569691124_rgxu9",
+    "recipeId": "rcp_hector",
+    "label": "Hector",
+    "category": "Silhouette",
+    "observedTokenId": "tok_00001_HectorDoor.png",
+    "boundingBox": [
+      0.3688489118454324,
+      0.12745530612244899,
+      0.3402563160510903,
+      0.6816326530612244
+    ],
+    "observedCentroids": [
+      98,
+      42,
+      139,
+      187,
+      181,
+      97,
+      0,
+      188,
+      90,
+      91,
+      48,
+      138,
+      145,
+      133,
+      195,
+      146,
+      140,
+      182
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-01T21:48:11.120Z",
+    "observedAt": "2026-11-01T21:48:11.120Z",
+    "source": "human_verified",
+    "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793575057921_k2ak4",
+    "recipeId": "rcp_red_kangaroo_juvenile",
+    "label": "Red Kangaroo Juvenile",
+    "category": "Silhouette",
+    "observedTokenId": "tok_test_01",
+    "boundingBox": [
+      0.2,
+      0.3,
+      0.4,
+      0.5
+    ],
+    "observedCentroids": [
+      108,
+      132
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-01T23:17:37.919Z",
+    "observedAt": "2026-11-01T23:17:37.919Z",
+    "source": "human_verified",
+    "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793575071389_mp64t",
+    "recipeId": "rcp_red_kangaroo_juvenile",
+    "label": "Red Kangaroo Juvenile",
+    "category": "Silhouette",
+    "observedTokenId": "tok_test_01",
+    "boundingBox": [
+      0.2,
+      0.3,
+      0.4,
+      0.5
+    ],
+    "observedCentroids": [
+      108,
+      132
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-01T23:17:51.387Z",
+    "observedAt": "2026-11-01T23:17:51.387Z",
+    "source": "human_verified",
+    "confidence": 1
   }
 ]
