@@ -1,11 +1,18 @@
 /**
  * Galois Field GF(2^8) Arithmetic, Reed-Solomon Error Correction & Homomorphic State Engine
  * Primitive Polynomial: 0x11d (x^8 + x^4 + x^3 + x^2 + 1)
+ *
+ * Performance Architecture:
+ * - Precomputed 64 KB 2D Multiplication Table (`MUL_TABLE`): Zero branching, single L1-cache lookup
+ * - Precomputed 256-byte Inversion Table (`INV_TABLE`): O(1) multiplicative inverse and division
+ * - Row-hoisted synthetic polynomial division in `reedSolomonEncode`
  */
 
 const PRIMITIVE_POLY = 0x11d;
 export const EXP_TABLE = new Uint8Array(512);
 export const LOG_TABLE = new Uint8Array(256);
+export const MUL_TABLE = new Uint8Array(256 * 256);
+export const INV_TABLE = new Uint8Array(256);
 
 let tablesInitialized = false;
 
@@ -21,9 +28,24 @@ export function initGaloisTables(): void {
     }
   }
   for (let i = 255; i < 512; i++) {
-    EXP_TABLE[i] = EXP_TABLE[i - 255] ?? 0;
+    EXP_TABLE[i] = EXP_TABLE[i - 255]!;
   }
   LOG_TABLE[0] = 0;
+
+  // Precompute 64 KB 2D Multiplication Table: zero branches, single L1 data cache lookup
+  for (let a = 0; a < 256; a++) {
+    const row = a << 8;
+    for (let b = 0; b < 256; b++) {
+      MUL_TABLE[row | b] = a === 0 || b === 0 ? 0 : EXP_TABLE[LOG_TABLE[a]! + LOG_TABLE[b]!]!;
+    }
+  }
+
+  // Precompute 256-byte Inversion Table: a * a^-1 = 1 (INV_TABLE[0] = 0)
+  INV_TABLE[0] = 0;
+  for (let a = 1; a < 256; a++) {
+    INV_TABLE[a] = EXP_TABLE[255 - LOG_TABLE[a]!]!;
+  }
+
   tablesInitialized = true;
 }
 
@@ -38,42 +60,39 @@ export function gfSub(a: number, b: number): number {
 }
 
 export function gfMul(a: number, b: number): number {
-  if (a === 0 || b === 0) return 0;
-  const logA = LOG_TABLE[a & 0xff] ?? 0;
-  const logB = LOG_TABLE[b & 0xff] ?? 0;
-  return EXP_TABLE[logA + logB] ?? 0;
+  return MUL_TABLE[((a & 0xff) << 8) | (b & 0xff)]!;
 }
 
 export function gfDiv(a: number, b: number): number {
-  if (b === 0) throw new Error("GF(2^8) division by zero");
-  if (a === 0) return 0;
-  const logA = LOG_TABLE[a & 0xff] ?? 0;
-  const logB = LOG_TABLE[b & 0xff] ?? 0;
-  return EXP_TABLE[logA - logB + 255] ?? 0;
+  const bByte = b & 0xff;
+  if (bByte === 0) throw new Error("GF(2^8) division by zero");
+  return MUL_TABLE[((a & 0xff) << 8) | INV_TABLE[bByte]!]!;
 }
 
 export function gfInv(a: number): number {
-  if (a === 0) throw new Error("GF(2^8) inverse of zero");
-  const logA = LOG_TABLE[a & 0xff] ?? 0;
-  return EXP_TABLE[255 - logA] ?? 0;
+  const aByte = a & 0xff;
+  if (aByte === 0) throw new Error("GF(2^8) inverse of zero");
+  return INV_TABLE[aByte]!;
 }
 
 export function gfPow(a: number, power: number): number {
   if (power === 0) return 1;
   if (a === 0) return 0;
-  const logA = LOG_TABLE[a & 0xff] ?? 0;
+  const logA = LOG_TABLE[a & 0xff]!;
   const idx = ((logA * power) % 255 + 255) % 255;
-  return EXP_TABLE[idx] ?? 0;
+  return EXP_TABLE[idx]!;
 }
 
 /**
- * Evaluates a polynomial over GF(2^8) at point x using Horner's method.
+ * Evaluates a polynomial over GF(2^8) at point x using Horner's method with accelerated lookup.
  */
 export function gfPolyEval(poly: Uint8Array, x: number): number {
-  if (poly.length === 0) return 0;
-  let result = poly[0] ?? 0;
-  for (let i = 1; i < poly.length; i++) {
-    result = gfMul(result, x) ^ (poly[i] ?? 0);
+  const len = poly.length;
+  if (len === 0) return 0;
+  const xByte = x & 0xff;
+  let result = poly[0]! & 0xff;
+  for (let i = 1; i < len; i++) {
+    result = MUL_TABLE[(result << 8) | xByte]! ^ poly[i]!;
   }
   return result;
 }
@@ -91,18 +110,19 @@ export function getRsGeneratorPoly(nsym: number): Uint8Array {
   let g = new Uint8Array([1]);
   for (let i = 0; i < nsym; i++) {
     const nextG = new Uint8Array(g.length + 1);
-    const root = EXP_TABLE[i] ?? 1;
+    const root = EXP_TABLE[i]!;
+    const rootRow = root << 8;
     for (let j = 0; j < g.length; j++) {
-      const gj = g[j] ?? 0;
-      nextG[j] = (nextG[j] ?? 0) ^ gfMul(gj, root);
-      nextG[j + 1] = (nextG[j + 1] ?? 0) ^ gj;
+      const gj = g[j]!;
+      nextG[j] = nextG[j]! ^ MUL_TABLE[rootRow | gj]!;
+      nextG[j + 1] = nextG[j + 1]! ^ gj;
     }
     g = nextG;
   }
   // Reverse so highest degree coefficient is at index 0 for synthetic division
   const gen = new Uint8Array(g.length);
   for (let i = 0; i < g.length; i++) {
-    gen[i] = g[g.length - 1 - i] ?? 0;
+    gen[i] = g[g.length - 1 - i]!;
   }
   generatorCache.set(nsym, gen);
   return gen;
@@ -110,21 +130,25 @@ export function getRsGeneratorPoly(nsym: number): Uint8Array {
 
 /**
  * Computes nsym Reed-Solomon parity bytes over GF(2^8) for a message block (length + nsym <= 255).
+ * Uses row-hoisted table lookup for high throughput.
  */
 export function reedSolomonEncode(data: Uint8Array, nsym: number): Uint8Array {
   const gen = getRsGeneratorPoly(nsym);
-  const work = new Uint8Array(data.length + nsym);
+  const dataLen = data.length;
+  const genLen = gen.length;
+  const work = new Uint8Array(dataLen + nsym);
   work.set(data, 0);
 
-  for (let i = 0; i < data.length; i++) {
-    const coef = work[i] ?? 0;
+  for (let i = 0; i < dataLen; i++) {
+    const coef = work[i]!;
     if (coef !== 0) {
-      for (let j = 1; j < gen.length; j++) {
-        work[i + j] = (work[i + j] ?? 0) ^ gfMul(gen[j] ?? 0, coef);
+      const row = coef << 8;
+      for (let j = 1; j < genLen; j++) {
+        work[i + j] ^= MUL_TABLE[row | gen[j]!]!;
       }
     }
   }
-  return work.slice(data.length);
+  return work.subarray(dataLen);
 }
 
 /**
@@ -139,7 +163,7 @@ export function reedSolomonVerifyAndHeal(
 
   let diffCount = 0;
   for (let i = 0; i < nsym; i++) {
-    if ((parity[i] ?? 0) !== (expectedParity[i] ?? 0)) {
+    if (parity[i] !== expectedParity[i]) {
       diffCount++;
     }
   }
@@ -152,7 +176,7 @@ export function reedSolomonVerifyAndHeal(
   const corrected = new Uint8Array(data);
   const deltaParity = new Uint8Array(nsym);
   for (let i = 0; i < nsym; i++) {
-    deltaParity[i] = (parity[i] ?? 0) ^ (expectedParity[i] ?? 0);
+    deltaParity[i] = parity[i]! ^ expectedParity[i]!;
   }
 
   const probe = new Uint8Array(data.length);
@@ -161,21 +185,22 @@ export function reedSolomonVerifyAndHeal(
     const unitParity = reedSolomonEncode(probe, nsym);
     probe[pos] = 0;
 
-    const u0 = unitParity[0] ?? 0;
-    const d0 = deltaParity[0] ?? 0;
+    const u0 = unitParity[0]!;
+    const d0 = deltaParity[0]!;
     if (u0 === 0 || d0 === 0) continue;
 
     const errMag = gfDiv(d0, u0);
+    const errRow = errMag << 8;
     let matchesAll = true;
     for (let k = 1; k < nsym; k++) {
-      if (gfMul(unitParity[k] ?? 0, errMag) !== (deltaParity[k] ?? 0)) {
+      if (MUL_TABLE[errRow | unitParity[k]!] !== deltaParity[k]) {
         matchesAll = false;
         break;
       }
     }
 
     if (matchesAll) {
-      corrected[pos] = (corrected[pos] ?? 0) ^ errMag;
+      corrected[pos] = corrected[pos]! ^ errMag;
       return { valid: true, correctedData: corrected, correctedErrors: 1 };
     }
   }
@@ -184,7 +209,7 @@ export function reedSolomonVerifyAndHeal(
 }
 
 /**
- * Multi-lane GF(2^8) Reed-Solomon encoder/verifier for the 640-byte Section I payload (Option C Trimmed Footprint):
+ * Multi-lane GF(2^8) Reed-Solomon encoder/verifier for the 640-byte Section I payload:
  * Splits 640 bytes into 3 lanes (214B, 213B, 213B) and generates 22B + 21B + 21B = 64B parity.
  * Each lane is <= 255 bytes in GF(2^8) and heals single-byte corruptions independently.
  */
@@ -278,4 +303,3 @@ export function applyHomomorphicMaskGF28(
 export function crc32(bytes: Uint8Array): number {
   return Bun.hash.crc32(bytes) >>> 0;
 }
-
