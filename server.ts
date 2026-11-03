@@ -15,6 +15,7 @@ import { CompressedTokenSearchEngine } from "./utils/zipEngine";
 import { corsResponse } from "./utils/response";
 
 const isVercel = Boolean(Bun.env.VERCEL || Bun.env.NOW_REGION);
+
 const IMAGE_DIR =
   Bun.env.IMAGE_DIR ??
   Bun.argv[2] ??
