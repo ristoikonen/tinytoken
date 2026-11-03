@@ -3513,5 +3513,28 @@
     "observedAt": "2026-11-03T05:11:51.531Z",
     "source": "human_verified",
     "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793687967547_p7j95",
+    "recipeId": "rcp_red_kangaroo_juvenile",
+    "label": "Red Kangaroo Juvenile",
+    "category": "Silhouette",
+    "observedTokenId": "tok_test_01",
+    "boundingBox": [
+      0.2,
+      0.3,
+      0.4,
+      0.5
+    ],
+    "observedCentroids": [
+      108,
+      132
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-03T06:39:27.545Z",
+    "observedAt": "2026-11-03T06:39:27.545Z",
+    "source": "human_verified",
+    "confidence": 1
   }
 ]

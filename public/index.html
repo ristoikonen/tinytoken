@@ -1139,9 +1139,25 @@
 
     async function loadStatsAndCodebook() {
       try {
+        const statsPromise = fetch('/api/stats').then(async r => {
+          if (!r.ok) {
+            const errText = await r.text();
+            throw new Error(`GET /api/stats failed (${r.status}): ${errText.slice(0, 100)}`);
+          }
+          return r.json();
+        });
+
+        const cbPromise = fetch('/api/codebook').then(async r => {
+          if (!r.ok) return null;
+          return r.json();
+        }).catch(() => null);
+
         const [statsRes, cbRes] = await Promise.all([
-          fetch('/api/stats').then(r => r.json()).catch(() => null),
-          fetch('/api/codebook').then(r => r.json()).catch(() => null)
+          statsPromise.catch(err => {
+            logDebug(`[ERROR] ${err.message}`, 'error');
+            return null;
+          }),
+          cbPromise
         ]);
 
         if (statsRes) {
@@ -1161,25 +1177,40 @@
           }
         }
       } catch (err) {
+        logDebug(`[ERROR] Stats load error: ${err.message || String(err)}`, 'error');
         console.warn('loadStatsAndCodebook error:', err);
       }
     }
 
     async function runSearch() {
-      const q = elSearch.value.trim();
-      const params = new URLSearchParams({ q, limit: '80' });
-      if (activeSimilarTo) {
-        params.set('mode', 'vq');
-        params.set('similarTo', activeSimilarTo);
-      }
-      const res = await fetch(`/api/search?${params.toString()}`).then(r => r.json());
-      if (!res.success) return;
+      try {
+        const q = elSearch.value.trim();
+        const params = new URLSearchParams({ q, limit: '80' });
+        if (activeSimilarTo) {
+          params.set('mode', 'vq');
+          params.set('similarTo', activeSimilarTo);
+        }
+        const res = await fetch(`/api/search?${params.toString()}`).then(async r => {
+          if (!r.ok) {
+            const errText = await r.text();
+            throw new Error(`GET /api/search failed (${r.status}): ${errText.slice(0, 100)}`);
+          }
+          return r.json();
+        });
+        if (!res.success) {
+          logDebug(`[SEARCH] Search error: ${res.error || 'Unknown error'}`, 'warning');
+          return;
+        }
 
-      currentHits = res.hits || [];
-      renderGrid();
+        currentHits = res.hits || [];
+        renderGrid();
 
-      if (currentHits.length > 0 && (!selectedTokenId || !currentHits.some(h => h.id === selectedTokenId))) {
-        selectToken(currentHits[0].id);
+        if (currentHits.length > 0 && (!selectedTokenId || !currentHits.some(h => h.id === selectedTokenId))) {
+          selectToken(currentHits[0].id);
+        }
+      } catch (err) {
+        logDebug(`[ERROR] Search error: ${err.message || String(err)}`, 'error');
+        console.warn('runSearch error:', err);
       }
     }
 
@@ -1227,7 +1258,19 @@
         if (card) card.classList.toggle('selected', hit.id === id);
       }
 
-      const res = await fetch(`/api/token/${encodeURIComponent(id)}`).then(r => r.json());
+      let res;
+      try {
+        res = await fetch(`/api/token/${encodeURIComponent(id)}`).then(async r => {
+          if (!r.ok) {
+            const errText = await r.text();
+            throw new Error(`GET /api/token failed (${r.status}): ${errText.slice(0, 100)}`);
+          }
+          return r.json();
+        });
+      } catch (err) {
+        logDebug(`[ERROR] Token load failed: ${err.message || String(err)}`, 'error');
+        return;
+      }
       if (!res.success) return;
 
       currentTokenDetail = res.token;
@@ -1857,8 +1900,12 @@ No object recipe associated with this token yet. Click [✎ Label] to teach.`;
     });
 
     (async () => {
-      await loadStatsAndCodebook();
-      await runSearch();
+      try {
+        await loadStatsAndCodebook();
+        await runSearch();
+      } catch (err) {
+        logDebug(`[FATAL] Bootstrap error: ${err.message || String(err)}`, 'error');
+      }
     })();
   </script>
 </body>

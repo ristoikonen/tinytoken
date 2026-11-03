@@ -205,23 +205,31 @@ const server = serve({
     let path = url.pathname;
 
     // Handle Vercel serverless rewrite parameters & forwarding headers
-    const vercelPath = url.searchParams.get("__path");
-    if (vercelPath) {
-      path = vercelPath.startsWith("/") ? vercelPath : `/${vercelPath}`;
-      url.searchParams.delete("__path");
-    } else if (
-      path === "/api/index" ||
-      path === "/api/index.ts" ||
-      path === "/api" ||
-      path === "/api/"
-    ) {
-      const forwarded =
-        req.headers.get("x-forwarded-uri") ||
-        req.headers.get("x-matched-path") ||
-        req.headers.get("x-invoke-path");
-      if (forwarded) {
-        path = forwarded.split("?")[0]!;
+    const forwarded =
+      req.headers.get("x-forwarded-uri") ||
+      req.headers.get("x-matched-path") ||
+      req.headers.get("x-invoke-path");
+    if (forwarded && (forwarded.startsWith("/api") || forwarded === "/" || forwarded === "/index.html")) {
+      const [fPath, fQuery] = forwarded.split("?");
+      path = fPath!;
+      if (fQuery) {
+        const extraParams = new URLSearchParams(fQuery);
+        for (const [k, v] of extraParams.entries()) {
+          if (!url.searchParams.has(k)) {
+            url.searchParams.set(k, v);
+          }
+        }
       }
+    }
+
+    const vercelPath = url.searchParams.get("__path") || url.searchParams.get("path");
+    if (vercelPath) {
+      const decoded = vercelPath.startsWith("/") ? vercelPath : `/${vercelPath}`;
+      if (decoded.startsWith("/api") || decoded === "/" || decoded === "/index.html") {
+        path = decoded;
+      }
+      url.searchParams.delete("__path");
+      url.searchParams.delete("path");
     }
 
     if (req.method === "OPTIONS") {
