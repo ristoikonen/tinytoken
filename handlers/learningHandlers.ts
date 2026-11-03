@@ -41,7 +41,7 @@ export class LearningHandlers {
     this.swapLockInProgress = true;
     try {
       const contentType = req.headers.get("content-type") || "";
-      let archiveBytes: Uint8Array<ArrayBuffer> | null = null;
+      let archiveBytes: Uint8Array | null = null;
 
       if (contentType.includes("multipart/form-data")) {
         try {

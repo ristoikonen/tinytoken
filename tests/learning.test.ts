@@ -24,7 +24,7 @@ describe("Persistent Knowledge Layer & Transactional Archive Ingestion", () => {
 
   function createMockArchiveItem(
     id: string,
-    tokenBytes: Uint8Array<ArrayBuffer>,
+    tokenBytes: Uint8Array,
     centroid = 120,
   ): ArchiveTokenItem {
     return {

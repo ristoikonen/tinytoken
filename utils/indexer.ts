@@ -35,7 +35,7 @@ export interface IndexerConfig {
 
 export type ArchiveTokenItem = {
   entryName: string;
-  tokenBytes: Uint8Array<ArrayBuffer>;
+  tokenBytes: Uint8Array;
   meta: Omit<
     ZipTokenIndexEntry,
     | "localHeaderOffset"

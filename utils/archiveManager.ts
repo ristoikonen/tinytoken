@@ -62,10 +62,10 @@ export class ArchiveManager {
    * 4. Token format integrity (magic bytes `GF28` on first sampled token)
    */
   public async validateArchive(
-    source: Uint8Array<ArrayBuffer> | string,
+    source: Uint8Array | string,
   ): Promise<ArchiveValidationResult> {
     try {
-      let buf: Uint8Array<ArrayBuffer>;
+      let buf: Uint8Array;
       if (typeof source === "string") {
         const file = Bun.file(source);
         if (!(await file.exists())) {
@@ -193,7 +193,7 @@ export class ArchiveManager {
    * 4. On success: replaces active archive, re-indexes RAM search engine & SQLite inverted index
    */
   public async swapArchive(
-    archiveBytes: Uint8Array<ArrayBuffer>,
+    archiveBytes: Uint8Array,
   ): Promise<{
     success: boolean;
     generation: number;
