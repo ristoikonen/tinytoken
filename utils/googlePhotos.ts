@@ -425,7 +425,7 @@ export async function fetchAndIndexGooglePhotos(
         if (tokenBytes) {
           existingItems.push({
             entryName: entry.entryName,
-            tokenBytes,
+            tokenBytes: tokenBytes as Uint8Array<ArrayBuffer>,
             meta: entry,
           });
         }

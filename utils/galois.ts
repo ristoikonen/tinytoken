@@ -136,7 +136,10 @@ export function reedSolomonEncode(data: Uint8Array, nsym: number): Uint8Array {
   const gen = getRsGeneratorPoly(nsym);
   const dataLen = data.length;
   const genLen = gen.length;
-  const work = new Uint8Array(dataLen + nsym);
+  const totalLen = dataLen + nsym;
+  if (totalLen === 0) return new Uint8Array(0);
+
+  const work = new Uint8Array(totalLen);
   work.set(data, 0);
 
   for (let i = 0; i < dataLen; i++) {
@@ -144,10 +147,12 @@ export function reedSolomonEncode(data: Uint8Array, nsym: number): Uint8Array {
     if (coef !== 0) {
       const row = coef << 8;
       for (let j = 1; j < genLen; j++) {
-        work[i + j] ^= MUL_TABLE[row | gen[j]!]!;
+        const idx = i + j;
+        work[idx] = work[idx]! ^ MUL_TABLE[row | gen[j]!]!;
       }
     }
   }
+
   return work.subarray(dataLen);
 }
 
@@ -303,3 +308,4 @@ export function applyHomomorphicMaskGF28(
 export function crc32(bytes: Uint8Array): number {
   return Bun.hash.crc32(bytes) >>> 0;
 }
+

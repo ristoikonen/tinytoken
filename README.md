@@ -1,10 +1,10 @@
-# TinyToken
+# TinyToken - Asset tokeniser app 
 
-Beta by Risto Ikonen 2026.
+Beta by Risto Ikonen 2026. See License Agreement
 
- - My fav: Galois Field GF(2^8) Arithmetic, Reed-Solomon Error Correction.
+ - For all Risukku -project apps, keystone tech is utilising Galois Field GF(2^8) Arithmetic with Reed-Solomon Error Correction.
  - DINOv2 ViT-S/14 ONNX with VQ -  Semantic Visual Embedding.
- - ED25519-MERKLE-GF28-v3 - 'tagged'.
+ - ED25519-MERKLE-GF28-v3 - Tokens cryptographic 'tag' .
 
 
 
