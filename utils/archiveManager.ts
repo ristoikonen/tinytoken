@@ -42,9 +42,10 @@ export class ArchiveManager {
   }
 
   public getGenerationState(): ArchiveGenerationState {
+    const isZip = this.searchEngine.isZipMode ? this.searchEngine.isZipMode() : Bun.env.APP_ZIP_USE !== "false";
     return {
       generation: this.generation,
-      activeZipPath: this.activeZipPath,
+      activeZipPath: isZip ? this.activeZipPath : (this.searchEngine.getDataDirPath ? this.searchEngine.getDataDirPath() : "./data"),
       totalTokens: this.searchEngine.getCount(),
       archiveSizeBytes: this.searchEngine.archiveSizeBytes,
       archiveCrc32Hex: this.activeCrc32Hex,

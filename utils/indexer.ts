@@ -16,12 +16,18 @@ import { dinoEmbeddingToHex } from "./dinoEmbedding";
 import { rasterizeAssetToWebpAndTensors } from "./imagePreview";
 import { renderPdfPagesWithPdfium } from "./pdfEngine";
 import { decodeBinaryToken, encodeBinaryToken } from "./tokenCodec";
-import { writeNativeTokenZipArchive } from "./zipEngine";
+import { vqGridToHex } from "./vqCodebook";
+import {
+  type SerializedManifestEntry,
+  writeNativeTokenZipArchive,
+} from "./zipEngine";
 
 export interface IndexerConfig {
   sourceDirectory: string;
   documentDirectory?: string;
   outputZipPath: string;
+  dataDirectory?: string;
+  useZip?: boolean;
   allowedExtensions: string[];
   maxTokenSizeKb: number;
   maxPagesPerDocument?: number;
@@ -53,6 +59,18 @@ const DOCUMENT_EXTENSIONS = new Set([".pdf", ".docx", ".doc", ".txt", ".md"]);
 
 export class Win11TokenPipeline {
   constructor(private config: IndexerConfig) {}
+
+  public isZipMode(): boolean {
+    if (this.config.useZip !== undefined) {
+      return this.config.useZip;
+    }
+    const normalized = this.config.outputZipPath.replace(/\\/g, "/");
+    const isAppTokensZip = normalized === "tokens.zip" || normalized.endsWith("/tokens.zip");
+    if (!isAppTokensZip) {
+      return true;
+    }
+    return Bun.env.APP_ZIP_USE !== "false";
+  }
 
   public setSourceDirectory(dir: string): void {
     this.config.sourceDirectory = dir;
@@ -529,6 +547,59 @@ export class Win11TokenPipeline {
         tokenCounter++;
         documentTokens++;
       }
+    }
+
+    if (!this.isZipMode()) {
+      const dataDir = this.config.dataDirectory || "./data";
+      let totalBytes = 0;
+      const manifestRecords: SerializedManifestEntry[] = [];
+
+      for (const item of archiveItems) {
+        await Bun.write(`${dataDir}/${item.entryName}`, item.tokenBytes);
+        totalBytes += item.tokenBytes.length;
+
+        manifestRecords.push({
+          id: item.meta.id,
+          entryName: item.entryName,
+          filename: item.meta.filename,
+          sourcePath: item.meta.sourcePath,
+          mimeType: item.meta.mimeType,
+          page: item.meta.page,
+          totalPages: item.meta.totalPages,
+          width: item.meta.width,
+          height: item.meta.height,
+          originalFileSize: item.meta.originalFileSize,
+          previewFormat: item.meta.previewFormat,
+          flags: item.meta.flags,
+          ocrText: item.meta.ocrText,
+          createdAt: item.meta.createdAt,
+          localHeaderOffset: 0,
+          dataOffset: 0,
+          compressedSize: item.tokenBytes.length,
+          uncompressedSize: item.tokenBytes.length,
+          compressionMethod: 0,
+          crc32: 0,
+          merkleRootHex: item.meta.merkleRootHex,
+          snarkVerified: item.meta.snarkVerified,
+          vqHex: vqGridToHex(item.meta.vqIndices),
+          ...(item.meta.dinoEmbedding
+            ? { dinoHex: dinoEmbeddingToHex(item.meta.dinoEmbedding) }
+            : {}),
+          ...(item.meta.embeddingModelId !== undefined
+            ? { embeddingModelId: item.meta.embeddingModelId }
+            : {}),
+        });
+      }
+
+      await Bun.write(`${dataDir}/_index.json`, JSON.stringify(manifestRecords, null, 2));
+
+      return {
+        totalTokens: archiveItems.length,
+        imageTokens,
+        documentTokens,
+        archiveBytes: totalBytes,
+        elapsedMs: Math.round((performance.now() - t0) * 100) / 100,
+      };
     }
 
     const { totalBytes, tokenCount } = await writeNativeTokenZipArchive(

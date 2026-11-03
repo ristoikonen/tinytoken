@@ -33,18 +33,25 @@ function getZipArchivePath(): string {
 }
 
 const DOCUMENT_DIR = "./documents";
+const DATA_DIR = "./data";
 const ZIP_ARCHIVE_PATH = getZipArchivePath();
 const INDEXED_DIR_STAMP = "./data/.indexed_dir";
+const useZip = Bun.env.APP_ZIP_USE !== "false";
 
 const pipeline = new Win11TokenPipeline({
   sourceDirectory: IMAGE_DIR,
   documentDirectory: DOCUMENT_DIR,
   outputZipPath: ZIP_ARCHIVE_PATH,
+  dataDirectory: DATA_DIR,
+  useZip,
   allowedExtensions: [".jpg", ".jpeg", ".png", ".webp", ".avif", ".bmp", ".svg", ".pdf", ".docx"],
   maxTokenSizeKb: 25,
 });
 
-const searchEngine = new CompressedTokenSearchEngine(ZIP_ARCHIVE_PATH);
+const searchEngine = new CompressedTokenSearchEngine(ZIP_ARCHIVE_PATH, {
+  useZip,
+  dataDirPath: DATA_DIR,
+});
 const invertedIndex = new VqInvertedIndexEngine(":memory:");
 const archiveManager = new ArchiveManager(searchEngine, ZIP_ARCHIVE_PATH, invertedIndex);
 const learningHandlers = new LearningHandlers(archiveManager, visualTraitRegistry);
@@ -321,29 +328,56 @@ async function directoryExists(dir: string): Promise<boolean> {
   }
 }
 
-// Initialize ZIP index and native bun:sqlite VQ Inverted Index asynchronously
+// Initialize token index and native bun:sqlite VQ Inverted Index asynchronously
 async function initIndex() {
   const t0 = performance.now();
+  const isZip = searchEngine.isZipMode();
   const zipFile = Bun.file(ZIP_ARCHIVE_PATH);
   const stampFile = Bun.file(INDEXED_DIR_STAMP);
   const lastIndexedDir = (await stampFile.exists()) ? (await stampFile.text()).trim() : null;
   const dirChanged = lastIndexedDir !== null && lastIndexedDir !== IMAGE_DIR;
   const imageDirValid = await directoryExists(IMAGE_DIR);
 
+  let tokensExist = false;
+  if (isZip) {
+    tokensExist = await zipFile.exists();
+  } else {
+    // Check if any *.token files exist in data dir
+    const glob = new Bun.Glob("*.token");
+    for await (const _ of glob.scan({ cwd: DATA_DIR })) {
+      tokensExist = true;
+      break;
+    }
+    // If running with APP_ZIP_USE=false and no *.token files in data dir yet,
+    // unpack existing tokens from tokens.zip so they are immediately available
+    if (!tokensExist && (await zipFile.exists())) {
+      console.log(`[APP_ZIP_USE=false] Extracting existing tokens from ${ZIP_ARCHIVE_PATH} to ${DATA_DIR}...`);
+      const tempEngine = new CompressedTokenSearchEngine(ZIP_ARCHIVE_PATH, { useZip: true });
+      await tempEngine.buildIndex();
+      for (const entry of tempEngine.getAllEntries()) {
+        const tokenBytes = await tempEngine.extractToken(entry.id);
+        if (tokenBytes) {
+          await Bun.write(`${DATA_DIR}/${entry.entryName}`, tokenBytes);
+        }
+      }
+      tokensExist = tempEngine.getCount() > 0;
+    }
+  }
+
   // Rebuild only if running locally with a valid source directory
   const shouldRebuild = !isVercel && (
-    (!(await zipFile.exists()) && imageDirValid) ||
+    (!tokensExist && imageDirValid) ||
     (dirChanged && imageDirValid)
   );
 
   if (shouldRebuild) {
     if (dirChanged) {
       console.log(
-        `Image directory changed (${lastIndexedDir} -> ${IMAGE_DIR}), rebuilding archive...`,
+        `Image directory changed (${lastIndexedDir} -> ${IMAGE_DIR}), rebuilding tokens...`,
       );
     } else {
       console.log(
-        `Building archive from ${IMAGE_DIR} and ${DOCUMENT_DIR}...`,
+        `Building tokens from ${IMAGE_DIR} and ${DOCUMENT_DIR} (ZIP=${isZip})...`,
       );
     }
     await pipeline.buildTokenArchive(IMAGE_DIR);
@@ -359,8 +393,9 @@ async function initIndex() {
   await searchEngine.buildIndex();
   await invertedIndex.syncTokens(searchEngine.getAllEntries());
   const totalMs = (performance.now() - t0).toFixed(2);
+  const storageLabel = isZip ? "archive" : "*.token files in ./data";
   console.log(
-    `Indexed ${searchEngine.getCount()} tokens into RAM + bun:sqlite Inverted Index in ${totalMs} ms (${(searchEngine.archiveSizeBytes / 1024).toFixed(1)} KB archive)`,
+    `Indexed ${searchEngine.getCount()} tokens into RAM + bun:sqlite Inverted Index in ${totalMs} ms (${(searchEngine.archiveSizeBytes / 1024).toFixed(1)} KB, ${storageLabel})`,
   );
 }
 

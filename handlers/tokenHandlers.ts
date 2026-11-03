@@ -65,6 +65,7 @@ export class TokenApiHandlers {
       bootIndexTimeMs: this.engine.lastBootIndexMs,
       codebookSize: VQ_CODEBOOK.length,
       useMyGooglePhotos: Bun.env.USE_MY_GOOGLE_PHOTOS === "true",
+      appZipUse: this.engine.isZipMode ? this.engine.isZipMode() : Bun.env.APP_ZIP_USE !== "false",
     });
   }
 

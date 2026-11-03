@@ -521,5 +521,61 @@ describe("TinyToken GF(2^8) + VQ + SHARK/SNARK Pipeline", () => {
       Bun.env.USE_MY_GOOGLE_PHOTOS = prevFlag;
     }
   });
+
+  test("APP_ZIP_USE=false keeps *.token files in data dir without creating tokens.zip", async () => {
+    const testDir = "./data/test_unzipped_tokens";
+    const zipPath = `${testDir}/tokens.zip`;
+
+    const pipeline = new Win11TokenPipeline({
+      sourceDirectory: "./images",
+      outputZipPath: zipPath,
+      dataDirectory: testDir,
+      useZip: false,
+      allowedExtensions: [".png"],
+      maxTokenSizeKb: 25,
+    });
+
+    const buildRes = await pipeline.buildTokenArchive();
+    expect(buildRes.totalTokens).toBeGreaterThan(0);
+
+    // Verify tokens.zip was NOT created
+    const zipFile = Bun.file(zipPath);
+    expect(await zipFile.exists()).toBe(false);
+
+    // Verify individual *.token files were written
+    const glob = new Bun.Glob("*.token");
+    const tokenFiles: string[] = [];
+    for await (const name of glob.scan({ cwd: testDir })) {
+      tokenFiles.push(name);
+    }
+    expect(tokenFiles.length).toBe(buildRes.totalTokens);
+
+    // Verify _index.json was created for fast indexing
+    const manifestFile = Bun.file(`${testDir}/_index.json`);
+    expect(await manifestFile.exists()).toBe(true);
+
+    // Test SearchEngine in unzipped directory mode
+    const engine = new CompressedTokenSearchEngine(zipPath, {
+      useZip: false,
+      dataDirPath: testDir,
+    });
+    expect(engine.isZipMode()).toBe(false);
+    expect(engine.getZipFilePath()).toBe(testDir);
+
+    await engine.buildIndex();
+    expect(engine.getCount()).toBe(buildRes.totalTokens);
+
+    // Test extraction directly from *.token file
+    const firstEntry = engine.getAllEntries()[0]!;
+    const extractedBytes = await engine.extractToken(firstEntry.id);
+    expect(extractedBytes).not.toBeNull();
+    expect(extractedBytes!.length).toBeGreaterThan(500);
+
+    // Clean up testDir files
+    for (const name of tokenFiles) {
+      await Bun.file(`${testDir}/${name}`).delete();
+    }
+    await manifestFile.delete();
+  });
 });
 

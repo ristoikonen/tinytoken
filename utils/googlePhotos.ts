@@ -413,9 +413,12 @@ export async function fetchAndIndexGooglePhotos(
     }
   }
 
-  // Tokenize media items into 25 KB tokens and write to tokens.zip container
+  // Tokenize media items into 25 KB tokens and write to container or data directory
   if (context?.pipeline && context?.searchEngine && context?.zipArchivePath) {
     try {
+      const useZip = context.searchEngine.isZipMode ? context.searchEngine.isZipMode() : Bun.env.APP_ZIP_USE !== "false";
+      const dataDir = context.searchEngine.getDataDirPath ? context.searchEngine.getDataDirPath() : "./data";
+
       const existingItems: ArchiveTokenItem[] = [];
       for (const entry of context.searchEngine.getAllEntries()) {
         const tokenBytes = await context.searchEngine.extractToken(entry.id);
@@ -448,19 +451,32 @@ export async function fetchAndIndexGooglePhotos(
         newItems.push(tokenItem);
       }
 
-      const itemMap = new Map<string, ArchiveTokenItem>();
-      for (const it of existingItems) itemMap.set(it.meta.id, it);
-      for (const it of newItems) itemMap.set(it.meta.id, it);
-      const merged = Array.from(itemMap.values());
+      if (!useZip) {
+        for (const it of newItems) {
+          await Bun.write(`${dataDir}/${it.entryName}`, it.tokenBytes);
+        }
+        await context.searchEngine.buildIndex();
+        if (context.invertedIndex) {
+          await context.invertedIndex.syncTokens(context.searchEngine.getAllEntries());
+        }
+        console.log(
+          `[PHOTOS] Successfully saved ${newItems.length} *.token files to ${dataDir} (Total: ${context.searchEngine.getCount()} tokens)`,
+        );
+      } else {
+        const itemMap = new Map<string, ArchiveTokenItem>();
+        for (const it of existingItems) itemMap.set(it.meta.id, it);
+        for (const it of newItems) itemMap.set(it.meta.id, it);
+        const merged = Array.from(itemMap.values());
 
-      await writeNativeTokenZipArchive(context.zipArchivePath, merged);
-      await context.searchEngine.buildIndex();
-      if (context.invertedIndex) {
-        await context.invertedIndex.syncTokens(context.searchEngine.getAllEntries());
+        await writeNativeTokenZipArchive(context.zipArchivePath, merged);
+        await context.searchEngine.buildIndex();
+        if (context.invertedIndex) {
+          await context.invertedIndex.syncTokens(context.searchEngine.getAllEntries());
+        }
+        console.log(
+          `[PHOTOS] Successfully indexed ${newItems.length} photos into ${context.zipArchivePath} (Total: ${merged.length} tokens)`,
+        );
       }
-      console.log(
-        `[PHOTOS] Successfully indexed ${newItems.length} photos into ${context.zipArchivePath} (Total: ${merged.length} tokens)`,
-      );
     } catch (err: any) {
       console.warn("Error tokenizing and indexing Google Photos into archive:", err?.message || err);
     }
