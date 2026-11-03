@@ -3,12 +3,13 @@
   "bunVersion": "1.x",
   "functions": {
     "api/**/*.ts": {
-      "includeFiles": "data/**"
+      "includeFiles": "{data/**,public/**}"
     }
   },
   "rewrites": [
-    { "source": "/api/:match*", "destination": "/api/index.ts?__path=/api/:match*" }
+    { "source": "/api/:match*", "destination": "/api/index.ts?__path=/api/:match*" },
+    { "source": "/", "destination": "/api/index.ts?__path=/" },
+    { "source": "/index.html", "destination": "/api/index.ts?__path=/index.html" },
+    { "source": "/(.*)", "destination": "/api/index.ts?__path=/$1" }
   ]
 }
-
-

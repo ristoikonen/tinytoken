@@ -1,4 +1,6 @@
 import { serve, type BunRequest } from "bun";
+import indexHtmlText from "./public/index.html" with { type: "text" };
+const htmlContent: string = String(indexHtmlText);
 import { LearningHandlers } from "./handlers/learningHandlers";
 import { TokenApiHandlers } from "./handlers/tokenHandlers";
 import { ArchiveManager } from "./utils/archiveManager";
@@ -20,6 +22,7 @@ const IMAGE_DIR =
   Bun.env.IMAGE_DIR ??
   Bun.argv[2] ??
   (isVercel ? "./images" : "C:/Users/risto/OneDrive/Pictures/Nikon/toke");
+
 function getZipArchivePath(): string {
   const candidates = [
     `${import.meta.dir}/data/tokens.zip`,
@@ -30,13 +33,25 @@ function getZipArchivePath(): string {
   for (const c of candidates) {
     if (Bun.file(c).size > 0) return c;
   }
-  return "./data/tokens.zip";
+  return `${import.meta.dir}/data/tokens.zip`;
+}
+
+function getDataDirectory(): string {
+  const candidates = [
+    `${import.meta.dir}/data`,
+    `${process.cwd()}/data`,
+    `./data`,
+  ];
+  for (const c of candidates) {
+    if (Bun.file(`${c}/_index.json`).size > 0 || Bun.file(`${c}/tokens.zip`).size > 0) return c;
+  }
+  return `${import.meta.dir}/data`;
 }
 
 const DOCUMENT_DIR = "./documents";
-const DATA_DIR = "./data";
+const DATA_DIR = getDataDirectory();
 const ZIP_ARCHIVE_PATH = getZipArchivePath();
-const INDEXED_DIR_STAMP = "./data/.indexed_dir";
+const INDEXED_DIR_STAMP = `${DATA_DIR}/.indexed_dir`;
 const useZip = Bun.env.APP_ZIP_USE !== "false";
 
 const pipeline = new Win11TokenPipeline({
@@ -81,22 +96,14 @@ const server = serve({
   hostname: host,
   port,
   routes: {
-    "/": () => {
-      const file = Bun.file("./public/index.html");
-      return file.exists().then((exists) =>
-        exists
-          ? new Response(file, { headers: { "Content-Type": "text/html; charset=utf-8" } })
-          : errorResponse("Index.html not found", 404),
-      );
-    },
-    "/index.html": () => {
-      const file = Bun.file("./public/index.html");
-      return file.exists().then((exists) =>
-        exists
-          ? new Response(file, { headers: { "Content-Type": "text/html; charset=utf-8" } })
-          : errorResponse("Index.html not found", 404),
-      );
-    },
+    "/": () =>
+      new Response(htmlContent, {
+        headers: { "Content-Type": "text/html; charset=utf-8" },
+      }),
+    "/index.html": () =>
+      new Response(htmlContent, {
+        headers: { "Content-Type": "text/html; charset=utf-8" },
+      }),
     "/api/stats": async () => {
       await ensureInitialized();
       return apiHandlers.handleStats();
@@ -212,7 +219,7 @@ const server = serve({
         req.headers.get("x-forwarded-uri") ||
         req.headers.get("x-matched-path") ||
         req.headers.get("x-invoke-path");
-      if (forwarded && forwarded.startsWith("/api/")) {
+      if (forwarded) {
         path = forwarded.split("?")[0]!;
       }
     }
@@ -226,10 +233,9 @@ const server = serve({
       await ensureInitialized();
 
       if (path === "/" || path === "/index.html") {
-        const file = Bun.file("./public/index.html");
-        return (await file.exists())
-          ? new Response(file, { headers: { "Content-Type": "text/html; charset=utf-8" } })
-          : errorResponse("Index.html not found", 404);
+        return new Response(htmlContent, {
+          headers: { "Content-Type": "text/html; charset=utf-8" },
+        });
       }
       if (path === "/api/stats") return apiHandlers.handleStats();
       if (path === "/api/codebook") return apiHandlers.handleCodebook();
@@ -350,8 +356,8 @@ async function initIndex() {
       break;
     }
     // If running with APP_ZIP_USE=false and no *.token files in data dir yet,
-    // unpack existing tokens from tokens.zip so they are immediately available
-    if (!tokensExist && (await zipFile.exists())) {
+    // unpack existing tokens from tokens.zip so they are immediately available (local dev only)
+    if (!isVercel && !tokensExist && (await zipFile.exists())) {
       console.log(`[APP_ZIP_USE=false] Extracting existing tokens from ${ZIP_ARCHIVE_PATH} to ${DATA_DIR}...`);
       const tempEngine = new CompressedTokenSearchEngine(ZIP_ARCHIVE_PATH, { useZip: true });
       await tempEngine.buildIndex();
@@ -391,13 +397,17 @@ async function initIndex() {
     } catch { }
   }
 
-  await searchEngine.buildIndex();
-  await invertedIndex.syncTokens(searchEngine.getAllEntries());
-  const totalMs = (performance.now() - t0).toFixed(2);
-  const storageLabel = isZip ? "archive" : "*.token files in ./data";
-  console.log(
-    `Indexed ${searchEngine.getCount()} tokens into RAM + bun:sqlite Inverted Index in ${totalMs} ms (${(searchEngine.archiveSizeBytes / 1024).toFixed(1)} KB, ${storageLabel})`,
-  );
+  try {
+    await searchEngine.buildIndex();
+    await invertedIndex.syncTokens(searchEngine.getAllEntries());
+    const totalMs = (performance.now() - t0).toFixed(2);
+    const storageLabel = isZip ? "archive" : "*.token files in ./data";
+    console.log(
+      `Indexed ${searchEngine.getCount()} tokens into RAM + bun:sqlite Inverted Index in ${totalMs} ms (${(searchEngine.archiveSizeBytes / 1024).toFixed(1)} KB, ${storageLabel})`,
+    );
+  } catch (err) {
+    console.error("Warning: Could not build/sync token index:", err);
+  }
 }
 
 // Trigger initial index build immediately
