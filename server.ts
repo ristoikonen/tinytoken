@@ -61,7 +61,13 @@ function getDataDirectory(): string {
     `./data`,
   ];
   for (const c of candidates) {
-    if (Bun.file(`${c}/_index.json`).size > 0 || Bun.file(`${c}/tokens.zip`).size > 0) return c;
+    if (
+      Bun.file(`${c}/_index.json`).size > 0 ||
+      Bun.file(`${c}/tokens.zip`).size > 0 ||
+      Bun.file(`${c}/tok_00001_HectorDoor.png.token`).size > 0
+    ) {
+      return c;
+    }
   }
   return `${import.meta.dir}/data`;
 }
