@@ -312,19 +312,22 @@ export class CompressedTokenSearchEngine {
 
     if (!this.isZipMode()) {
       await this.buildIndexFromDirectory();
+      if (this.metadataStore.length > 0 || !(await Bun.file(this.zipFilePath).exists())) {
+        this.lastBootIndexMs = Math.round((performance.now() - startTime) * 100) / 100;
+        return;
+      }
+    }
+
+    const file = Bun.file(this.zipFilePath);
+    if (!(await file.exists()) || file.size < 22) {
+      if (this.metadataStore.length === 0) {
+        await this.buildIndexFromDirectory();
+      }
       this.lastBootIndexMs = Math.round((performance.now() - startTime) * 100) / 100;
       return;
     }
 
-    const file = Bun.file(this.zipFilePath);
-    if (!(await file.exists())) {
-      this.archiveSizeBytes = 0;
-      this.lastBootIndexMs = 0;
-      return;
-    }
-
     this.archiveSizeBytes = file.size;
-    if (this.archiveSizeBytes < 22) return;
 
     // 1. Slice the last 64 KB of the ZIP to find the End of Central Directory (EOCD) record
     const tailLen = Math.min(this.archiveSizeBytes, 65557);
@@ -549,89 +552,93 @@ export class CompressedTokenSearchEngine {
     }
 
     // 2. Scan all *.token files in dataDir
-    const glob = new Bun.Glob("*.token");
-    const manifestRecords: SerializedManifestEntry[] = [];
+    try {
+      const glob = new Bun.Glob("*.token");
+      const manifestRecords: SerializedManifestEntry[] = [];
 
-    for await (const name of glob.scan({ cwd: dataDir })) {
-      const file = Bun.file(`${dataDir}/${name}`);
-      const tokenBytes = new Uint8Array(await file.arrayBuffer());
-      totalBytes += tokenBytes.length;
-      try {
-        const decoded = await decodeBinaryToken(tokenBytes);
-        const entry: ZipTokenIndexEntry = {
-          id: decoded.id,
-          entryName: name,
-          filename: decoded.metadata.filename,
-          sourcePath: decoded.metadata.sourcePath,
-          mimeType: decoded.metadata.mimeType,
-          page: decoded.page,
-          totalPages: decoded.metadata.totalPages,
-          width: decoded.width,
-          height: decoded.height,
-          originalFileSize: decoded.originalFileSize,
-          previewFormat: decoded.previewFormat,
-          flags: decoded.flags,
-          ocrText: decoded.metadata.ocrText,
-          createdAt: decoded.metadata.createdAt,
-          localHeaderOffset: 0,
-          dataOffset: 0,
-          compressedSize: tokenBytes.length,
-          uncompressedSize: tokenBytes.length,
-          compressionMethod: 0,
-          crc32: 0,
-          merkleRootHex: decoded.merkleRootHex,
-          snarkVerified: decoded.snarkAttestation.valid,
-          vqIndices: decoded.vqIndices,
-          ...(decoded.metadata.dinoEmbeddingHex
-            ? { dinoEmbedding: hexToDinoEmbedding(decoded.metadata.dinoEmbeddingHex) }
-            : {}),
-          embeddingModelId: decoded.embeddingModelId,
-        };
-        this.metadataIndex.set(entry.id, entry);
-        this.metadataIndex.set(entry.entryName, entry);
-        this.metadataStore.push(entry);
+      for await (const name of glob.scan({ cwd: dataDir })) {
+        const file = Bun.file(`${dataDir}/${name}`);
+        const tokenBytes = new Uint8Array(await file.arrayBuffer());
+        totalBytes += tokenBytes.length;
+        try {
+          const decoded = await decodeBinaryToken(tokenBytes);
+          const entry: ZipTokenIndexEntry = {
+            id: decoded.id,
+            entryName: name,
+            filename: decoded.metadata.filename,
+            sourcePath: decoded.metadata.sourcePath,
+            mimeType: decoded.metadata.mimeType,
+            page: decoded.page,
+            totalPages: decoded.metadata.totalPages,
+            width: decoded.width,
+            height: decoded.height,
+            originalFileSize: decoded.originalFileSize,
+            previewFormat: decoded.previewFormat,
+            flags: decoded.flags,
+            ocrText: decoded.metadata.ocrText,
+            createdAt: decoded.metadata.createdAt,
+            localHeaderOffset: 0,
+            dataOffset: 0,
+            compressedSize: tokenBytes.length,
+            uncompressedSize: tokenBytes.length,
+            compressionMethod: 0,
+            crc32: 0,
+            merkleRootHex: decoded.merkleRootHex,
+            snarkVerified: decoded.snarkAttestation.valid,
+            vqIndices: decoded.vqIndices,
+            ...(decoded.metadata.dinoEmbeddingHex
+              ? { dinoEmbedding: hexToDinoEmbedding(decoded.metadata.dinoEmbeddingHex) }
+              : {}),
+            embeddingModelId: decoded.embeddingModelId,
+          };
+          this.metadataIndex.set(entry.id, entry);
+          this.metadataIndex.set(entry.entryName, entry);
+          this.metadataStore.push(entry);
 
-        manifestRecords.push({
-          id: decoded.id,
-          entryName: name,
-          filename: decoded.metadata.filename,
-          sourcePath: decoded.metadata.sourcePath,
-          mimeType: decoded.metadata.mimeType,
-          page: decoded.page,
-          totalPages: decoded.metadata.totalPages,
-          width: decoded.width,
-          height: decoded.height,
-          originalFileSize: decoded.originalFileSize,
-          previewFormat: decoded.previewFormat,
-          flags: decoded.flags,
-          ocrText: decoded.metadata.ocrText,
-          createdAt: decoded.metadata.createdAt,
-          localHeaderOffset: 0,
-          dataOffset: 0,
-          compressedSize: tokenBytes.length,
-          uncompressedSize: tokenBytes.length,
-          compressionMethod: 0,
-          crc32: 0,
-          merkleRootHex: decoded.merkleRootHex,
-          snarkVerified: decoded.snarkAttestation.valid,
-          vqHex: vqGridToHex(decoded.vqIndices),
-          ...(decoded.metadata.dinoEmbeddingHex
-            ? { dinoHex: decoded.metadata.dinoEmbeddingHex }
-            : {}),
-          ...(decoded.embeddingModelId !== undefined
-            ? { embeddingModelId: decoded.embeddingModelId }
-            : {}),
-        });
-      } catch (err) {
-        console.warn(`Failed to decode token ${name}:`, err);
+          manifestRecords.push({
+            id: decoded.id,
+            entryName: name,
+            filename: decoded.metadata.filename,
+            sourcePath: decoded.metadata.sourcePath,
+            mimeType: decoded.metadata.mimeType,
+            page: decoded.page,
+            totalPages: decoded.metadata.totalPages,
+            width: decoded.width,
+            height: decoded.height,
+            originalFileSize: decoded.originalFileSize,
+            previewFormat: decoded.previewFormat,
+            flags: decoded.flags,
+            ocrText: decoded.metadata.ocrText,
+            createdAt: decoded.metadata.createdAt,
+            localHeaderOffset: 0,
+            dataOffset: 0,
+            compressedSize: tokenBytes.length,
+            uncompressedSize: tokenBytes.length,
+            compressionMethod: 0,
+            crc32: 0,
+            merkleRootHex: decoded.merkleRootHex,
+            snarkVerified: decoded.snarkAttestation.valid,
+            vqHex: vqGridToHex(decoded.vqIndices),
+            ...(decoded.metadata.dinoEmbeddingHex
+              ? { dinoHex: decoded.metadata.dinoEmbeddingHex }
+              : {}),
+            ...(decoded.embeddingModelId !== undefined
+              ? { embeddingModelId: decoded.embeddingModelId }
+              : {}),
+          });
+        } catch (err) {
+          console.warn(`Failed to decode token ${name}:`, err);
+        }
       }
-    }
 
-    this.archiveSizeBytes = totalBytes;
-    if (manifestRecords.length > 0) {
-      try {
-        await Bun.write(`${dataDir}/_index.json`, JSON.stringify(manifestRecords, null, 2));
-      } catch {}
+      this.archiveSizeBytes = totalBytes;
+      if (manifestRecords.length > 0) {
+        try {
+          await Bun.write(`${dataDir}/_index.json`, JSON.stringify(manifestRecords, null, 2));
+        } catch {}
+      }
+    } catch {
+      // data directory not accessible or empty
     }
   }
 
@@ -772,12 +779,13 @@ export class CompressedTokenSearchEngine {
     const meta = this.metadataIndex.get(idOrEntryName);
     if (!meta) return null;
 
-    if (!this.isZipMode()) {
-      const file = Bun.file(`${this.dataDirPath}/${meta.entryName}`);
-      if (!(await file.exists())) return null;
-      return new Uint8Array(await file.arrayBuffer());
+    // 1. Try reading *.token file from data directory
+    const individualFile = Bun.file(`${this.dataDirPath}/${meta.entryName}`);
+    if (await individualFile.exists()) {
+      return new Uint8Array(await individualFile.arrayBuffer());
     }
 
+    // 2. Fall back to ZIP archive slice
     const file = Bun.file(this.zipFilePath);
     if (!(await file.exists())) return null;
 

@@ -48,9 +48,12 @@ function getZipArchivePath(): string {
     `${import.meta.dir}/../data/tokens.zip`,
     `${process.cwd()}/data/tokens.zip`,
     `./data/tokens.zip`,
+    `../data/tokens.zip`,
   ];
   for (const c of candidates) {
-    if (Bun.file(c).size > 0) return c;
+    try {
+      if (Bun.file(c).size > 0) return c;
+    } catch { }
   }
   return `${import.meta.dir}/data/tokens.zip`;
 }
@@ -58,17 +61,21 @@ function getZipArchivePath(): string {
 function getDataDirectory(): string {
   const candidates = [
     `${import.meta.dir}/data`,
+    `${import.meta.dir}/../data`,
     `${process.cwd()}/data`,
     `./data`,
+    `../data`,
   ];
   for (const c of candidates) {
-    if (
-      Bun.file(`${c}/_index.json`).size > 0 ||
-      Bun.file(`${c}/tokens.zip`).size > 0 ||
-      Bun.file(`${c}/tok_00001_HectorDoor.png.token`).size > 0
-    ) {
-      return c;
-    }
+    try {
+      if (
+        Bun.file(`${c}/_index.json`).size > 0 ||
+        Bun.file(`${c}/tokens.zip`).size > 0 ||
+        Bun.file(`${c}/tok_00001_HectorDoor.png.token`).size > 0
+      ) {
+        return c;
+      }
+    } catch { }
   }
   return `${import.meta.dir}/data`;
 }
@@ -397,10 +404,14 @@ async function initIndex() {
     tokensExist = await zipFile.exists();
   } else {
     // Check if any *.token files exist in data dir
-    const glob = new Bun.Glob("*.token");
-    for await (const _ of glob.scan({ cwd: DATA_DIR })) {
-      tokensExist = true;
-      break;
+    try {
+      const glob = new Bun.Glob("*.token");
+      for await (const _ of glob.scan({ cwd: DATA_DIR })) {
+        tokensExist = true;
+        break;
+      }
+    } catch {
+      tokensExist = false;
     }
     // If running with APP_ZIP_USE=false and no *.token files in data dir yet,
     // unpack existing tokens from tokens.zip so they are immediately available (local dev only)

@@ -3628,5 +3628,51 @@
     "observedAt": "2026-11-03T07:10:48.712Z",
     "source": "human_verified",
     "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793691640739_aaly2",
+    "recipeId": "rcp_red_kangaroo_juvenile",
+    "label": "Red Kangaroo Juvenile",
+    "category": "Silhouette",
+    "observedTokenId": "tok_test_01",
+    "boundingBox": [
+      0.2,
+      0.3,
+      0.4,
+      0.5
+    ],
+    "observedCentroids": [
+      108,
+      132
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-03T07:40:40.736Z",
+    "observedAt": "2026-11-03T07:40:40.736Z",
+    "source": "human_verified",
+    "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1793691798460_g6y78",
+    "recipeId": "rcp_red_kangaroo_juvenile",
+    "label": "Red Kangaroo Juvenile",
+    "category": "Silhouette",
+    "observedTokenId": "tok_test_01",
+    "boundingBox": [
+      0.2,
+      0.3,
+      0.4,
+      0.5
+    ],
+    "observedCentroids": [
+      108,
+      132
+    ],
+    "latitude": -33.8688,
+    "longitude": 151.2093,
+    "utcTimestamp": "2026-11-03T07:43:18.458Z",
+    "observedAt": "2026-11-03T07:43:18.458Z",
+    "source": "human_verified",
+    "confidence": 1
   }
 ]
