@@ -2,7 +2,7 @@ import { serve, type BunRequest } from "bun";
 import { LearningHandlers } from "./handlers/learningHandlers";
 import { TokenApiHandlers } from "./handlers/tokenHandlers";
 import { ArchiveManager } from "./utils/archiveManager";
-import { Win11TokenPipeline } from "./utils/indexer";
+import type { Win11TokenPipeline } from "./utils/indexer";
 import { errorResponse, jsonResponse, verifySameOriginMutation } from "./utils/response";
 import {
   fetchAndIndexGooglePhotos,
@@ -34,7 +34,8 @@ async function getIndexHtml(): Promise<string> {
   return "<!DOCTYPE html><html><body>TinyToken</body></html>";
 }
 
-const isVercel = Boolean(Bun.env.VERCEL || Bun.env.NOW_REGION);
+const isVercel = Boolean(Bun.env.NOW_REGION || Bun.env.VERCEL_ENV || Bun.env.VERCEL);
+const isServerless = Boolean(Bun.env.NOW_REGION || Bun.env.VERCEL_REGION);
 
 const IMAGE_DIR =
   Bun.env.IMAGE_DIR ??
@@ -78,15 +79,29 @@ const ZIP_ARCHIVE_PATH = getZipArchivePath();
 const INDEXED_DIR_STAMP = `${DATA_DIR}/.indexed_dir`;
 const useZip = Bun.env.APP_ZIP_USE !== "false";
 
-const pipeline = new Win11TokenPipeline({
-  sourceDirectory: IMAGE_DIR,
-  documentDirectory: DOCUMENT_DIR,
-  outputZipPath: ZIP_ARCHIVE_PATH,
-  dataDirectory: DATA_DIR,
-  useZip,
-  allowedExtensions: [".jpg", ".jpeg", ".png", ".webp", ".avif", ".bmp", ".svg", ".pdf", ".docx"],
-  maxTokenSizeKb: 25,
-});
+let pipelineInstance: Win11TokenPipeline | null = null;
+async function getPipeline(): Promise<Win11TokenPipeline> {
+  if (!pipelineInstance) {
+    const { Win11TokenPipeline } = await import("./utils/indexer");
+    pipelineInstance = new Win11TokenPipeline({
+      sourceDirectory: IMAGE_DIR,
+      documentDirectory: DOCUMENT_DIR,
+      outputZipPath: ZIP_ARCHIVE_PATH,
+      dataDirectory: DATA_DIR,
+      useZip,
+      allowedExtensions: [".jpg", ".jpeg", ".png", ".webp", ".avif", ".bmp", ".svg", ".pdf", ".docx"],
+      maxTokenSizeKb: 25,
+    });
+  }
+  return pipelineInstance;
+}
+
+const pipeline: Win11TokenPipeline = {
+  buildTokenArchive: async (dir?: string) => {
+    const p = await getPipeline();
+    return p.buildTokenArchive(dir);
+  },
+} as unknown as Win11TokenPipeline;
 
 const searchEngine = new CompressedTokenSearchEngine(ZIP_ARCHIVE_PATH, {
   useZip,
@@ -103,7 +118,7 @@ const apiHandlers = new TokenApiHandlers(
   DOCUMENT_DIR,
 );
 
-const port = Number(Bun.env.PORT ?? Bun.env.APP_PORT ?? 3000);
+const port = isServerless ? 0 : Number(Bun.env.PORT ?? Bun.env.APP_PORT ?? 3000);
 const host = Bun.env.APP_HOST ?? (isVercel ? "0.0.0.0" : "localhost");
 
 // Track index initialization so serverless cold starts never encounter uninitialized state

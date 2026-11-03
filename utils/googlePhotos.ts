@@ -11,7 +11,6 @@
  */
 
 import { OAuth2Client, GoogleAuth } from "google-auth-library";
-import sharp from "sharp";
 import type { ArchiveTokenItem, Win11TokenPipeline } from "./indexer";
 import type { ArchiveManager } from "./archiveManager";
 import type { VqInvertedIndexEngine } from "./vqInvertedIndex";
@@ -139,6 +138,7 @@ async function fetchPhotoBuffer(
     <text x="42" y="71" fill="#e2e8f0" font-family="monospace" font-size="12">${safeFilename}</text>
   </svg>`;
 
+  const sharp = (await import("sharp")).default;
   return new Uint8Array(
     await sharp(Buffer.from(svg))
       .jpeg({ quality: 90 })
