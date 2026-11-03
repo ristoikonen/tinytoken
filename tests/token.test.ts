@@ -27,9 +27,15 @@ import {
   generateMockTinyTokenBuffer,
 } from "../utils/tokenCodec";
 import {
+  adcDistanceToSimilarityPct,
+  computeHybridVisualSimilarity,
   computeVqAdcDistance,
   decodeVqGridToRgba,
   encodeBytesToVqGrid,
+  MAX_ADC_DISTANCE,
+  quantizeRgbToCentroid,
+  validateVqGrid,
+  VQ_CODEBOOK,
 } from "../utils/vqCodebook";
 import { VqInvertedIndexEngine } from "../utils/vqInvertedIndex";
 import { CompressedTokenSearchEngine } from "../utils/zipEngine";
@@ -576,6 +582,134 @@ describe("TinyToken GF(2^8) + VQ + SHARK/SNARK Pipeline", () => {
       await Bun.file(`${testDir}/${name}`).delete();
     }
     await manifestFile.delete();
+  });
+
+  test("quantizeRgbToCentroid performs true nearest-centroid quantization across all 256 codebook entries", () => {
+    // Contrast greyscale anchors
+    expect(quantizeRgbToCentroid(0, 0, 0)).toBe(252);
+    expect(quantizeRgbToCentroid(85, 85, 85)).toBe(253);
+    expect(quantizeRgbToCentroid(170, 170, 170)).toBe(254);
+    expect(quantizeRgbToCentroid(255, 255, 255)).toBe(255);
+
+    // Verify against exhaustive nearest search on sample colors
+    const sampleColors = [
+      [12, 10, 16],
+      [248, 248, 250],
+      [108, 128, 112],
+      [5, 5, 5],
+      [80, 85, 90],
+      [200, 30, 40],
+      [30, 220, 100],
+      [15, 25, 230],
+    ];
+
+    for (const [r, g, b] of sampleColors) {
+      const idx = quantizeRgbToCentroid(r!, g!, b!);
+      const chosen = VQ_CODEBOOK[idx]!;
+      const chosenDist =
+        2 * (r! - chosen.r) ** 2 + 4 * (g! - chosen.g) ** 2 + 1 * (b! - chosen.b) ** 2;
+
+      // Verify no other centroid has a strictly smaller perceptual distance
+      for (let i = 0; i < 256; i++) {
+        const c = VQ_CODEBOOK[i]!;
+        const dist = 2 * (r! - c.r) ** 2 + 4 * (g! - c.g) ** 2 + 1 * (b! - c.b) ** 2;
+        expect(dist).toBeGreaterThanOrEqual(chosenDist);
+      }
+    }
+  });
+
+  test("ADC distance normalization anchors MAX_ADC_DISTANCE to theoretical maximum of distance model", () => {
+    // 16,646,400 = 256 * 255^2
+    expect(MAX_ADC_DISTANCE).toBe(16_646_400);
+
+    const blackGrid = new Uint8Array(256).fill(252); // centroid #252 = (0, 0, 0)
+    const whiteGrid = new Uint8Array(256).fill(255); // centroid #255 = (255, 255, 255)
+
+    const maxDist = computeVqAdcDistance(blackGrid, whiteGrid);
+    expect(maxDist).toBe(MAX_ADC_DISTANCE);
+    expect(adcDistanceToSimilarityPct(maxDist)).toBe(0);
+
+    const zeroDist = computeVqAdcDistance(blackGrid, blackGrid);
+    expect(zeroDist).toBe(0);
+    expect(adcDistanceToSimilarityPct(zeroDist)).toBe(100);
+  });
+
+  test("computeHybridVisualSimilarity returns dinoSimilarityPct: null when DINO is not evaluated or models mismatch", () => {
+    const gridA = new Uint8Array(256).fill(42);
+    const gridB = new Uint8Array(256).fill(42);
+
+    // Case 1: adcDistance === 0 but no DINO embeddings provided -> dinoSimilarityPct must be null, not 100
+    const noDinoRes = computeHybridVisualSimilarity(gridA, gridB);
+    expect(noDinoRes.similarityScore).toBe(100);
+    expect(noDinoRes.adcDistance).toBe(0);
+    expect(noDinoRes.dinoSimilarityPct).toBeNull();
+
+    // Case 2: Model IDs unknown or mismatched -> DINO must not be evaluated
+    const dummyDino1 = new Int8Array(384).fill(10);
+    const dummyDino2 = new Int8Array(384).fill(10);
+
+    // Undefined queryModelId -> unknown model is not compatible -> dinoSimilarityPct: null
+    const unknownModelRes = computeHybridVisualSimilarity(
+      gridA,
+      gridB,
+      dummyDino1,
+      dummyDino2,
+      undefined,
+      2,
+    );
+    expect(unknownModelRes.dinoSimilarityPct).toBeNull();
+    expect(unknownModelRes.similarityScore).toBe(100);
+
+    // Different model IDs (e.g. 1 vs 2) -> incompatible -> dinoSimilarityPct: null
+    const mismatchModelRes = computeHybridVisualSimilarity(
+      gridA,
+      gridB,
+      dummyDino1,
+      dummyDino2,
+      1,
+      2,
+    );
+    expect(mismatchModelRes.dinoSimilarityPct).toBeNull();
+
+    // Known matching model IDs (2 vs 2) -> compatible -> dinoSimilarityPct calculated
+    const matchingModelRes = computeHybridVisualSimilarity(
+      gridA,
+      gridB,
+      dummyDino1,
+      dummyDino2,
+      2,
+      2,
+    );
+    expect(matchingModelRes.dinoSimilarityPct).toBe(100);
+    expect(matchingModelRes.similarityScore).toBe(100);
+  });
+
+  test("validateVqGrid enforces 256-byte grids and prevents silent truncation/padding bugs", () => {
+    const validGrid = new Uint8Array(256).fill(42);
+    expect(() => validateVqGrid(validGrid)).not.toThrow();
+
+    const shortGrid = new Uint8Array(100).fill(42);
+    expect(() => validateVqGrid(shortGrid)).toThrow(RangeError);
+    expect(() => validateVqGrid(shortGrid)).toThrow("Expected 256-byte VQ grid, received 100");
+
+    const longGrid = new Uint8Array(300).fill(42);
+    expect(() => validateVqGrid(longGrid)).toThrow(RangeError);
+
+    // computeVqAdcDistance must throw when given a truncated grid
+    expect(() => computeVqAdcDistance(shortGrid, validGrid)).toThrow(RangeError);
+    expect(() => computeVqAdcDistance(validGrid, shortGrid)).toThrow(RangeError);
+
+    // decodeVqGridToRgba must throw when given a truncated grid
+    expect(() => decodeVqGridToRgba(shortGrid)).toThrow(RangeError);
+
+    // decodeVqGridToRgba decodes valid grids faithfully without needing fallback
+    const decodedRgba = decodeVqGridToRgba(validGrid);
+    expect(decodedRgba.length).toBe(1024);
+    const expectedCentroid = VQ_CODEBOOK[42]!;
+    expect(decodedRgba[0]).toBe(expectedCentroid.r);
+    expect(decodedRgba[1]).toBe(expectedCentroid.g);
+    expect(decodedRgba[2]).toBe(expectedCentroid.b);
+    expect(decodedRgba[3]).toBe(255);
   });
 });
 

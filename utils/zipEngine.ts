@@ -688,12 +688,16 @@ export class CompressedTokenSearchEngine {
       queryGrid = targetIdOrVqGrid;
     }
 
+    if (!queryGrid || queryGrid.length !== 256) {
+      return [];
+    }
+
     const lowerFilter = textFilter.trim().toLowerCase();
     const scored: Array<{
       entry: ZipTokenIndexEntry;
       similarityScore: number;
       adcDistance: number;
-      dinoSimilarity: number;
+      dinoSimilarity: number | null;
     }> = [];
 
     for (const item of this.metadataStore) {
@@ -710,7 +714,7 @@ export class CompressedTokenSearchEngine {
           entry: item,
           similarityScore: 100,
           adcDistance: 0,
-          dinoSimilarity: 100,
+          dinoSimilarity: item.dinoEmbedding && item.dinoEmbedding.length > 0 ? 100 : null,
         });
         continue;
       }
@@ -741,7 +745,7 @@ export class CompressedTokenSearchEngine {
     entry: ZipTokenIndexEntry,
     adcDist?: number,
     similarityScore?: number,
-    dinoSimilarity?: number,
+    dinoSimilarity?: number | null,
   ): SearchHitDTO {
     return {
       id: entry.id,
@@ -765,7 +769,7 @@ export class CompressedTokenSearchEngine {
         ? {
             adcDistance: adcDist,
             similarityScore: similarityScore ?? adcDistanceToSimilarityPct(adcDist),
-            ...(dinoSimilarity !== undefined ? { dinoSimilarity } : {}),
+            dinoSimilarity: dinoSimilarity ?? null,
           }
         : {}),
     };

@@ -23,7 +23,8 @@ const IMAGE_DIR =
 const DOCUMENT_DIR = "./documents";
 const INDEXED_DIR_STAMP = `${DATA_DIR}/.indexed_dir`;
 const useZip = Bun.env.APP_ZIP_USE !== "false";
-const port = Number(Bun.env.PORT ?? Bun.env.APP_PORT ?? 3000);
+const isTest = Bun.env.NODE_ENV === "test";
+const port = isTest ? 0 : Number(Bun.env.PORT ?? Bun.env.APP_PORT ?? 3000);
 const host = Bun.env.APP_HOST ?? "localhost";
 
 // Cached HTML template

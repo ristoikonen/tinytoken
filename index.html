@@ -1322,7 +1322,7 @@
           } else {
             const adcFormatted = typeof hit.adcDistance === 'number' ? hit.adcDistance.toLocaleString() : (hit.adcDistance ?? 0);
             const simScore = hit.similarityScore !== undefined ? `${hit.similarityScore}%` : 'N/A';
-            const dinoPart = hit.dinoSimilarity !== undefined ? ` • DINOv3: ${hit.dinoSimilarity}%` : '';
+            const dinoPart = (hit.dinoSimilarity !== undefined && hit.dinoSimilarity !== null) ? ` • DINOv3: ${hit.dinoSimilarity}%` : '';
             simMsg = `[SIMILARITY] ADC Distance (VQ): ${adcFormatted} • Similarity Score: ${simScore}${dinoPart} (vs ${activeSimilarTo})`;
             logDebug(simMsg, 'success');
           }

@@ -179,7 +179,7 @@ export interface SearchHitDTO {
   snarkVerified: boolean;
   vqHex: string; // 512-char hex of 256-byte VQ 16x16 grid
   similarityScore?: number; // 0..100% hybrid DINOv2 + VQ similarity score
-  dinoSimilarity?: number; // 0..100% DINOv2 ViT-14 semantic cosine score
+  dinoSimilarity?: number | null; // 0..100% DINOv2 ViT-14 semantic cosine score (null if un-evaluated or incompatible)
   adcDistance?: number;
 }
 

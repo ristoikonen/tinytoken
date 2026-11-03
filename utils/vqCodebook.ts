@@ -65,18 +65,70 @@ export const VQ_DISTANCE_LUT = new Uint16Array(256 * 256);
   }
 })();
 
+const R_LEVELS = [12, 60, 108, 156, 204, 248] as const;
+const G_LEVELS = [10, 48, 88, 128, 168, 208, 248] as const;
+const B_LEVELS = [16, 64, 112, 160, 208, 250] as const;
+
 /**
- * Quantizes an (R, G, B) triplet to its nearest GF(2^8) codebook index (0..255) in O(1) time.
+ * Quantizes an (R, G, B) triplet to its nearest GF(2^8) codebook centroid index (0..255)
+ * using the perceptual luminance-weighted Euclidean distance metric:
+ *   dist = 2*(dr^2) + 4*(dg^2) + 1*(db^2)
+ *
+ * Separable axis search across the 252 orthogonal lattice centroids followed by checking
+ * the 4 high-contrast greyscale anchors (252..255) mathematically guarantees finding the
+ * exact nearest centroid across all 256 codebook entries in O(1) time without 5-bit LUT rounding errors.
  */
 export function quantizeRgbToCentroid(r: number, g: number, b: number): number {
-  if (Math.abs(r - g) < 8 && Math.abs(g - b) < 8) {
-    if (r < 10) return 252;
-    if (r > 246) return 255;
+  // Find closest R, G, B in lattice levels (separable across orthogonal axes)
+  let ri = 0;
+  let minR = Math.abs(r - R_LEVELS[0]);
+  for (let i = 1; i < 6; i++) {
+    const d = Math.abs(r - R_LEVELS[i]!);
+    if (d < minR) {
+      minR = d;
+      ri = i;
+    }
   }
-  const ri = Math.min(5, Math.max(0, Math.round(((r - 12) / 236) * 5)));
-  const gi = Math.min(6, Math.max(0, Math.round(((g - 10) / 238) * 6)));
-  const bi = Math.min(5, Math.max(0, Math.round(((b - 16) / 234) * 5)));
-  return ri * 42 + gi * 6 + bi;
+  let gi = 0;
+  let minG = Math.abs(g - G_LEVELS[0]);
+  for (let i = 1; i < 7; i++) {
+    const d = Math.abs(g - G_LEVELS[i]!);
+    if (d < minG) {
+      minG = d;
+      gi = i;
+    }
+  }
+  let bi = 0;
+  let minB = Math.abs(b - B_LEVELS[0]);
+  for (let i = 1; i < 6; i++) {
+    const d = Math.abs(b - B_LEVELS[i]!);
+    if (d < minB) {
+      minB = d;
+      bi = i;
+    }
+  }
+
+  let bestIdx = ri * 42 + gi * 6 + bi;
+  const bestC = VQ_CODEBOOK[bestIdx]!;
+  const dr = r - bestC.r;
+  const dg = g - bestC.g;
+  const db = b - bestC.b;
+  let bestDist = 2 * dr * dr + 4 * dg * dg + db * db;
+
+  // Check 4 contrast greyscale anchors (252..255)
+  for (let i = 252; i <= 255; i++) {
+    const c = VQ_CODEBOOK[i]!;
+    const adr = r - c.r;
+    const adg = g - c.g;
+    const adb = b - c.b;
+    const adist = 2 * adr * adr + 4 * adg * adg + adb * adb;
+    if (adist < bestDist) {
+      bestDist = adist;
+      bestIdx = i;
+    }
+  }
+
+  return bestIdx;
 }
 
 /**
@@ -145,13 +197,27 @@ export function encodeBytesToVqGrid(
 }
 
 /**
+ * Validates that a VQ grid is exactly 256 bytes (16x16).
+ * Rejects truncated or malformed grids that would otherwise produce false matches
+ * by silently padding missing positions with centroid 0.
+ */
+export function validateVqGrid(grid: Uint8Array): void {
+  if (!grid || grid.length !== 256) {
+    throw new RangeError(
+      `Expected 256-byte VQ grid, received ${grid?.length ?? 0}`,
+    );
+  }
+}
+
+/**
  * Decodes a 256-byte VQ grid back into a 16x16 RGBA pixel buffer (1,024 bytes) in < 0.01 ms.
  */
 export function decodeVqGridToRgba(vqGrid: Uint8Array): Uint8ClampedArray {
+  validateVqGrid(vqGrid);
   const rgba = new Uint8ClampedArray(256 * 4);
   for (let i = 0; i < 256; i++) {
-    const idx = vqGrid[i] ?? 0;
-    const c = VQ_CODEBOOK[idx] ?? { r: 20, g: 33, b: 61 };
+    const idx = vqGrid[i]!;
+    const c = VQ_CODEBOOK[idx]!;
     const p = i * 4;
     rgba[p] = c.r;
     rgba[p + 1] = c.g;
@@ -166,26 +232,33 @@ export function decodeVqGridToRgba(vqGrid: Uint8Array): Uint8ClampedArray {
  * Uses only integer table lookups into VQ_DISTANCE_LUT — takes ~0.2 microseconds per comparison!
  */
 export function computeVqAdcDistance(queryGrid: Uint8Array, candidateGrid: Uint8Array): number {
+  validateVqGrid(queryGrid);
+  validateVqGrid(candidateGrid);
   let totalDist = 0;
   for (let i = 0; i < 256; i++) {
-    const q = queryGrid[i] ?? 0;
-    const c = candidateGrid[i] ?? 0;
-    totalDist += VQ_DISTANCE_LUT[(q << 8) | c] ?? 0;
+    const q = queryGrid[i]!;
+    const c = candidateGrid[i]!;
+    totalDist += VQ_DISTANCE_LUT[(q << 8) | c]!;
   }
   return totalDist;
 }
 
+export const MAX_CELL_ADC_DISTANCE = 65025; // 255^2, max distance between #252 (0,0,0) and #255 (255,255,255)
+export const MAX_ADC_DISTANCE = 256 * MAX_CELL_ADC_DISTANCE; // 16,646,400 for 16x16 grid (256 cells)
+
 /**
- * Converts raw ADC distance into a normalized 0..100% spatial color similarity score.
+ * Converts raw ADC distance into a normalized 0..100% spatial color similarity score
+ * grounded in the theoretical upper bound MAX_ADC_DISTANCE of the perceptual distance metric.
  */
 export function adcDistanceToSimilarityPct(adcDist: number): number {
-  const norm = Math.max(0, 1 - adcDist / 3_200_000);
+  const norm = Math.max(0, 1 - adcDist / MAX_ADC_DISTANCE);
   return Math.round(norm * 1000) / 10;
 }
 
 /**
  * Hybrid DINOv2 (384B ViT-S/14 Int8) + 16x16 VQ Perceptual Color-Layout Similarity.
- * Combines 90% semantic DINOv2 cosine similarity with 10% VQ spatial palette similarity.
+ * When both models are known and compatible, combines 90% semantic DINO cosine similarity with 10% VQ spatial palette similarity.
+ * When DINO embeddings are absent or models are not verified compatible, returns VQ-only similarity and dinoSimilarityPct: null.
  */
 export function computeHybridVisualSimilarity(
   queryVq: Uint8Array,
@@ -197,17 +270,20 @@ export function computeHybridVisualSimilarity(
 ): {
   similarityScore: number;
   adcDistance: number;
-  dinoSimilarityPct: number;
+  dinoSimilarityPct: number | null;
 } {
   const adcDistance = computeVqAdcDistance(queryVq, candidateVq);
   if (adcDistance === 0 && (!queryDino || !candidateDino)) {
-    return { similarityScore: 100, adcDistance: 0, dinoSimilarityPct: 100 };
+    return { similarityScore: 100, adcDistance: 0, dinoSimilarityPct: null };
   }
 
-  const vqSim01 = Math.max(0, 1 - adcDistance / 3_200_000);
+  const vqSim01 = Math.max(0, 1 - adcDistance / MAX_ADC_DISTANCE);
+
+  // An unknown model ID is not evidence of compatibility.
+  // Only calculate DINO similarity when both model identifiers are known and match.
   const modelsCompatible =
-    queryModelId === undefined ||
-    candidateModelId === undefined ||
+    queryModelId !== undefined &&
+    candidateModelId !== undefined &&
     queryModelId === candidateModelId;
 
   if (
@@ -233,7 +309,7 @@ export function computeHybridVisualSimilarity(
   return {
     similarityScore: Math.round(vqSim01 * 1000) / 10,
     adcDistance,
-    dinoSimilarityPct: Math.round(vqSim01 * 1000) / 10,
+    dinoSimilarityPct: null,
   };
 }
 
