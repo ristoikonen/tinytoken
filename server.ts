@@ -3,7 +3,7 @@ import { LearningHandlers } from "./handlers/learningHandlers";
 import { TokenApiHandlers } from "./handlers/tokenHandlers";
 import { ArchiveManager } from "./utils/archiveManager";
 import type { Win11TokenPipeline } from "./utils/indexer";
-import { errorResponse, jsonResponse, verifySameOriginMutation } from "./utils/response";
+import { errorResponse, jsonResponse, verifySameOriginMutation, corsResponse } from "./utils/response";
 import {
   fetchAndIndexGooglePhotos,
   getGooglePhotosAuthUrl,
@@ -12,80 +12,36 @@ import {
 import { visualTraitRegistry } from "./utils/visualTraitRegistry";
 import { VqInvertedIndexEngine } from "./utils/vqInvertedIndex";
 import { CompressedTokenSearchEngine } from "./utils/zipEngine";
-import { corsResponse } from "./utils/response";
 
-let cachedHtml: string | null = null;
-async function getIndexHtml(): Promise<string> {
-  if (cachedHtml) return cachedHtml;
-  try {
-    const f1 = Bun.file("./index.html");
-    if (await f1.exists()) {
-      cachedHtml = await f1.text();
-      return cachedHtml;
-    }
-    const f2 = Bun.file("./public/index.html");
-    if (await f2.exists()) {
-      cachedHtml = await f2.text();
-      return cachedHtml;
-    }
-  } catch (err) {
-    console.error("Failed to read index.html:", err);
-  }
-  return "<!DOCTYPE html><html><body>TinyToken</body></html>";
-}
-
-const isVercel = Boolean(Bun.env.NOW_REGION || Bun.env.VERCEL_ENV || Bun.env.VERCEL);
-const isServerless = Boolean(Bun.env.NOW_REGION || Bun.env.VERCEL_REGION);
-
+// Configuration
+const DATA_DIR = Bun.env.DATA_DIR ?? "./data";
+const ZIP_ARCHIVE_PATH = Bun.env.ZIP_ARCHIVE_PATH ?? `${DATA_DIR}/tokens.zip`;
 const IMAGE_DIR =
   Bun.env.IMAGE_DIR ??
   Bun.argv[2] ??
-  (isVercel ? "./images" : "C:/Users/risto/OneDrive/Pictures/Nikon/toke");
-
-function getZipArchivePath(): string {
-  const candidates = [
-    `${import.meta.dir}/data/tokens.zip`,
-    `${import.meta.dir}/../data/tokens.zip`,
-    `${process.cwd()}/data/tokens.zip`,
-    `./data/tokens.zip`,
-    `../data/tokens.zip`,
-  ];
-  for (const c of candidates) {
-    try {
-      if (Bun.file(c).size > 0) return c;
-    } catch { }
-  }
-  return `${import.meta.dir}/data/tokens.zip`;
-}
-
-function getDataDirectory(): string {
-  const candidates = [
-    `${import.meta.dir}/data`,
-    `${import.meta.dir}/../data`,
-    `${process.cwd()}/data`,
-    `./data`,
-    `../data`,
-  ];
-  for (const c of candidates) {
-    try {
-      if (
-        Bun.file(`${c}/_index.json`).size > 0 ||
-        Bun.file(`${c}/tokens.zip`).size > 0 ||
-        Bun.file(`${c}/tok_00001_HectorDoor.png.token`).size > 0
-      ) {
-        return c;
-      }
-    } catch { }
-  }
-  return `${import.meta.dir}/data`;
-}
-
+  "C:/Users/risto/OneDrive/Pictures/Nikon/toke";
 const DOCUMENT_DIR = "./documents";
-const DATA_DIR = getDataDirectory();
-const ZIP_ARCHIVE_PATH = getZipArchivePath();
 const INDEXED_DIR_STAMP = `${DATA_DIR}/.indexed_dir`;
 const useZip = Bun.env.APP_ZIP_USE !== "false";
+const port = Number(Bun.env.PORT ?? Bun.env.APP_PORT ?? 3000);
+const host = Bun.env.APP_HOST ?? "localhost";
 
+// Cached HTML template
+let cachedHtml: string | null = null;
+async function getIndexHtml(): Promise<string> {
+  if (!cachedHtml) {
+    const f1 = Bun.file("./public/index.html");
+    if (await f1.exists()) {
+      cachedHtml = await f1.text();
+    } else {
+      const f2 = Bun.file("./index.html");
+      cachedHtml = (await f2.exists()) ? await f2.text() : "<!DOCTYPE html><html><body>TinyToken</body></html>";
+    }
+  }
+  return cachedHtml;
+}
+
+// Lazy indexer pipeline loader
 let pipelineInstance: Win11TokenPipeline | null = null;
 async function getPipeline(): Promise<Win11TokenPipeline> {
   if (!pipelineInstance) {
@@ -110,6 +66,7 @@ const pipeline: Win11TokenPipeline = {
   },
 } as unknown as Win11TokenPipeline;
 
+// Core Engines
 const searchEngine = new CompressedTokenSearchEngine(ZIP_ARCHIVE_PATH, {
   useZip,
   dataDirPath: DATA_DIR,
@@ -125,10 +82,7 @@ const apiHandlers = new TokenApiHandlers(
   DOCUMENT_DIR,
 );
 
-const port = isServerless ? 0 : Number(Bun.env.PORT ?? Bun.env.APP_PORT ?? 3000);
-const host = Bun.env.APP_HOST ?? (isVercel ? "0.0.0.0" : "localhost");
-
-// Track index initialization so serverless cold starts never encounter uninitialized state
+// Initialization lifecycle
 let initPromise: Promise<void> | null = null;
 export function ensureInitialized(): Promise<void> {
   if (!initPromise) {
@@ -136,248 +90,6 @@ export function ensureInitialized(): Promise<void> {
   }
   return initPromise;
 }
-
-// Start HTTP server immediately so `bun --hot server.ts` never hangs or misses port binding
-const server = serve({
-  hostname: host,
-  port,
-  routes: {
-    "/": async () =>
-      new Response(await getIndexHtml(), {
-        headers: { "Content-Type": "text/html; charset=utf-8" },
-      }),
-    "/index.html": async () =>
-      new Response(await getIndexHtml(), {
-        headers: { "Content-Type": "text/html; charset=utf-8" },
-      }),
-    "/api/stats": async () => {
-      await ensureInitialized();
-      return apiHandlers.handleStats();
-    },
-    "/api/codebook": async () => {
-      await ensureInitialized();
-      return apiHandlers.handleCodebook();
-    },
-    "/api/registry": async () => {
-      await ensureInitialized();
-      return apiHandlers.handleGetRegistry();
-    },
-    "/api/objects": async () => {
-      await ensureInitialized();
-      return apiHandlers.handleGetObjectAnnotations();
-    },
-    "/api/search": async (req: BunRequest) => {
-      await ensureInitialized();
-      return apiHandlers.handleSearch(new URL(req.url));
-    },
-    "/api/search/pattern": async (req: BunRequest) => {
-      await ensureInitialized();
-      return apiHandlers.handlePatternSearch(new URL(req.url));
-    },
-    "/api/index/rebuild": {
-      POST: async (req: BunRequest) => {
-        await ensureInitialized();
-        return apiHandlers.handleRebuildIndex(req);
-      },
-      OPTIONS: (req: BunRequest) => corsResponse(req),
-    },
-    "/api/archive/swap": {
-      POST: async (req: BunRequest) => {
-        await ensureInitialized();
-        return learningHandlers.handleArchiveSwap(req);
-      },
-      OPTIONS: (req: BunRequest) => corsResponse(req),
-    },
-    "/api/archive/status": async () => {
-      await ensureInitialized();
-      return learningHandlers.handleArchiveStatus();
-    },
-    "/api/learning/recipes": async () => {
-      await ensureInitialized();
-      return learningHandlers.handleGetRecipes();
-    },
-    "/api/learning/evidence": {
-      GET: async () => {
-        await ensureInitialized();
-        return learningHandlers.handleGetEvidence();
-      },
-      POST: async (req: BunRequest) => {
-        await ensureInitialized();
-        return learningHandlers.handleRecordEvidence(req);
-      },
-      OPTIONS: (req: BunRequest) => corsResponse(req),
-    },
-    "/api/photos/auth-url": {
-      GET: () => {
-        return jsonResponse({
-          success: true,
-          authUrl: getGooglePhotosAuthUrl(),
-          scope: GOOGLE_PHOTOS_READ_SCOPES[0],
-        });
-      },
-    },
-    "/api/photos/index-batch": {
-      POST: async (req: BunRequest) => {
-        console.log('ix batch');
-        await ensureInitialized();
-        const forbidden = verifySameOriginMutation(req);
-        if (forbidden) return forbidden;
-        let token: string | undefined;
-        let code: string | undefined;
-        try {
-          const body = (await req.json()) as { token?: string; code?: string };
-          token = body?.token;
-          code = body?.code;
-        } catch {
-          // empty body ok
-        }
-        console.log('fetchAndIndexGooglePhotos');
-        const res = await fetchAndIndexGooglePhotos(token, code, {
-          pipeline,
-          searchEngine,
-          invertedIndex,
-          archiveManager,
-          zipArchivePath: ZIP_ARCHIVE_PATH,
-        });
-        console.log('done fetchAndIndexGooglePhotos');
-        return jsonResponse(res);
-      },
-      OPTIONS: (req: BunRequest) => corsResponse(req),
-    },
-  },
-
-  async fetch(req: BunRequest) {
-    const url = new URL(req.url);
-    let path = url.pathname;
-
-    // Handle Vercel serverless rewrite parameters & forwarding headers
-    const forwarded =
-      req.headers.get("x-forwarded-uri") ||
-      req.headers.get("x-matched-path") ||
-      req.headers.get("x-invoke-path");
-    if (forwarded && (forwarded.startsWith("/api") || forwarded === "/" || forwarded === "/index.html")) {
-      const [fPath, fQuery] = forwarded.split("?");
-      path = fPath!;
-      if (fQuery) {
-        const extraParams = new URLSearchParams(fQuery);
-        for (const [k, v] of extraParams.entries()) {
-          if (!url.searchParams.has(k)) {
-            url.searchParams.set(k, v);
-          }
-        }
-      }
-    }
-
-    const vercelPath = url.searchParams.get("__path") || url.searchParams.get("path");
-    if (vercelPath) {
-      const decoded = vercelPath.startsWith("/") ? vercelPath : `/${vercelPath}`;
-      if (decoded.startsWith("/api") || decoded === "/" || decoded === "/index.html") {
-        path = decoded;
-      }
-      url.searchParams.delete("__path");
-      url.searchParams.delete("path");
-    }
-
-    if (req.method === "OPTIONS") {
-      return corsResponse(req);
-    }
-
-    // Route dispatch (handles both direct fetch invocation and fallback)
-    try {
-      await ensureInitialized();
-
-      if (path === "/" || path === "/index.html") {
-        return new Response(await getIndexHtml(), {
-          headers: { "Content-Type": "text/html; charset=utf-8" },
-        });
-      }
-      if (path === "/api/stats") return apiHandlers.handleStats();
-      if (path === "/api/codebook") return apiHandlers.handleCodebook();
-      if (path === "/api/registry") return apiHandlers.handleGetRegistry();
-      if (path === "/api/objects") return apiHandlers.handleGetObjectAnnotations();
-      if (path === "/api/search") return apiHandlers.handleSearch(url);
-      if (path === "/api/search/pattern") return apiHandlers.handlePatternSearch(url);
-      if (path === "/api/index/rebuild" && req.method === "POST") return apiHandlers.handleRebuildIndex(req);
-      if (path === "/api/archive/swap" && req.method === "POST") return learningHandlers.handleArchiveSwap(req);
-      if (path === "/api/archive/status") return learningHandlers.handleArchiveStatus();
-      if (path === "/api/learning/recipes") return learningHandlers.handleGetRecipes();
-      if (path === "/api/learning/evidence") {
-        if (req.method === "POST") return learningHandlers.handleRecordEvidence(req);
-        return learningHandlers.handleGetEvidence();
-      }
-
-      if (path === "/api/photos/auth-url" && req.method === "GET") {
-        return jsonResponse({
-          success: true,
-          authUrl: getGooglePhotosAuthUrl(),
-          scope: GOOGLE_PHOTOS_READ_SCOPES[0],
-        });
-      }
-
-      if (path === "/api/photos/index-batch" && req.method === "POST") {
-        const forbidden = verifySameOriginMutation(req);
-        if (forbidden) return forbidden;
-        let token: string | undefined;
-        let code: string | undefined;
-        try {
-          const body = (await req.json()) as { token?: string; code?: string };
-          token = body?.token;
-          code = body?.code;
-        } catch {
-          // empty body ok
-        }
-        const res = await fetchAndIndexGooglePhotos(token, code, {
-          pipeline,
-          searchEngine,
-          invertedIndex,
-          archiveManager,
-          zipArchivePath: ZIP_ARCHIVE_PATH,
-        });
-        console.log(res);
-        return jsonResponse(res);
-      }
-
-      if (path.startsWith("/api/token/")) {
-        const rest = path.slice("/api/token/".length);
-        if (rest.endsWith("/teach") && req.method === "POST") {
-          const id = decodeURIComponent(rest.slice(0, -"/teach".length));
-          return apiHandlers.handleTeachObject(id, req);
-        }
-        if (rest.endsWith("/preview") && req.method === "GET") {
-          const id = decodeURIComponent(rest.slice(0, -"/preview".length));
-          return apiHandlers.handleGetTokenPreview(id);
-        }
-        if (rest.endsWith("/mutate") && req.method === "POST") {
-          const id = decodeURIComponent(rest.slice(0, -"/mutate".length));
-          return apiHandlers.handleHomomorphicMutate(id, req);
-        }
-        if (req.method === "GET" && rest.length > 0) {
-          const id = decodeURIComponent(rest);
-          return apiHandlers.handleGetToken(id);
-        }
-      }
-
-      if (path.startsWith("/api/image/") && req.method === "GET") {
-        const name = decodeURIComponent(path.slice("/api/image/".length));
-        return apiHandlers.handleGetSourceImage(name);
-      }
-
-      if (path.startsWith("/api/document/") && req.method === "GET") {
-        const name = decodeURIComponent(path.slice("/api/document/".length));
-        return apiHandlers.handleGetSourceDocument(name);
-      }
-    } catch (err) {
-      if (err instanceof URIError) {
-        return errorResponse("Invalid URI encoding", 400);
-      }
-      throw err;
-    }
-
-    return errorResponse("Not Found", 404, false);
-  },
-});
-
-console.log(`TinyToken Server running at http://${server.hostname}:${server.port}`);
 
 async function directoryExists(dir: string): Promise<boolean> {
   try {
@@ -389,8 +101,7 @@ async function directoryExists(dir: string): Promise<boolean> {
   }
 }
 
-// Initialize token index and native bun:sqlite VQ Inverted Index asynchronously
-async function initIndex() {
+async function initIndex(): Promise<void> {
   const t0 = performance.now();
   const isZip = searchEngine.isZipMode();
   const zipFile = Bun.file(ZIP_ARCHIVE_PATH);
@@ -399,11 +110,8 @@ async function initIndex() {
   const dirChanged = lastIndexedDir !== null && lastIndexedDir !== IMAGE_DIR;
   const imageDirValid = await directoryExists(IMAGE_DIR);
 
-  let tokensExist = false;
-  if (isZip) {
-    tokensExist = await zipFile.exists();
-  } else {
-    // Check if any *.token files exist in data dir
+  let tokensExist = isZip ? await zipFile.exists() : false;
+  if (!isZip) {
     try {
       const glob = new Bun.Glob("*.token");
       for await (const _ of glob.scan({ cwd: DATA_DIR })) {
@@ -413,43 +121,17 @@ async function initIndex() {
     } catch {
       tokensExist = false;
     }
-    // If running with APP_ZIP_USE=false and no *.token files in data dir yet,
-    // unpack existing tokens from tokens.zip so they are immediately available (local dev only)
-    if (!isVercel && !tokensExist && (await zipFile.exists())) {
-      console.log(`[APP_ZIP_USE=false] Extracting existing tokens from ${ZIP_ARCHIVE_PATH} to ${DATA_DIR}...`);
-      const tempEngine = new CompressedTokenSearchEngine(ZIP_ARCHIVE_PATH, { useZip: true });
-      await tempEngine.buildIndex();
-      for (const entry of tempEngine.getAllEntries()) {
-        const tokenBytes = await tempEngine.extractToken(entry.id);
-        if (tokenBytes) {
-          await Bun.write(`${DATA_DIR}/${entry.entryName}`, tokenBytes);
-        }
-      }
-      tokensExist = tempEngine.getCount() > 0;
-    }
   }
 
-  // Rebuild only if running locally with a valid source directory
-  const shouldRebuild = !isVercel && (
-    (!tokensExist && imageDirValid) ||
-    (dirChanged && imageDirValid)
-  );
+  const shouldRebuild = (!tokensExist && imageDirValid) || (dirChanged && imageDirValid);
 
   if (shouldRebuild) {
-    if (dirChanged) {
-      console.log(
-        `Image directory changed (${lastIndexedDir} -> ${IMAGE_DIR}), rebuilding tokens...`,
-      );
-    } else {
-      console.log(
-        `Building tokens from ${IMAGE_DIR} and ${DOCUMENT_DIR} (ZIP=${isZip})...`,
-      );
-    }
-    await pipeline.buildTokenArchive(IMAGE_DIR);
+    console.log(`Building tokens from ${IMAGE_DIR} and ${DOCUMENT_DIR} (ZIP=${isZip})...`);
+    await (await getPipeline()).buildTokenArchive(IMAGE_DIR);
     try {
       await Bun.write(INDEXED_DIR_STAMP, IMAGE_DIR);
     } catch { }
-  } else if (!isVercel && imageDirValid && !(await stampFile.exists())) {
+  } else if (imageDirValid && !(await stampFile.exists())) {
     try {
       await Bun.write(INDEXED_DIR_STAMP, IMAGE_DIR);
     } catch { }
@@ -467,6 +149,113 @@ async function initIndex() {
     console.error("Warning: Could not build/sync token index:", err);
   }
 }
+
+// Unified API Route Dispatcher
+async function handleApiRoute(path: string, req: BunRequest, url: URL): Promise<Response> {
+  if (path === "/api/stats") return apiHandlers.handleStats();
+  if (path === "/api/codebook") return apiHandlers.handleCodebook();
+  if (path === "/api/registry") return apiHandlers.handleGetRegistry();
+  if (path === "/api/objects") return apiHandlers.handleGetObjectAnnotations();
+  if (path === "/api/search") return apiHandlers.handleSearch(url);
+  if (path === "/api/search/pattern") return apiHandlers.handlePatternSearch(url);
+  if (path === "/api/index/rebuild" && req.method === "POST") return apiHandlers.handleRebuildIndex(req);
+  if (path === "/api/archive/swap" && req.method === "POST") return learningHandlers.handleArchiveSwap(req);
+  if (path === "/api/archive/status") return learningHandlers.handleArchiveStatus();
+  if (path === "/api/learning/recipes") return learningHandlers.handleGetRecipes();
+  if (path === "/api/learning/evidence") {
+    if (req.method === "POST") return learningHandlers.handleRecordEvidence(req);
+    return learningHandlers.handleGetEvidence();
+  }
+  if (path === "/api/photos/auth-url" && req.method === "GET") {
+    return jsonResponse({
+      success: true,
+      authUrl: getGooglePhotosAuthUrl(),
+      scope: GOOGLE_PHOTOS_READ_SCOPES[0],
+    });
+  }
+  if (path === "/api/photos/index-batch" && req.method === "POST") {
+    const forbidden = verifySameOriginMutation(req);
+    if (forbidden) return forbidden;
+    let token: string | undefined;
+    let code: string | undefined;
+    try {
+      const body = (await req.json()) as { token?: string; code?: string };
+      token = body?.token;
+      code = body?.code;
+    } catch { }
+    const res = await fetchAndIndexGooglePhotos(token, code, {
+      pipeline,
+      searchEngine,
+      invertedIndex,
+      archiveManager,
+      zipArchivePath: ZIP_ARCHIVE_PATH,
+    });
+    return jsonResponse(res);
+  }
+
+  // Dynamic parameterized routes
+  if (path.startsWith("/api/token/")) {
+    const rest = path.slice("/api/token/".length);
+    if (rest.endsWith("/teach") && req.method === "POST") {
+      return apiHandlers.handleTeachObject(decodeURIComponent(rest.slice(0, -"/teach".length)), req);
+    }
+    if (rest.endsWith("/preview") && req.method === "GET") {
+      return apiHandlers.handleGetTokenPreview(decodeURIComponent(rest.slice(0, -"/preview".length)));
+    }
+    if (rest.endsWith("/mutate") && req.method === "POST") {
+      return apiHandlers.handleHomomorphicMutate(decodeURIComponent(rest.slice(0, -"/mutate".length)), req);
+    }
+    if (req.method === "GET" && rest.length > 0) {
+      return apiHandlers.handleGetToken(decodeURIComponent(rest));
+    }
+  }
+
+  if (path.startsWith("/api/image/") && req.method === "GET") {
+    return apiHandlers.handleGetSourceImage(decodeURIComponent(path.slice("/api/image/".length)));
+  }
+
+  if (path.startsWith("/api/document/") && req.method === "GET") {
+    return apiHandlers.handleGetSourceDocument(decodeURIComponent(path.slice("/api/document/".length)));
+  }
+
+  return errorResponse("Not Found", 404, false);
+}
+
+// HTTP Server
+const server = serve({
+  hostname: host,
+  port,
+  routes: {
+    "/": async () =>
+      new Response(await getIndexHtml(), {
+        headers: { "Content-Type": "text/html; charset=utf-8" },
+      }),
+    "/index.html": async () =>
+      new Response(await getIndexHtml(), {
+        headers: { "Content-Type": "text/html; charset=utf-8" },
+      }),
+  },
+  async fetch(req: BunRequest) {
+    if (req.method === "OPTIONS") return corsResponse(req);
+    const url = new URL(req.url);
+    try {
+      await ensureInitialized();
+      if (url.pathname === "/" || url.pathname === "/index.html") {
+        return new Response(await getIndexHtml(), {
+          headers: { "Content-Type": "text/html; charset=utf-8" },
+        });
+      }
+      return await handleApiRoute(url.pathname, req, url);
+    } catch (err) {
+      if (err instanceof URIError) {
+        return errorResponse("Invalid URI encoding", 400);
+      }
+      throw err;
+    }
+  },
+});
+
+console.log(`TinyToken Server running at http://${server.hostname}:${server.port}`);
 
 // Trigger initial index build immediately
 ensureInitialized().catch((err) => {

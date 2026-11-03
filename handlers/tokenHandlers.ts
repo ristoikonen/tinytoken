@@ -414,7 +414,7 @@ export class TokenApiHandlers {
     if (!(await file.exists())) {
       return errorResponse(`Image '${safeName}' not found`, 404);
     }
-    return fileResponse(200, (file.type || "image/jpeg"));
+    return fileResponse(file, file.type || "image/jpeg");
   }
 
   /**
@@ -433,14 +433,7 @@ export class TokenApiHandlers {
       return errorResponse(`Document '${safeName}' not found`, 404);
     }
 
-    return fileResponse(200, (file.type || "application/pdf"));
-    // return new Response(file, {
-    //   status: 200,
-    //   headers: {
-    //     "Content-Type": file.type || "application/pdf",
-    //     "Cache-Control": "public, max-age=3600",
-    //   },
-    // });
+    return fileResponse(file, file.type || "application/pdf");
   }
 
   /**

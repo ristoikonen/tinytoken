@@ -187,16 +187,17 @@ export function corsResponse(
 }
 
 export function fileResponse(
-  status = 204,
+  body: any,
   fileType = "",
 ): Response {
   const headers: Record<string, string> = {
-    "Content-Type": fileType,
+    "Content-Type": fileType || body?.type || "application/octet-stream",
     "Cache-Control": "public, max-age=3600",
+    "X-Content-Type-Options": "nosniff",
   };
 
-  return new Response(null, {
-    status,
+  return new Response(body, {
+    status: 200,
     headers,
   });
 }

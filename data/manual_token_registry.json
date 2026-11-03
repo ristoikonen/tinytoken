@@ -1,6 +1,6 @@
 {
   "0": {
-    "name": "Magpie",
+    "name": "Possum",
     "category": "Silhouette",
     "isManuallyVerified": true,
     "rgb": [
@@ -10,7 +10,7 @@
     ],
     "source": "human_verified",
     "confidence": 1,
-    "updatedAt": "2026-11-02T03:29:33.688Z"
+    "updatedAt": "2026-11-03T08:07:14.752Z"
   },
   "1": {
     "name": "Risto",
@@ -88,7 +88,7 @@
     "isManuallyVerified": true
   },
   "42": {
-    "name": "Hector",
+    "name": "Possum",
     "category": "Silhouette",
     "isManuallyVerified": true,
     "rgb": [
@@ -98,7 +98,7 @@
     ],
     "source": "human_verified",
     "confidence": 1,
-    "updatedAt": "2026-11-01T21:48:11.120Z"
+    "updatedAt": "2026-11-03T08:07:14.752Z"
   },
   "43": {
     "name": "Bogong Moth",
@@ -114,7 +114,7 @@
     "updatedAt": "2026-11-01T08:59:30.797Z"
   },
   "48": {
-    "name": "Hector",
+    "name": "Possum",
     "category": "Silhouette",
     "isManuallyVerified": true,
     "rgb": [
@@ -124,10 +124,10 @@
     ],
     "source": "human_verified",
     "confidence": 1,
-    "updatedAt": "2026-11-01T21:48:11.120Z"
+    "updatedAt": "2026-11-03T08:07:14.752Z"
   },
   "49": {
-    "name": "Magpie",
+    "name": "Possum",
     "category": "Silhouette",
     "isManuallyVerified": true,
     "rgb": [
@@ -137,7 +137,7 @@
     ],
     "source": "human_verified",
     "confidence": 1,
-    "updatedAt": "2026-11-02T03:29:33.688Z"
+    "updatedAt": "2026-11-03T08:07:14.752Z"
   },
   "50": {
     "name": "Bogong Moth",
@@ -306,7 +306,7 @@
     "updatedAt": "2026-11-01T09:00:56.262Z"
   },
   "97": {
-    "name": "Hector",
+    "name": "Possum",
     "category": "Silhouette",
     "isManuallyVerified": true,
     "rgb": [
@@ -316,10 +316,10 @@
     ],
     "source": "human_verified",
     "confidence": 1,
-    "updatedAt": "2026-11-01T21:48:11.120Z"
+    "updatedAt": "2026-11-03T08:07:14.752Z"
   },
   "98": {
-    "name": "Magpie",
+    "name": "Possum",
     "category": "Silhouette",
     "isManuallyVerified": true,
     "rgb": [
@@ -329,7 +329,7 @@
     ],
     "source": "human_verified",
     "confidence": 1,
-    "updatedAt": "2026-11-02T03:29:33.688Z"
+    "updatedAt": "2026-11-03T08:07:14.752Z"
   },
   "99": {
     "name": "Risto",
@@ -584,7 +584,7 @@
     "updatedAt": "2026-11-01T21:48:11.120Z"
   },
   "146": {
-    "name": "Hector",
+    "name": "Possum",
     "category": "Silhouette",
     "isManuallyVerified": true,
     "rgb": [
@@ -594,7 +594,7 @@
     ],
     "source": "human_verified",
     "confidence": 1,
-    "updatedAt": "2026-11-01T21:48:11.120Z"
+    "updatedAt": "2026-11-03T08:07:14.752Z"
   },
   "147": {
     "name": "Risto",
@@ -641,7 +641,7 @@
     "updatedAt": "2026-11-01T06:56:10.813Z"
   },
   "153": {
-    "name": "Risto",
+    "name": "Possum",
     "category": "Silhouette",
     "isManuallyVerified": true,
     "rgb": [
@@ -651,7 +651,7 @@
     ],
     "source": "human_verified",
     "confidence": 1,
-    "updatedAt": "2026-11-01T09:10:37.954Z"
+    "updatedAt": "2026-11-03T08:07:14.752Z"
   },
   "154": {
     "name": "Risto",
@@ -833,7 +833,7 @@
     "updatedAt": "2026-11-01T08:59:52.453Z"
   },
   "194": {
-    "name": "Hector",
+    "name": "Possum",
     "category": "Silhouette",
     "isManuallyVerified": true,
     "rgb": [
@@ -843,10 +843,10 @@
     ],
     "source": "human_verified",
     "confidence": 1,
-    "updatedAt": "2026-11-01T09:02:36.951Z"
+    "updatedAt": "2026-11-03T08:07:14.752Z"
   },
   "195": {
-    "name": "Hector",
+    "name": "Possum",
     "category": "Silhouette",
     "isManuallyVerified": true,
     "rgb": [
@@ -856,7 +856,7 @@
     ],
     "source": "human_verified",
     "confidence": 1,
-    "updatedAt": "2026-11-01T21:48:11.120Z"
+    "updatedAt": "2026-11-03T08:07:14.752Z"
   },
   "196": {
     "name": "Risto",
@@ -885,7 +885,7 @@
     "updatedAt": "2026-11-01T09:10:20.194Z"
   },
   "202": {
-    "name": "Risto",
+    "name": "Possum",
     "category": "Silhouette",
     "isManuallyVerified": true,
     "rgb": [
@@ -895,7 +895,7 @@
     ],
     "source": "human_verified",
     "confidence": 1,
-    "updatedAt": "2026-11-01T09:10:37.954Z"
+    "updatedAt": "2026-11-03T08:07:14.752Z"
   },
   "203": {
     "name": "Risto",
