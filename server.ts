@@ -1,6 +1,4 @@
 import { serve, type BunRequest } from "bun";
-import indexHtmlText from "./public/index.html" with { type: "text" };
-const htmlContent: string = String(indexHtmlText);
 import { LearningHandlers } from "./handlers/learningHandlers";
 import { TokenApiHandlers } from "./handlers/tokenHandlers";
 import { ArchiveManager } from "./utils/archiveManager";
@@ -15,6 +13,26 @@ import { visualTraitRegistry } from "./utils/visualTraitRegistry";
 import { VqInvertedIndexEngine } from "./utils/vqInvertedIndex";
 import { CompressedTokenSearchEngine } from "./utils/zipEngine";
 import { corsResponse } from "./utils/response";
+
+let cachedHtml: string | null = null;
+async function getIndexHtml(): Promise<string> {
+  if (cachedHtml) return cachedHtml;
+  try {
+    const f1 = Bun.file("./index.html");
+    if (await f1.exists()) {
+      cachedHtml = await f1.text();
+      return cachedHtml;
+    }
+    const f2 = Bun.file("./public/index.html");
+    if (await f2.exists()) {
+      cachedHtml = await f2.text();
+      return cachedHtml;
+    }
+  } catch (err) {
+    console.error("Failed to read index.html:", err);
+  }
+  return "<!DOCTYPE html><html><body>TinyToken</body></html>";
+}
 
 const isVercel = Boolean(Bun.env.VERCEL || Bun.env.NOW_REGION);
 
@@ -96,12 +114,12 @@ const server = serve({
   hostname: host,
   port,
   routes: {
-    "/": () =>
-      new Response(htmlContent, {
+    "/": async () =>
+      new Response(await getIndexHtml(), {
         headers: { "Content-Type": "text/html; charset=utf-8" },
       }),
-    "/index.html": () =>
-      new Response(htmlContent, {
+    "/index.html": async () =>
+      new Response(await getIndexHtml(), {
         headers: { "Content-Type": "text/html; charset=utf-8" },
       }),
     "/api/stats": async () => {
@@ -241,7 +259,7 @@ const server = serve({
       await ensureInitialized();
 
       if (path === "/" || path === "/index.html") {
-        return new Response(htmlContent, {
+        return new Response(await getIndexHtml(), {
           headers: { "Content-Type": "text/html; charset=utf-8" },
         });
       }
