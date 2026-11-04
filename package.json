@@ -10,6 +10,8 @@
     "dev": "bun --hot server.ts",
     "start": "bun run server.ts",
     "test": "bun test",
+    "tokenize": "bun run cli.ts",
+    "cli": "bun run cli.ts",
     "build:windows": "bun build --compile --target=bun-windows-x64 ./server.ts --outfile ./tinytoken.exe"
   },
   "devDependencies": {

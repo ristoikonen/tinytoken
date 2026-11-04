@@ -1374,5 +1374,36 @@ describe("TinyToken GF(2^8) + VQ + SHARK/SNARK Pipeline", () => {
     expect(lines[3]).toContain("Pipeline:");
     expect(lines[3]).toContain("Bottleneck: DINO inference");
   });
+
+  test("cli.ts: single-token CLI commands (--info, --filetype, --json, --preview)", async () => {
+    // 1. --filetype
+    const ftProc = Bun.spawnSync([process.execPath, "cli.ts", "tok_00004_Henri.jpg.token", "--filetype"]);
+    expect(ftProc.exitCode).toBe(0);
+    expect(ftProc.stdout.toString().trim()).toBe("WEBP");
+
+    // 2. --info
+    const infoProc = Bun.spawnSync([process.execPath, "cli.ts", "tok_00004_Henri.jpg.token", "--info"]);
+    expect(infoProc.exitCode).toBe(0);
+    const infoStr = infoProc.stdout.toString();
+    expect(infoStr).toContain("TinyToken Inspector");
+    expect(infoStr).toContain("tok_00004_Henri.jpg");
+    expect(infoStr).toContain("Section I: Fixed Header");
+    expect(infoStr).toContain("Section II: Metadata & OCR Payload");
+    expect(infoStr).toContain("Section III: Visual Preview Payload");
+
+    // 3. --json
+    const jsonProc = Bun.spawnSync([process.execPath, "cli.ts", "tok_00004_Henri.jpg.token", "--json"]);
+    expect(jsonProc.exitCode).toBe(0);
+    const parsed = JSON.parse(jsonProc.stdout.toString());
+    expect(parsed.id).toBe("tok_00004_Henri.jpg");
+    expect(parsed.previewFormat).toBe("WEBP");
+    expect(parsed.attestation.valid).toBe(true);
+    expect(parsed.tokenSizeBytes).toBe(10589);
+
+    // 4. --preview
+    const prevProc = Bun.spawnSync([process.execPath, "cli.ts", "tok_00004_Henri.jpg.token", "--preview"]);
+    expect(prevProc.exitCode).toBe(0);
+    expect(prevProc.stdout.length).toBe(8656);
+  });
 });
 
