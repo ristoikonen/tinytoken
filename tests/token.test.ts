@@ -31,6 +31,7 @@ import {
   sniffImageHeader,
 } from "../utils/imagePreview";
 import { Win11TokenPipeline } from "../utils/indexer";
+import { PipelineBenchmark } from "../utils/benchmark";
 import { QuickLZ } from "../utils/quicklz";
 import { corsResponse, errorResponse, jsonResponse } from "../utils/response";
 import {
@@ -1282,6 +1283,84 @@ describe("TinyToken GF(2^8) + VQ + SHARK/SNARK Pipeline", () => {
     expect(validateBinaryToken(truncatedToken)).rejects.toThrow(
       "Invalid token envelope bounds",
     );
+  });
+
+  test("Benchmarking: instruments all 8 stages independently, calculates latency percentiles, and detects primary bottleneck", async () => {
+    const bench = new PipelineBenchmark();
+
+    // 1. File reading (10 MB in 20 ms -> ~500 MB/s)
+    bench.recordFileRead(10 * 1024 * 1024, 20 * 1_000_000);
+
+    // 2. Sharp processing (4 images, 40 ms total -> 10 ms/img)
+    bench.recordSharp(40 * 1_000_000, 4);
+
+    // 3. DINO inference (4 images, 200 ms total -> 50 ms/img)
+    bench.recordDino(200 * 1_000_000, 4);
+
+    // 4. VQ generation (4 images, 0.4 ms total -> 0.1 ms/img)
+    bench.recordVq(400_000, 4);
+
+    // 5. Binary encoding (4 tokens, 4 ms total -> 1 ms/tok)
+    bench.recordEncode(4 * 1_000_000, 4);
+
+    // 6. Binary decoding (4 tokens, 2 ms total -> 0.5 ms/tok)
+    bench.recordDecode(2 * 1_000_000, 4);
+
+    // 7. Signature verification (4 tokens, 1 ms total -> 0.25 ms/tok)
+    bench.recordSigVerify(1 * 1_000_000, 4);
+
+    // 8. Archive writing (1 MB in 5 ms -> ~200 MB/s)
+    bench.recordArchiveWrite(1024 * 1024, 5 * 1_000_000);
+
+    // Latency samples
+    bench.recordTokenLatency(50 * 1_000_000);
+    bench.recordTokenLatency(60 * 1_000_000);
+    bench.recordTokenLatency(70 * 1_000_000);
+    bench.recordTokenLatency(100 * 1_000_000);
+
+    const report = bench.getReport();
+
+    // Check all 8 operation metrics
+    expect(report.fileReadingMbSec).toBeGreaterThan(450);
+    expect(report.sharpMsPerImage).toBe(10);
+    expect(report.dinoMsPerImage).toBe(50);
+    expect(report.vqMsPerImage).toBe(0.1);
+    expect(report.binaryEncodingMsPerToken).toBe(1);
+    expect(report.binaryDecodingMsPerToken).toBe(0.5);
+    expect(report.sigVerifyMsPerToken).toBe(0.25);
+    expect(report.archiveWritingMbSec).toBeGreaterThan(180);
+
+    // Check latency percentiles
+    expect(report.latency.minMs).toBe(50);
+    expect(report.latency.maxMs).toBe(100);
+    expect(report.latency.avgMs).toBe(70);
+    expect(report.latency.p50Ms).toBe(65);
+    expect(report.latency.p95Ms).toBe(95.5);
+
+    // Check bottleneck detection (DINO was 200 ms out of ~271 ms -> ~73.7%)
+    expect(report.summary.primaryBottleneck).toContain("DINO inference");
+    expect(report.summary.primaryBottleneck).toContain("%");
+
+    // Check compact console format lines
+    const lines = bench.formatMetricLines();
+    expect(lines.length).toBe(4);
+    for (const l of lines) {
+      expect(l).toStartWith("[METRIC]");
+      expect(l).toContain("|"); // Multiple figures on one line
+    }
+    expect(lines[0]).toContain("Read:");
+    expect(lines[0]).toContain("Sharp:");
+    expect(lines[0]).toContain("DINO:");
+    expect(lines[0]).toContain("VQ:");
+
+    expect(lines[1]).toContain("Enc:");
+    expect(lines[1]).toContain("Dec:");
+    expect(lines[1]).toContain("SigVerify:");
+    expect(lines[1]).toContain("ArchiveWrite:");
+
+    expect(lines[2]).toContain("Latency (e2e):");
+    expect(lines[3]).toContain("Pipeline:");
+    expect(lines[3]).toContain("Bottleneck: DINO inference");
   });
 });
 

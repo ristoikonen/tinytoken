@@ -172,6 +172,7 @@ export class DocxDocumentProcessor implements DocumentProcessor {
         vqIndices: bundle.vqIndices,
         dinoEmbedding: bundle.dinoEmbedding,
         embeddingModelId: bundle.embeddingModelId,
+        timing: bundle.timing,
       },
     ];
   }
@@ -250,6 +251,7 @@ export class TextDocumentProcessor implements DocumentProcessor {
         vqIndices: bundle.vqIndices,
         dinoEmbedding: bundle.dinoEmbedding,
         embeddingModelId: bundle.embeddingModelId,
+        timing: bundle.timing,
       },
     ];
   }
@@ -307,6 +309,7 @@ export class FallbackDocumentProcessor implements DocumentProcessor {
         vqIndices: bundle.vqIndices,
         dinoEmbedding: bundle.dinoEmbedding,
         embeddingModelId: bundle.embeddingModelId,
+        timing: bundle.timing,
       },
     ];
   }

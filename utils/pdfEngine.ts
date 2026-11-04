@@ -27,6 +27,11 @@ export interface RenderedPdfPageBundle {
   vqIndices: Uint8Array<ArrayBuffer>;
   dinoEmbedding: Int8Array<ArrayBuffer>;
   embeddingModelId: EmbeddingModelId;
+  timing?: {
+    sharpNs: number;
+    vqNs: number;
+    dinoNs: number;
+  };
 }
 
 export type PageBundle = RenderedPdfPageBundle;
@@ -108,6 +113,7 @@ export async function renderPdfPagesWithPdfium(
         },
       };
 
+      const tSharp0 = Bun.nanoseconds();
       const [webpBuf, rgb16Buf, dinoRgbResult] = await Promise.all([
         sharp(rawRgba, rawInput)
           .flatten({ background: { r: 255, g: 255, b: 255 } })
@@ -136,14 +142,18 @@ export async function renderPdfPagesWithPdfium(
           .webp({ quality: 68, smartSubsample: true, effort: 4 })
           .toBuffer();
       }
+      const sharpNs = Bun.nanoseconds() - tSharp0;
 
       const previewBytes = new Uint8Array(new ArrayBuffer(finalWebp.byteLength));
       previewBytes.set(new Uint8Array(finalWebp.buffer, finalWebp.byteOffset, finalWebp.byteLength));
 
+      const tVq0 = Bun.nanoseconds();
       const vqIndices = encodeRgb16x16ToVqGrid(
         new Uint8Array(rgb16Buf.buffer, rgb16Buf.byteOffset, rgb16Buf.byteLength),
       );
+      const vqNs = Bun.nanoseconds() - tVq0;
 
+      const tDino0 = Bun.nanoseconds();
       const dinoRes = await extractRealDinoEmbedding(
         new Uint8Array(
           dinoRgbResult.data.buffer,
@@ -153,6 +163,7 @@ export async function renderPdfPagesWithPdfium(
         dinoRgbResult.info.width,
         dinoRgbResult.info.height,
       );
+      const dinoNs = Bun.nanoseconds() - tDino0;
 
       bundles.push({
         page: pageIdx + 1,
@@ -165,6 +176,11 @@ export async function renderPdfPagesWithPdfium(
         vqIndices,
         dinoEmbedding: dinoRes.embedding,
         embeddingModelId: dinoRes.modelId,
+        timing: {
+          sharpNs,
+          vqNs,
+          dinoNs,
+        },
       });
     }
 

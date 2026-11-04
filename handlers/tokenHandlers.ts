@@ -538,6 +538,7 @@ export class TokenApiHandlers {
         archiveBytes: buildRes.archiveBytes,
         buildElapsedMs: buildRes.elapsedMs,
         bootIndexTimeMs: this.engine.lastBootIndexMs,
+        metrics: buildRes.benchmarkReport,
       });
     } finally {
       this.writeLockInProgress = false;

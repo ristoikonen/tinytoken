@@ -39,6 +39,11 @@ export interface RasterizedAssetBundle {
   dinoEmbedding: Int8Array<ArrayBuffer>;
   embeddingModelId: EmbeddingModelId;
   svgExtractedText?: string;
+  timing?: {
+    sharpNs: number;
+    vqNs: number;
+    dinoNs: number;
+  };
 }
 
 export function previewFormatToMime(format: PreviewFormat): string {
@@ -412,6 +417,7 @@ export async function rasterizeAssetToWebpAndTensors(
       ? (docDimensions?.height ?? 1754)
       : (isRotated90or270 ? (meta.width ?? fallbackHeader.width) : (meta.height ?? fallbackHeader.height));
 
+    const tSharp0 = Bun.nanoseconds();
     const [webpBuf, rgb16Buf, dinoRgbResult] = await Promise.all([
       sharp(inputBuffer, { failOn: "none" })
         .rotate()
@@ -445,13 +451,18 @@ export async function rasterizeAssetToWebpAndTensors(
         .webp({ quality: 68, smartSubsample: true, effort: 4 })
         .toBuffer();
     }
+    const sharpNs = Bun.nanoseconds() - tSharp0;
 
     const previewBytes = new Uint8Array(new ArrayBuffer(finalWebp.byteLength));
     previewBytes.set(new Uint8Array(finalWebp.buffer, finalWebp.byteOffset, finalWebp.byteLength));
 
+    const tVq0 = Bun.nanoseconds();
     const vqIndices = encodeRgb16x16ToVqGrid(
       new Uint8Array(rgb16Buf.buffer, rgb16Buf.byteOffset, rgb16Buf.byteLength),
     );
+    const vqNs = Bun.nanoseconds() - tVq0;
+
+    const tDino0 = Bun.nanoseconds();
     const dinoRes = await extractRealDinoEmbedding(
       new Uint8Array(
         dinoRgbResult.data.buffer,
@@ -461,6 +472,7 @@ export async function rasterizeAssetToWebpAndTensors(
       dinoRgbResult.info.width,
       dinoRgbResult.info.height,
     );
+    const dinoNs = Bun.nanoseconds() - tDino0;
 
     return {
       width,
@@ -472,10 +484,19 @@ export async function rasterizeAssetToWebpAndTensors(
       dinoEmbedding: dinoRes.embedding,
       embeddingModelId: dinoRes.modelId,
       svgExtractedText,
+      timing: {
+        sharpNs,
+        vqNs,
+        dinoNs,
+      },
     };
   } catch {
     // Fallback if input is non-image raw buffer
+    const tVq0 = Bun.nanoseconds();
     const vqIndices = encodeBytesToVqGrid(sourceBytes, fallbackHeader.width, fallbackHeader.height, page);
+    const vqNs = Bun.nanoseconds() - tVq0;
+
+    const tSharp0 = Bun.nanoseconds();
     const { previewBytes, previewFormat } = buildCompactPreviewPayload(
       sourceBytes,
       fallbackHeader,
@@ -484,7 +505,12 @@ export async function rasterizeAssetToWebpAndTensors(
       page,
       maxPreviewBytes,
     );
+    const sharpNs = Bun.nanoseconds() - tSharp0;
+
+    const tDino0 = Bun.nanoseconds();
     const dinoEmbedding = extractColorHogFallbackFromRgb224(sourceBytes);
+    const dinoNs = Bun.nanoseconds() - tDino0;
+
     return {
       width: fallbackHeader.width,
       height: fallbackHeader.height,
@@ -495,6 +521,11 @@ export async function rasterizeAssetToWebpAndTensors(
       dinoEmbedding,
       embeddingModelId: EmbeddingModelId.COLOR_HOG_FALLBACK,
       svgExtractedText,
+      timing: {
+        sharpNs,
+        vqNs,
+        dinoNs,
+      },
     };
   }
 }

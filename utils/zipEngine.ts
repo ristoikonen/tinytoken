@@ -87,7 +87,7 @@ export async function writeNativeTokenZipArchive(
       | "crc32"
     >;
   }>,
-): Promise<{ totalBytes: number; tokenCount: number }> {
+): Promise<{ totalBytes: number; tokenCount: number; writeElapsedNs: number }> {
   const localChunks: Uint8Array[] = [];
   const centralChunks: Uint8Array[] = [];
   const manifestRecords: SerializedManifestEntry[] = [];
@@ -237,8 +237,10 @@ export async function writeNativeTokenZipArchive(
   }
   finalArchive.set(eocd, pos);
 
+  const tWrite0 = Bun.nanoseconds();
   await Bun.write(zipFilePath, finalArchive);
-  return { totalBytes: totalSize, tokenCount: tokenEntries.length };
+  const writeElapsedNs = Bun.nanoseconds() - tWrite0;
+  return { totalBytes: totalSize, tokenCount: tokenEntries.length, writeElapsedNs };
 }
 
 export interface SearchEngineOptions {

@@ -30,6 +30,7 @@ import {
   extensionToMimeType,
   rasterizeAssetToWebpAndTensors,
 } from "./imagePreview";
+import { PipelineBenchmark, type PipelineBenchmarkReport } from "./benchmark";
 import { type PageBundle, renderPdfPagesWithPdfium } from "./pdfEngine";
 import { decodeBinaryToken, encodeBinaryToken } from "./tokenCodec";
 import { vqGridToHex } from "./vqCodebook";
@@ -45,6 +46,8 @@ export {
   getDocumentProcessor,
   MAXIMUM_DECOMPRESSED_DOCX,
   maximum_decompressed_DOCX,
+  PipelineBenchmark,
+  type PipelineBenchmarkReport,
 };
 
 export interface IndexerConfig {
@@ -312,8 +315,10 @@ export class Win11TokenPipeline {
       mimeType?: string;
       tags?: string[];
       ocrNote?: string;
+      benchmark?: PipelineBenchmark;
     },
   ): Promise<ArchiveTokenItem> {
+    const tTokenStart = Bun.nanoseconds();
     const dotIdx = filename.lastIndexOf(".");
     const ext = dotIdx !== -1 ? filename.slice(dotIdx).toLowerCase() : ".jpg";
 
@@ -321,6 +326,11 @@ export class Win11TokenPipeline {
     const entryName = `${id}.token`;
 
     const bundle = await rasterizeAssetToWebpAndTensors(rawBytes, ext, filename, 1, 1);
+    if (options?.benchmark && bundle.timing) {
+      options.benchmark.recordSharp(bundle.timing.sharpNs);
+      options.benchmark.recordVq(bundle.timing.vqNs);
+      options.benchmark.recordDino(bundle.timing.dinoNs);
+    }
     const dinoEmbeddingHex = dinoEmbeddingToHex(bundle.dinoEmbedding);
 
     const createdAt = options?.createdAt || new Date().toISOString();
@@ -348,6 +358,7 @@ export class Win11TokenPipeline {
       tags: options?.tags || ["google-photos", ext.replace(".", ""), "dinov3-vit-s16", "webp-preview", "verified"],
     };
 
+    const tEnc0 = Bun.nanoseconds();
     const tokenBytes = await encodeBinaryToken({
       originalFileSize: rawBytes.length,
       width: bundle.width,
@@ -361,10 +372,23 @@ export class Win11TokenPipeline {
       metadata,
       previewBytes: bundle.previewBytes,
     });
+    const encNs = Bun.nanoseconds() - tEnc0;
+    if (options?.benchmark) {
+      options.benchmark.recordEncode(encNs);
+    }
 
     this.enforceMaxTokenSize(tokenBytes);
 
+    const tDec0 = Bun.nanoseconds();
     const decoded = await decodeBinaryToken(tokenBytes);
+    const decNs = Bun.nanoseconds() - tDec0;
+    if (options?.benchmark) {
+      options.benchmark.recordDecode(decNs);
+      const sigVerifyNs = (decoded.snarkAttestation.verifiedInUs || 0) * 1000;
+      options.benchmark.recordSigVerify(sigVerifyNs);
+      options.benchmark.recordTokenLatency(Bun.nanoseconds() - tTokenStart);
+    }
+
     return {
       entryName,
       tokenBytes,
@@ -401,7 +425,9 @@ export class Win11TokenPipeline {
   public async tokenizeImageFile(
     fullPath: string,
     tokenCounter: number,
+    benchmark?: PipelineBenchmark,
   ): Promise<ArchiveTokenItem | null> {
+    const tRead0 = Bun.nanoseconds();
     const bunFile = Bun.file(fullPath);
     if (!(await bunFile.exists())) return null;
 
@@ -427,12 +453,18 @@ export class Win11TokenPipeline {
     }
 
     const rawBytes = new Uint8Array(await bunFile.arrayBuffer());
+    const readNs = Bun.nanoseconds() - tRead0;
+    if (benchmark) {
+      benchmark.recordFileRead(rawBytes.length, readNs);
+    }
+
     return this.tokenizeBuffer(rawBytes, filename, tokenCounter, {
       createdAt,
       sourcePath: `/api/image/${encodeURIComponent(filename)}`,
       mimeType: bunFile.type || extensionToMimeType(ext),
       tags: ["local-image", ext.replace(".", ""), "dinov3-vit-s16", "webp-preview", "verified"],
       ocrNote: `Source path: ${fullPath}`,
+      benchmark,
     });
   }
 
@@ -443,7 +475,9 @@ export class Win11TokenPipeline {
   public async tokenizeDocumentFile(
     fullPath: string,
     startTokenCounter: number,
+    benchmark?: PipelineBenchmark,
   ): Promise<ArchiveTokenItem[]> {
+    const tRead0 = Bun.nanoseconds();
     const bunFile = Bun.file(fullPath);
     if (!(await bunFile.exists())) return [];
 
@@ -473,6 +507,10 @@ export class Win11TokenPipeline {
     }
 
     const rawBytes = new Uint8Array(await bunFile.arrayBuffer());
+    const readNs = Bun.nanoseconds() - tRead0;
+    if (benchmark) {
+      benchmark.recordFileRead(rawBytes.length, readNs);
+    }
     const processor = getDocumentProcessor(ext);
 
     let pdfiumFailureReason: string | null = null;
@@ -498,6 +536,12 @@ export class Win11TokenPipeline {
       let counter = startTokenCounter;
 
       for (const pg of pageBundles) {
+        const tTokenStart = Bun.nanoseconds();
+        if (benchmark && pg.timing) {
+          benchmark.recordSharp(pg.timing.sharpNs);
+          benchmark.recordVq(pg.timing.vqNs);
+          benchmark.recordDino(pg.timing.dinoNs);
+        }
         const seq = counter++;
         const safeFile = filename.replace(/[^a-zA-Z0-9._-]/g, "_");
         const id = `tok_${String(seq).padStart(5, "0")}_p${pg.page}_${safeFile}`;
@@ -535,6 +579,7 @@ export class Win11TokenPipeline {
           ],
         };
 
+        const tEnc0 = Bun.nanoseconds();
         const tokenBytes = await encodeBinaryToken({
           originalFileSize: rawBytes.length,
           width: pg.width,
@@ -548,10 +593,23 @@ export class Win11TokenPipeline {
           metadata,
           previewBytes: pg.previewBytes,
         });
+        const encNs = Bun.nanoseconds() - tEnc0;
+        if (benchmark) {
+          benchmark.recordEncode(encNs);
+        }
 
         this.enforceMaxTokenSize(tokenBytes);
 
+        const tDec0 = Bun.nanoseconds();
         const decoded = await decodeBinaryToken(tokenBytes);
+        const decNs = Bun.nanoseconds() - tDec0;
+        if (benchmark) {
+          benchmark.recordDecode(decNs);
+          const sigVerifyNs = (decoded.snarkAttestation.verifiedInUs || 0) * 1000;
+          benchmark.recordSigVerify(sigVerifyNs);
+          benchmark.recordTokenLatency(Bun.nanoseconds() - tTokenStart);
+        }
+
         items.push({
           entryName,
           tokenBytes,
@@ -585,6 +643,7 @@ export class Win11TokenPipeline {
     const id = `tok_${String(startTokenCounter).padStart(5, "0")}_${filename.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
     const entryName = `${id}.token`;
 
+    const tTokenStart = Bun.nanoseconds();
     const bundle = await rasterizeAssetToWebpAndTensors(
       rawBytes,
       ext,
@@ -597,6 +656,11 @@ export class Win11TokenPipeline {
         excerpt: docInfo.extractedText,
       },
     );
+    if (benchmark && bundle.timing) {
+      benchmark.recordSharp(bundle.timing.sharpNs);
+      benchmark.recordVq(bundle.timing.vqNs);
+      benchmark.recordDino(bundle.timing.dinoNs);
+    }
     const dinoEmbeddingHex = dinoEmbeddingToHex(bundle.dinoEmbedding);
 
     const snippetPart = docInfo.extractedText ? ` | Excerpt: ${docInfo.extractedText}` : "";
@@ -637,6 +701,7 @@ export class Win11TokenPipeline {
       tags,
     };
 
+    const tEnc0 = Bun.nanoseconds();
     const tokenBytes = await encodeBinaryToken({
       originalFileSize: rawBytes.length,
       width: docInfo.width,
@@ -650,10 +715,22 @@ export class Win11TokenPipeline {
       metadata,
       previewBytes: bundle.previewBytes,
     });
+    const encNs = Bun.nanoseconds() - tEnc0;
+    if (benchmark) {
+      benchmark.recordEncode(encNs);
+    }
 
     this.enforceMaxTokenSize(tokenBytes);
 
+    const tDec0 = Bun.nanoseconds();
     const decoded = await decodeBinaryToken(tokenBytes);
+    const decNs = Bun.nanoseconds() - tDec0;
+    if (benchmark) {
+      benchmark.recordDecode(decNs);
+      const sigVerifyNs = (decoded.snarkAttestation.verifiedInUs || 0) * 1000;
+      benchmark.recordSigVerify(sigVerifyNs);
+      benchmark.recordTokenLatency(Bun.nanoseconds() - tTokenStart);
+    }
     return [
       {
         entryName,
@@ -693,10 +770,12 @@ export class Win11TokenPipeline {
     documentTokens: number;
     archiveBytes: number;
     elapsedMs: number;
+    benchmarkReport?: PipelineBenchmarkReport;
   }> {
     if (overrideSourceDir) {
       this.config.sourceDirectory = overrideSourceDir;
     }
+    const benchmark = new PipelineBenchmark();
     const t0 = performance.now();
     const sourceDir = this.config.sourceDirectory;
     const imageFilter = new Set(
@@ -717,7 +796,7 @@ export class Win11TokenPipeline {
 
     for (const fullPath of imagePaths) {
       try {
-        const item = await this.tokenizeImageFile(fullPath, ++tokenCounter);
+        const item = await this.tokenizeImageFile(fullPath, ++tokenCounter, benchmark);
         if (item) {
           archiveItems.push(item);
           imageTokens++;
@@ -729,7 +808,7 @@ export class Win11TokenPipeline {
 
     for (const fullPath of documentPaths) {
       try {
-        const items = await this.tokenizeDocumentFile(fullPath, tokenCounter + 1);
+        const items = await this.tokenizeDocumentFile(fullPath, tokenCounter + 1, benchmark);
         for (const item of items) {
           archiveItems.push(item);
           tokenCounter++;
@@ -744,6 +823,7 @@ export class Win11TokenPipeline {
       const dataDir = this.config.dataDirectory || "./data";
       let totalBytes = 0;
       const manifestRecords: SerializedManifestEntry[] = [];
+      const tWrite0 = Bun.nanoseconds();
 
       for (const item of archiveItems) {
         await Bun.write(`${dataDir}/${item.entryName}`, item.tokenBytes);
@@ -783,6 +863,10 @@ export class Win11TokenPipeline {
       }
 
       await Bun.write(`${dataDir}/_index.json`, JSON.stringify(manifestRecords, null, 2));
+      const writeNs = Bun.nanoseconds() - tWrite0;
+      benchmark.recordArchiveWrite(totalBytes, writeNs);
+
+      benchmark.printMetrics();
 
       return {
         totalTokens: archiveItems.length,
@@ -790,13 +874,17 @@ export class Win11TokenPipeline {
         documentTokens,
         archiveBytes: totalBytes,
         elapsedMs: Math.round((performance.now() - t0) * 100) / 100,
+        benchmarkReport: benchmark.getReport(),
       };
     }
 
-    const { totalBytes, tokenCount } = await writeNativeTokenZipArchive(
+    const { totalBytes, tokenCount, writeElapsedNs } = await writeNativeTokenZipArchive(
       this.config.outputZipPath,
       archiveItems,
     );
+    benchmark.recordArchiveWrite(totalBytes, writeElapsedNs);
+
+    benchmark.printMetrics();
 
     return {
       totalTokens: tokenCount,
@@ -804,6 +892,15 @@ export class Win11TokenPipeline {
       documentTokens,
       archiveBytes: totalBytes,
       elapsedMs: Math.round((performance.now() - t0) * 100) / 100,
+      benchmarkReport: benchmark.getReport(),
     };
+  }
+
+  /**
+   * Runs an isolated benchmark pass over source and document directories and returns the detailed report.
+   */
+  public async benchmark(overrideSourceDir?: string): Promise<PipelineBenchmarkReport> {
+    const res = await this.buildTokenArchive(overrideSourceDir);
+    return res.benchmarkReport!;
   }
 }
