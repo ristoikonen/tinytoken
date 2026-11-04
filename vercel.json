@@ -3,7 +3,7 @@
   "bunVersion": "1.4.x",
   "functions": {
     "api/**/*.ts": {
-      "includeFiles": "data/**"
+      "includeFiles": "temp/data/**"
     }
   },
   "rewrites": [
