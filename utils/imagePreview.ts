@@ -288,7 +288,18 @@ export async function rasterizeAssetToWebpAndTensors(
   maxPreviewBytes = 16384,
 ): Promise<RasterizedAssetBundle> {
   const lowerExt = ext.toLowerCase();
-  const isDocument = lowerExt === ".pdf" || lowerExt === ".docx" || lowerExt === ".doc";
+  const isText =
+    lowerExt === ".txt" ||
+    lowerExt === ".text" ||
+    lowerExt === ".md" ||
+    lowerExt === ".markdown" ||
+    lowerExt === ".csv" ||
+    lowerExt === ".json" ||
+    lowerExt === ".log" ||
+    lowerExt === ".yaml" ||
+    lowerExt === ".yml";
+  const isBinaryDoc = lowerExt === ".pdf" || lowerExt === ".docx" || lowerExt === ".doc";
+  const isDocument = isBinaryDoc || isText;
 
   let svgExtractedText: string | undefined;
   let inputBuffer: Uint8Array = sourceBytes;
@@ -304,7 +315,53 @@ export async function rasterizeAssetToWebpAndTensors(
       format: PreviewFormat.WEBP,
       mimeType: "image/svg+xml",
     };
-  } else if (isDocument) {
+  } else if (isText) {
+    const rawText =
+      docDimensions?.excerpt ||
+      new TextDecoder("utf-8", { fatal: false }).decode(sourceBytes.subarray(0, 4096));
+    const lines = rawText.split(/\r?\n/).slice(0, 13);
+    const escapedLines = lines.map((l) =>
+      l
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .slice(0, 36),
+    );
+
+    const safeTitle = label.replace(/[<>&"']/g, "").slice(0, 26);
+    const lineSvg = escapedLines
+      .map(
+        (l, i) =>
+          `<text x="48" y="${98 + i * 14}" fill="#334155" font-family="monospace" font-size="10">${l || " "}</text>`,
+      )
+      .join("\n");
+
+    const textDocSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320" width="320" height="320">
+      <defs>
+        <linearGradient id="textBg" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#0f172a"/>
+          <stop offset="100%" stop-color="#1e293b"/>
+        </linearGradient>
+      </defs>
+      <rect width="320" height="320" fill="url(#textBg)"/>
+      <rect x="36" y="16" width="248" height="288" rx="6" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.5"/>
+      <rect x="36" y="16" width="248" height="34" rx="6" fill="#0284c7"/>
+      <text x="48" y="38" fill="#ffffff" font-family="sans-serif" font-size="11" font-weight="bold">${lowerExt.replace(".", "").toUpperCase()} • ${totalPages} PAGE${totalPages > 1 ? "S" : ""}</text>
+      <text x="48" y="70" fill="#0f172a" font-family="sans-serif" font-size="11.5" font-weight="bold">${safeTitle}</text>
+      <line x1="48" y1="80" x2="270" y2="80" stroke="#cbd5e1" stroke-width="1"/>
+      ${lineSvg}
+    </svg>`;
+
+    inputBuffer = new TextEncoder().encode(textDocSvg);
+    fallbackHeader = {
+      width: docDimensions?.width ?? 1240,
+      height: docDimensions?.height ?? 1754,
+      colorDepth: 24,
+      format: PreviewFormat.WEBP,
+      mimeType: extensionToMimeType(lowerExt),
+    };
+  } else if (isBinaryDoc) {
     const w = docDimensions?.width ?? 1240;
     const h = docDimensions?.height ?? 1754;
     const hash = Bun.hash.crc32(sourceBytes);

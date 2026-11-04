@@ -17,8 +17,17 @@ import {
   gfMul,
 } from "../utils/galois";
 import {
+  DocxDocumentProcessor,
+  getDocumentProcessor,
+  MAXIMUM_DECOMPRESSED_DOCX,
+  maximum_decompressed_DOCX,
+  PdfDocumentProcessor,
+  TextDocumentProcessor,
+} from "../utils/documentProcessor";
+import {
   extensionToMimeType,
   formatToMimeType,
+  rasterizeAssetToWebpAndTensors,
   sniffImageHeader,
 } from "../utils/imagePreview";
 import { Win11TokenPipeline } from "../utils/indexer";
@@ -851,6 +860,205 @@ describe("TinyToken GF(2^8) + VQ + SHARK/SNARK Pipeline", () => {
       if (await file.exists()) {
         await file.delete();
       }
+    }
+  });
+
+  test("scanDirectory distinguishes an empty directory from a failed scan when logging", async () => {
+    const pipeline = new Win11TokenPipeline({
+      sourceDirectory: "./images",
+      outputZipPath: "./data/test_scan.zip",
+      allowedExtensions: [".jpg"],
+      maxTokenSizeKb: 25,
+    });
+
+    const origError = console.error;
+    const origInfo = console.info;
+    let loggedError = "";
+    let loggedInfo = "";
+
+    console.error = (...args: unknown[]) => {
+      loggedError += args.join(" ") + "\n";
+    };
+    console.info = (...args: unknown[]) => {
+      loggedInfo += args.join(" ") + "\n";
+    };
+
+    try {
+      // 1. Non-existent directory -> should log [SCAN_FAILED]
+      const failedScan = await pipeline.scanDirectory("./non_existent_dir_99999");
+      expect(failedScan).toEqual([]);
+      expect(loggedError).toContain("[SCAN_FAILED]");
+
+      // 2. Empty directory -> should log [SCAN_EMPTY]
+      const emptyDir = "./data/temp_empty_test_dir";
+      // Use Bun shell or temp directory
+      const proc = Bun.spawnSync(["pwsh", "-NoProfile", "-Command", `New-Item -ItemType Directory -Path "${emptyDir}" -Force | Out-Null`]);
+      expect(proc.exitCode).toBe(0);
+
+      const emptyScan = await pipeline.scanDirectory(emptyDir);
+      expect(emptyScan).toEqual([]);
+      expect(loggedInfo).toContain("[SCAN_EMPTY]");
+
+      // Clean up temp directory
+      Bun.spawnSync(["pwsh", "-NoProfile", "-Command", `Remove-Item -Recurse -Force "${emptyDir}"`]);
+    } finally {
+      console.error = origError;
+      console.info = origInfo;
+    }
+  });
+
+  test("DocumentProcessor provides format-aware routing and text file rendering", async () => {
+    // 1. Processor resolution
+    const pdfProc = getDocumentProcessor(".pdf");
+    expect(pdfProc).toBeInstanceOf(PdfDocumentProcessor);
+    expect(pdfProc.supports(".pdf")).toBe(true);
+    expect(pdfProc.supports(".txt")).toBe(false);
+
+    const docxProc = getDocumentProcessor(".docx");
+    expect(docxProc).toBeInstanceOf(DocxDocumentProcessor);
+    expect(docxProc.supports(".docx")).toBe(true);
+
+    const txtProc = getDocumentProcessor(".txt");
+    expect(txtProc).toBeInstanceOf(TextDocumentProcessor);
+    expect(txtProc.supports(".txt")).toBe(true);
+    expect(txtProc.supports(".md")).toBe(true);
+    expect(txtProc.supports(".markdown")).toBe(true);
+
+    // 2. Text file processing via pipeline
+    const pipeline = new Win11TokenPipeline({
+      sourceDirectory: "./images",
+      documentDirectory: "./documents",
+      outputZipPath: "./data/test_text_pipe.zip",
+      allowedExtensions: [".txt", ".md"],
+      maxTokenSizeKb: 25,
+    });
+
+    const testTxtPath = "./data/sample_audit_note.txt";
+    const textContent =
+      "Antigravity System Audit Log\n" +
+      "Timestamp: 2026-11-04T11:00:00Z\n" +
+      "Status: All systems operational\n" +
+      "Model: Meta DINOv3 ViT-S/16 Int8\n" +
+      "Format: GF(2^8) 25KB Binary Token\n";
+
+    await Bun.write(testTxtPath, textContent);
+
+    try {
+      const items = await pipeline.tokenizeDocumentFile(testTxtPath, 1);
+      expect(items.length).toBe(1);
+
+      const item = items[0]!;
+      expect(item.meta.mimeType).toContain("text/plain");
+      expect(item.meta.ocrText).toContain("Antigravity System Audit Log");
+      expect(item.meta.ocrText).toContain("Status: All systems operational");
+
+      const decoded = await decodeBinaryToken(item.tokenBytes);
+      expect(decoded.previewFormat).toBe(PreviewFormat.WEBP);
+      expect(decoded.previewBytes.length).toBeGreaterThan(0);
+      expect(decoded.vqIndices.length).toBe(256);
+      expect(decoded.embeddingModelId).toBe(EmbeddingModelId.DINOV3_VITS16_Q8);
+    } finally {
+      const file = Bun.file(testTxtPath);
+      if (await file.exists()) {
+        await file.delete();
+      }
+    }
+  });
+
+  test("Maximum source file size enforcement (APP_MAX_FILE_SIZE) allows searchOCR('File size over max size')", async () => {
+    const origMax = Bun.env.APP_MAX_FILE_SIZE;
+    const testOversizedPath = "./data/oversized_test_file.txt";
+    // Set limit very low (0.00001 MB = ~10 bytes) so our file exceeds it
+    Bun.env.APP_MAX_FILE_SIZE = "0.00001";
+
+    const pipeline = new Win11TokenPipeline({
+      sourceDirectory: "./images",
+      documentDirectory: "./documents",
+      outputZipPath: "./data/test_oversized.zip",
+      allowedExtensions: [".txt"],
+      maxTokenSizeKb: 25,
+    });
+
+    try {
+      await Bun.write(testOversizedPath, "This content is intentionally larger than 10 bytes to trigger APP_MAX_FILE_SIZE limit.");
+
+      const items = await pipeline.tokenizeDocumentFile(testOversizedPath, 77);
+      expect(items.length).toBe(1);
+
+      const item = items[0]!;
+      expect(item.meta.ocrText).toContain("File size over max size");
+
+      // Verify search engine finds it via searchOCR
+      const testZip = "./data/test_oversized_search.zip";
+      const { writeNativeTokenZipArchive } = await import("../utils/zipEngine");
+      await writeNativeTokenZipArchive(testZip, items);
+
+      const engine = new CompressedTokenSearchEngine(testZip);
+      await engine.buildIndex();
+
+      const hits = engine.searchOCR("File size over max size");
+      expect(hits.length).toBe(1);
+      expect(hits[0]!.ocrSnippet).toContain("File size over max size");
+
+      const zipFile = Bun.file(testZip);
+      if (await zipFile.exists()) await zipFile.delete();
+    } finally {
+      Bun.env.APP_MAX_FILE_SIZE = origMax;
+      const file = Bun.file(testOversizedPath);
+      if (await file.exists()) await file.delete();
+    }
+  });
+
+  test("DOCX uncompressed size ceiling (maximum_decompressed_DOCX = 20MB) prevents zip-bombs and allows searchOCR('DOCX uncomressed size over max size')", async () => {
+    expect(MAXIMUM_DECOMPRESSED_DOCX).toBe(20 * 1024 * 1024);
+    expect(maximum_decompressed_DOCX).toBe(20 * 1024 * 1024);
+
+    // Build a mock DOCX archive with a zip header claiming 25 MB uncompressed size
+    const buf = new Uint8Array(120);
+    const view = new DataView(buf.buffer);
+    view.setUint32(0, 0x04034b50, true); // Local file header signature
+    view.setUint16(8, 8, true);          // Deflate method
+    view.setUint32(18, 10, true);         // Compressed size: 10 bytes
+    view.setUint32(22, 25 * 1024 * 1024, true); // Claimed uncompressed size: 25 MB (> 20 MB ceiling)
+    const name = "word/document.xml";
+    view.setUint16(26, name.length, true);
+    view.setUint16(28, 0, true);
+    buf.set(new TextEncoder().encode(name), 30);
+
+    const mockDocxPath = "./data/mock_zipbomb.docx";
+    await Bun.write(mockDocxPath, buf);
+
+    const pipeline = new Win11TokenPipeline({
+      sourceDirectory: "./images",
+      documentDirectory: "./documents",
+      outputZipPath: "./data/test_zipbomb.zip",
+      allowedExtensions: [".docx"],
+      maxTokenSizeKb: 25,
+    });
+
+    try {
+      const items = await pipeline.tokenizeDocumentFile(mockDocxPath, 88);
+      expect(items.length).toBe(1);
+
+      const item = items[0]!;
+      expect(item.meta.ocrText).toContain("DOCX uncomressed size over max size");
+
+      const testZip = "./data/test_docx_search.zip";
+      const { writeNativeTokenZipArchive } = await import("../utils/zipEngine");
+      await writeNativeTokenZipArchive(testZip, items);
+
+      const engine = new CompressedTokenSearchEngine(testZip);
+      await engine.buildIndex();
+
+      const hits = engine.searchOCR("DOCX uncomressed size over max size");
+      expect(hits.length).toBe(1);
+      expect(hits[0]!.ocrSnippet).toContain("DOCX uncomressed size over max size");
+
+      const zipFile = Bun.file(testZip);
+      if (await zipFile.exists()) await zipFile.delete();
+    } finally {
+      const file = Bun.file(mockDocxPath);
+      if (await file.exists()) await file.delete();
     }
   });
 });

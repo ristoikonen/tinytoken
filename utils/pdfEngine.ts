@@ -29,6 +29,8 @@ export interface RenderedPdfPageBundle {
   embeddingModelId: EmbeddingModelId;
 }
 
+export type PageBundle = RenderedPdfPageBundle;
+
 let pdfiumPromise: Promise<PDFiumLibrary> | null = null;
 
 async function getPdfiumLibrary(): Promise<PDFiumLibrary> {
