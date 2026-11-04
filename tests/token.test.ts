@@ -33,11 +33,16 @@ import {
 import { Win11TokenPipeline } from "../utils/indexer";
 import { QuickLZ } from "../utils/quicklz";
 import { corsResponse, errorResponse, jsonResponse } from "../utils/response";
-import { generateAttestationKeyPair } from "../utils/snarkAttest";
+import {
+  generateAttestationKeyPair,
+  getAuthorityAttestationKeys,
+} from "../utils/snarkAttest";
 import {
   decodeBinaryToken,
   encodeBinaryToken,
   generateMockTinyTokenBuffer,
+  uuidStringToBytes,
+  validateBinaryToken,
 } from "../utils/tokenCodec";
 import {
   adcDistanceToSimilarityPct,
@@ -125,15 +130,26 @@ describe("TinyToken GF(2^8) + VQ + SHARK/SNARK Pipeline", () => {
     expect(tokenBytes.length).toBeLessThanOrEqual(MAX_TOKEN_BYTES);
 
     // 1. Nominal decode & full Ed25519 + 4-section verification
-    const decoded = await decodeBinaryToken(tokenBytes);
-    expect(decoded.magic).toBe("GF28");
-    expect(decoded.version).toBe(2);
-    expect(decoded.rsParityValid).toBe(true);
-    expect(decoded.rsCorrectedErrors).toBe(0);
-    expect(decoded.snarkAttestation.protocol).toBe("ED25519-MERKLE-GF28-v3");
+    const authorityKeys = await getAuthorityAttestationKeys();
+    const decodedNoTrustedKey = await decodeBinaryToken(tokenBytes);
+    expect(decodedNoTrustedKey.magic).toBe("GF28");
+    expect(decodedNoTrustedKey.version).toBe(2);
+    expect(decodedNoTrustedKey.rsParityValid).toBe(true);
+    expect(decodedNoTrustedKey.rsCorrectedErrors).toBe(0);
+    expect(decodedNoTrustedKey.snarkAttestation.protocol).toBe("ED25519-MERKLE-GF28-v3");
+    expect(decodedNoTrustedKey.snarkAttestation.signatureVerified).toBe(true);
+    expect(decodedNoTrustedKey.snarkAttestation.attestationStatus?.signatureValid).toBe(true);
+    // Without trusted public key provided by caller, trustedIssuer must NOT be implied
+    expect(decodedNoTrustedKey.snarkAttestation.attestationStatus?.trustedIssuer).toBe(false);
+    expect(decodedNoTrustedKey.snarkAttestation.trustedKeyMatch).toBe(false);
+
+    // With trusted authority key supplied:
+    const decoded = await decodeBinaryToken(tokenBytes, {
+      trustedPublicKeyRaw: authorityKeys.publicKeyRaw,
+    });
     expect(decoded.snarkAttestation.valid).toBe(true);
-    expect(decoded.snarkAttestation.signatureVerified).toBe(true);
     expect(decoded.snarkAttestation.trustedKeyMatch).toBe(true);
+    expect(decoded.snarkAttestation.attestationStatus?.trustedIssuer).toBe(true);
     expect(decoded.snarkAttestation.sectionsVerified).toEqual({
       originHeader: true,
       vqGrid: true,
@@ -142,6 +158,12 @@ describe("TinyToken GF(2^8) + VQ + SHARK/SNARK Pipeline", () => {
       merkleRoot: true,
     });
     expect(decoded.metadata.ocrText).toBe(metadata.ocrText);
+
+    // Strictly validate valid token
+    const validated = await validateBinaryToken(tokenBytes, {
+      trustedPublicKeyRaw: authorityKeys.publicKeyRaw,
+    });
+    expect(validated.envelopeBoundsValid).toBe(true);
 
     // 2. Corrupt 1 byte inside each of the 3 header lanes (Header, Ed25519 attestation block, VQ grid)
     const corrupted = new Uint8Array(tokenBytes);
@@ -194,7 +216,9 @@ describe("TinyToken GF(2^8) + VQ + SHARK/SNARK Pipeline", () => {
       previewBytes: dummyImg,
       signingKeys: rogueKeys,
     });
-    const decodedForged = await decodeBinaryToken(forgedToken);
+    const decodedForged = await decodeBinaryToken(forgedToken, {
+      trustedPublicKeyRaw: authorityKeys.publicKeyRaw,
+    });
     expect(decodedForged.rsParityValid).toBe(true);
     expect(decodedForged.snarkAttestation.valid).toBe(false);
     expect(decodedForged.snarkAttestation.trustedKeyMatch).toBe(false);
@@ -1060,6 +1084,204 @@ describe("TinyToken GF(2^8) + VQ + SHARK/SNARK Pipeline", () => {
       const file = Bun.file(mockDocxPath);
       if (await file.exists()) await file.delete();
     }
+  });
+
+  test("tokenCodec: enforces 256-byte VQ indices length and rejects invalid sizes", async () => {
+    const authorityKeys = await getAuthorityAttestationKeys();
+    const shortVq = new Uint8Array(200);
+    expect(
+      encodeBinaryToken({
+        originalFileSize: 1000,
+        width: 100,
+        height: 100,
+        page: 0,
+        previewFormat: PreviewFormat.AVIF,
+        vqIndices: shortVq,
+        metadata: {
+          id: "00000000-0000-0000-0000-000000000001",
+          filename: "test.png",
+          sourcePath: "",
+          mimeType: "image/png",
+          page: 1,
+          totalPages: 1,
+          width: 100,
+          height: 100,
+          colorDepth: 24,
+          createdAt: new Date().toISOString(),
+          ocrText: "test",
+        },
+        previewBytes: new Uint8Array(100),
+        signingKeys: authorityKeys,
+      }),
+    ).rejects.toThrow("Expected 256 VQ indices");
+  });
+
+  test("tokenCodec: uuidStringToBytes strictly validates UUID syntax", () => {
+    expect(() => uuidStringToBytes("invalid-uuid-syntax")).toThrow("Invalid UUID syntax");
+    expect(() => uuidStringToBytes("12345")).toThrow("Invalid UUID syntax");
+    expect(() => uuidStringToBytes("zzzzzzzz-zzzz-zzzz-zzzz-zzzzzzzzzzzz")).toThrow("Invalid UUID syntax");
+
+    // Standard RFC4122
+    const valid1 = uuidStringToBytes("123e4567-e89b-12d3-a456-426614174000");
+    expect(valid1.length).toBe(16);
+
+    // 32-hex format
+    const valid2 = uuidStringToBytes("123e4567e89b12d3a456426614174000");
+    expect(valid2.length).toBe(16);
+    expect(valid1).toEqual(valid2);
+  });
+
+  test("tokenCodec: OCR text truncation preserves valid JSON without mid-byte truncation and rejects excessive mandatory metadata", async () => {
+    const authorityKeys = await getAuthorityAttestationKeys();
+    const vqIndices = new Uint8Array(256).fill(42);
+    const hugeOcr = "A".repeat(50_000); // 50 KB of OCR text
+
+    const tokenBytes = await encodeBinaryToken({
+      originalFileSize: 10000,
+      width: 200,
+      height: 200,
+      page: 0,
+      previewFormat: PreviewFormat.AVIF,
+      vqIndices,
+      metadata: {
+        id: "tok_ocr_trunc_01",
+        filename: "huge_ocr.png",
+        sourcePath: "/api/token/preview",
+        mimeType: "image/png",
+        page: 1,
+        totalPages: 1,
+        width: 200,
+        height: 200,
+        colorDepth: 24,
+        createdAt: new Date().toISOString(),
+        ocrText: hugeOcr,
+      },
+      previewBytes: new Uint8Array(100).fill(1),
+      signingKeys: authorityKeys,
+    });
+
+    const decoded = await decodeBinaryToken(tokenBytes);
+    expect(decoded.metadata.ocrText.length).toBeGreaterThan(0);
+    expect(decoded.metadata.ocrText.length).toBeLessThan(hugeOcr.length);
+    expect(decoded.metadata.filename).toBe("huge_ocr.png");
+
+    // Mandatory metadata exceeding limit throws
+    const hugeFilename = "F".repeat(5000);
+    expect(
+      encodeBinaryToken({
+        originalFileSize: 10000,
+        width: 200,
+        height: 200,
+        page: 0,
+        previewFormat: PreviewFormat.AVIF,
+        vqIndices,
+        metadata: {
+          id: "tok_mandatory_overflow",
+          filename: hugeFilename,
+          sourcePath: "",
+          mimeType: "image/png",
+          page: 1,
+          totalPages: 1,
+          width: 200,
+          height: 200,
+          colorDepth: 24,
+          createdAt: new Date().toISOString(),
+          ocrText: "",
+        },
+        previewBytes: new Uint8Array(100).fill(1),
+        signingKeys: authorityKeys,
+      }),
+    ).rejects.toThrow("Mandatory metadata exceeds Section II limit");
+  });
+
+  test("tokenCodec: decodeBinaryToken enforces token size bounds and version", async () => {
+    // Under minimum size
+    expect(decodeBinaryToken(new Uint8Array(500))).rejects.toThrow("Invalid token size");
+
+    // Over maximum size (> 25,600)
+    expect(decodeBinaryToken(new Uint8Array(30_000))).rejects.toThrow("Invalid token size");
+
+    // Unsupported version in byte 4 (with valid RS parity for that header)
+    const validToken = await generateMockTinyTokenBuffer("tok_ver_01");
+    const badVersionToken = new Uint8Array(validToken);
+    badVersionToken[4] = 99; // corrupt version
+    badVersionToken[5] = 0;
+    badVersionToken.set(encodeHeaderParity64(badVersionToken.subarray(0, 640)), 640);
+    expect(decodeBinaryToken(badVersionToken)).rejects.toThrow(
+      "Unsupported token version: expected 2, found 99",
+    );
+  });
+
+  test("tokenCodec: QuickLZ decompression safely enforces uncompressed metadata ceiling", async () => {
+    // QuickLZ 9-byte header specifies decompressed size at offset 1 (little-endian 32-bit uint)
+    // Create a forged header claiming 40,000 bytes decompressed size (> 32,768 ceiling)
+    const forgedQuickLz = new Uint8Array(12);
+    forgedQuickLz[0] = 0x01; // level 1
+    const view = new DataView(forgedQuickLz.buffer);
+    view.setUint32(1, 40_000, true);
+
+    expect(() => QuickLZ.decompress(forgedQuickLz, 32768)).toThrow(
+      "exceeds safety limit (32768 bytes)",
+    );
+  });
+
+  test("tokenCodec: validateBinaryToken strictly enforces integrity, authenticity and envelope structure", async () => {
+    const authorityKeys = await getAuthorityAttestationKeys();
+    const validToken = await generateMockTinyTokenBuffer("tok_strict_01");
+
+    // 1. Valid token passes validation
+    const validated = await validateBinaryToken(validToken, {
+      trustedPublicKeyRaw: authorityKeys.publicKeyRaw,
+    });
+    expect(validated.snarkAttestation.valid).toBe(true);
+    expect(validated.snarkAttestation.attestationStatus?.signatureValid).toBe(true);
+    expect(validated.snarkAttestation.attestationStatus?.trustedIssuer).toBe(true);
+
+    // 2. Corrupted RS parity throws
+    const rsCorrupted = new Uint8Array(validToken);
+    rsCorrupted[640] = (rsCorrupted[640] ?? 0) ^ 0x55; // corrupt parity byte
+    rsCorrupted[641] = (rsCorrupted[641] ?? 0) ^ 0xaa; // corrupt second parity byte
+    expect(validateBinaryToken(rsCorrupted)).rejects.toThrow("Reed-Solomon header parity validation failed");
+
+    // 3. Forged signer key throws untrusted signer error
+    const rogueKeys = await generateAttestationKeyPair();
+    const rogueToken = await encodeBinaryToken({
+      originalFileSize: 1000,
+      width: 100,
+      height: 100,
+      page: 0,
+      previewFormat: PreviewFormat.AVIF,
+      vqIndices: new Uint8Array(256).fill(10),
+      metadata: {
+        id: "00000000-0000-0000-0000-000000000002",
+        filename: "rogue.png",
+        sourcePath: "",
+        mimeType: "image/png",
+        page: 1,
+        totalPages: 1,
+        width: 100,
+        height: 100,
+        colorDepth: 24,
+        createdAt: new Date().toISOString(),
+        ocrText: "rogue",
+      },
+      previewBytes: new Uint8Array(100),
+      signingKeys: rogueKeys,
+    });
+    expect(
+      validateBinaryToken(rogueToken, { trustedPublicKeyRaw: authorityKeys.publicKeyRaw }),
+    ).rejects.toThrow("Token signer public key does not match trusted public key");
+
+    // 4. Envelope length mismatch throws
+    // Token with truncated preview bytes (smaller than expectedTotalBytes)
+    const truncatedToken = validToken.subarray(0, validToken.length - 20);
+    // decodeBinaryToken can parse without crashing if size >= 704
+    const inspected = await decodeBinaryToken(truncatedToken);
+    expect(inspected.envelopeBoundsValid).toBe(false);
+    // validateBinaryToken rejects it
+    expect(validateBinaryToken(truncatedToken)).rejects.toThrow(
+      "Invalid token envelope bounds",
+    );
   });
 });
 

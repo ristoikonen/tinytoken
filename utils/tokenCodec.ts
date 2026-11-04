@@ -14,6 +14,7 @@ import {
   RS_PARITY_OFFSET,
   SECTION1_HEADER_BYTES,
   SECTION2_MAX_META_BYTES,
+  SECTION2_MAX_UNCOMPRESSED_META_BYTES,
   SECTION3_MAX_PREVIEW_BYTES,
   SNARK_STUB_BYTES,
   SNARK_STUB_OFFSET,
@@ -55,11 +56,26 @@ export interface DecodeTokenOptions {
   trustedPublicKeyRaw?: Uint8Array;
 }
 
-function uuidStringToBytes(uuid: string): Uint8Array {
-  const hex = uuid.replace(/-/g, "").padEnd(32, "0").slice(0, 32);
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const HEX32_REGEX = /^[0-9a-f]{32}$/i;
+
+/**
+ * Validates UUID syntax (standard 8-4-4-4-12 hex or 32 hex chars) and rejects invalid input.
+ */
+export function uuidStringToBytes(uuid: string): Uint8Array {
+  const clean = uuid.trim();
+  let hex: string;
+  if (UUID_REGEX.test(clean)) {
+    hex = clean.replace(/-/g, "");
+  } else if (HEX32_REGEX.test(clean)) {
+    hex = clean;
+  } else {
+    throw new Error(`Invalid UUID syntax: "${uuid}"`);
+  }
   const out = new Uint8Array(16);
   for (let i = 0; i < 16; i++) {
-    out[i] = Number.parseInt(hex.slice(i * 2, i * 2 + 2), 16) || 0;
+    out[i] = Number.parseInt(hex.slice(i * 2, i * 2 + 2), 16);
   }
   return out;
 }
@@ -70,41 +86,102 @@ function uuidStringToBytes(uuid: string): Uint8Array {
 export async function encodeBinaryToken(
   input: EncodeTokenInput,
 ): Promise<Uint8Array<ArrayBuffer>> {
-  const uuidBytes =
-    input.uuidBytes && input.uuidBytes.length === 16
-      ? input.uuidBytes
-      : uuidStringToBytes(crypto.randomUUID());
-
+  // 1. Validate VQ output
+  if (!input.vqIndices || input.vqIndices.length !== VQ_GRID_BYTES) {
+    throw new Error(`Expected ${VQ_GRID_BYTES} VQ indices`);
+  }
   const vqIndices = new Uint8Array(VQ_GRID_BYTES);
-  vqIndices.set(input.vqIndices.subarray(0, VQ_GRID_BYTES));
+  vqIndices.set(input.vqIndices);
 
-  // Serialize Section II Metadata
-  const rawMetaBytes = new TextEncoder().encode(JSON.stringify(input.metadata));
-  let metaBytes: Uint8Array = rawMetaBytes;
-  let flags = TokenFlags.HAS_VQ_GRID | TokenFlags.SNARK_ATTESTED;
+  // 2. Validate UUID syntax
+  let uuidBytes: Uint8Array;
+  if (input.uuidBytes) {
+    if (input.uuidBytes.length !== 16) {
+      throw new Error(`Expected 16-byte UUID, received ${input.uuidBytes.length} bytes`);
+    }
+    uuidBytes = input.uuidBytes;
+  } else {
+    uuidBytes = uuidStringToBytes(crypto.randomUUID());
+  }
+
+  // 3. Serialize Section II Metadata with graceful OCR truncation
+  // Verify that mandatory metadata without OCR can fit in SECTION2_MAX_META_BYTES
+  const baseMeta: TokenMetadataPayload = {
+    ...input.metadata,
+    ocrText: "",
+  };
+  const baseMetaBytes = new TextEncoder().encode(JSON.stringify(baseMeta));
+  let baseCompBytes = baseMetaBytes;
+  if (input.compressMetadata !== false && baseMetaBytes.length > 128) {
+    const comp = QuickLZ.compress(baseMetaBytes);
+    if (comp.length < baseMetaBytes.length) {
+      baseCompBytes = comp;
+    }
+  }
+  if (baseCompBytes.length > SECTION2_MAX_META_BYTES) {
+    throw new Error(
+      `Mandatory metadata exceeds Section II limit (${baseCompBytes.length} > ${SECTION2_MAX_META_BYTES} bytes)`,
+    );
+  }
+
+  // Start with full OCR text
+  let currentOcr = input.metadata.ocrText ?? "";
+  let currentMeta: TokenMetadataPayload = { ...input.metadata, ocrText: currentOcr };
+  let rawMetaBytes = new TextEncoder().encode(JSON.stringify(currentMeta));
+
+  // Guard against uncompressed size exceeding SECTION2_MAX_UNCOMPRESSED_META_BYTES (32 KB)
+  if (rawMetaBytes.length > SECTION2_MAX_UNCOMPRESSED_META_BYTES) {
+    const excess = rawMetaBytes.length - SECTION2_MAX_UNCOMPRESSED_META_BYTES + 64;
+    currentOcr = currentOcr.slice(0, Math.max(0, currentOcr.length - excess));
+    currentMeta = { ...input.metadata, ocrText: currentOcr };
+    rawMetaBytes = new TextEncoder().encode(JSON.stringify(currentMeta));
+  }
+
+  let metaBytes = rawMetaBytes;
+  let isCompressed = false;
+  if (input.compressMetadata !== false && rawMetaBytes.length > 128) {
+    const compressed = QuickLZ.compress(rawMetaBytes);
+    if (compressed.length < rawMetaBytes.length) {
+      metaBytes = compressed;
+      isCompressed = true;
+    }
+  }
+
+  // If it exceeds SECTION2_MAX_META_BYTES, iteratively truncate OCR text, re-serialize, and re-compress
+  while (metaBytes.length > SECTION2_MAX_META_BYTES && currentOcr.length > 0) {
+    const overflow = metaBytes.length - SECTION2_MAX_META_BYTES;
+    const cutChars = Math.max(1, Math.min(currentOcr.length, overflow));
+    currentOcr = currentOcr.slice(0, currentOcr.length - cutChars);
+    currentMeta = { ...input.metadata, ocrText: currentOcr };
+    rawMetaBytes = new TextEncoder().encode(JSON.stringify(currentMeta));
+
+    metaBytes = rawMetaBytes;
+    isCompressed = false;
+    if (input.compressMetadata !== false && rawMetaBytes.length > 128) {
+      const comp = QuickLZ.compress(rawMetaBytes);
+      if (comp.length < rawMetaBytes.length) {
+        metaBytes = comp;
+        isCompressed = true;
+      }
+    }
+  }
+
+  if (metaBytes.length > SECTION2_MAX_META_BYTES) {
+    throw new Error(
+      `Metadata exceeds Section II limit (${metaBytes.length} > ${SECTION2_MAX_META_BYTES} bytes)`,
+    );
+  }
+
+  // Set base flags (attestation flag will be set only AFTER successful generation)
+  let flags = TokenFlags.HAS_VQ_GRID;
   if (input.metadata.totalPages > 1) {
     flags |= TokenFlags.MULTI_PAGE_DOC;
   }
   if (input.metadata.dinoEmbeddingHex) {
     flags |= TokenFlags.HAS_DINO_EMBEDDING;
   }
-
-  if (input.compressMetadata !== false && rawMetaBytes.length > 128) {
-    const compressed = QuickLZ.compress(rawMetaBytes);
-    if (compressed.length < rawMetaBytes.length) {
-      metaBytes = compressed;
-      flags |= TokenFlags.QUICKLZ_COMPRESSED;
-    }
-  }
-
-  if (metaBytes.length > SECTION2_MAX_META_BYTES) {
-    // Truncate OCR text gracefully if metadata exceeds 4 KB allocation
-    const truncatedMeta: TokenMetadataPayload = {
-      ...input.metadata,
-      ocrText: input.metadata.ocrText.slice(0, 2400),
-    };
-    metaBytes = new TextEncoder().encode(JSON.stringify(truncatedMeta)).subarray(0, SECTION2_MAX_META_BYTES);
-    flags &= ~TokenFlags.QUICKLZ_COMPRESSED;
+  if (isCompressed) {
+    flags |= TokenFlags.QUICKLZ_COMPRESSED;
   }
 
   // Cap Section III Preview Image so total token never exceeds 25 KB (25,600 bytes)
@@ -132,6 +209,11 @@ export async function encodeBinaryToken(
     previewBytes,
     signingKeys: input.signingKeys,
   });
+
+  // Set SNARK_ATTESTED flag once attestation has been successfully generated
+  if (snarkStub && snarkStub.length === SNARK_STUB_BYTES) {
+    flags |= TokenFlags.SNARK_ATTESTED;
+  }
 
   const totalTokenSize = SECTION1_HEADER_BYTES + metaBytes.length + previewBytes.length;
   const tokenBuffer = new Uint8Array(totalTokenSize);
@@ -206,10 +288,11 @@ export async function decodeBinaryToken(
   rawToken: Uint8Array,
   options?: DecodeTokenOptions,
 ): Promise<DecodedToken> {
-  if (rawToken.length < SECTION1_HEADER_BYTES) {
-    throw new Error(
-      `Invalid token buffer: expected at least ${SECTION1_HEADER_BYTES} bytes, got ${rawToken.length}`,
-    );
+  if (
+    rawToken.length < SECTION1_HEADER_BYTES ||
+    rawToken.length > MAX_TOKEN_BYTES
+  ) {
+    throw new Error("Invalid token size");
   }
 
   // 1. Verify & heal Section I Header (0..639) using 64-byte GF(2^8) Reed-Solomon parity (640..703)
@@ -231,6 +314,12 @@ export async function decodeBinaryToken(
   }
 
   const version = view.getUint16(4, true);
+  if (version !== TOKEN_VERSION) {
+    throw new Error(
+      `Unsupported token version: expected ${TOKEN_VERSION}, found ${version}`,
+    );
+  }
+
   const flags = view.getUint16(6, true);
   const uuidBytes = healedHeader.subarray(8, 24);
   const uuidHex = bytesToHex(uuidBytes);
@@ -299,10 +388,13 @@ export async function decodeBinaryToken(
           ((rawMetaSlice[3] ?? 0) << 16) |
           ((rawMetaSlice[4] ?? 0) << 24)) >>>
         0;
-      if (claimedDecompressedLen > SECTION2_MAX_META_BYTES * 8) {
+      if (claimedDecompressedLen > SECTION2_MAX_UNCOMPRESSED_META_BYTES) {
         throw new Error("Section II QuickLZ decompressed size exceeds safety limit");
       }
-      decodedMetaBytes = QuickLZ.decompress(rawMetaSlice);
+      decodedMetaBytes = QuickLZ.decompress(
+        rawMetaSlice,
+        SECTION2_MAX_UNCOMPRESSED_META_BYTES,
+      );
     }
     metadata = JSON.parse(new TextDecoder().decode(decodedMetaBytes)) as TokenMetadataPayload;
   } catch {
@@ -345,6 +437,7 @@ export async function decodeBinaryToken(
     vqIndices,
     rsParityValid: rsResult.valid,
     rsCorrectedErrors: rsResult.correctedErrors,
+    envelopeBoundsValid,
     metadata,
     previewBytes,
     byteMap: {
@@ -357,6 +450,51 @@ export async function decodeBinaryToken(
       section3PreviewBytes: previewBytes.length,
     },
   };
+}
+
+/**
+ * Strictly validates a binary token's structural integrity, Reed-Solomon parity,
+ * cryptographic signatures, Merkle commitments, and well-formed metadata.
+ * Throws an Error if any requirement is violated.
+ */
+export async function validateBinaryToken(
+  rawToken: Uint8Array,
+  options?: DecodeTokenOptions,
+): Promise<DecodedToken> {
+  const decoded = await decodeBinaryToken(rawToken, options);
+
+  if (!decoded.envelopeBoundsValid) {
+    throw new Error(
+      `Invalid token envelope bounds: expected ${decoded.byteMap.section1HeaderBytes + decoded.metaLength + decoded.previewLength} bytes, found ${rawToken.length}`,
+    );
+  }
+
+  if (!decoded.rsParityValid) {
+    throw new Error("Reed-Solomon header parity validation failed");
+  }
+
+  const attest = decoded.snarkAttestation;
+  if (!attest.attestationStatus?.signatureValid) {
+    throw new Error(
+      `Invalid token signature: ${attest.failureReason ?? "signature_verification_failed"}`,
+    );
+  }
+
+  if (!attest.attestationStatus?.merkleValid) {
+    throw new Error(
+      `Merkle attestation mismatch: ${attest.failureReason ?? "merkle_root_mismatch"}`,
+    );
+  }
+
+  if (options?.trustedPublicKeyRaw && !attest.attestationStatus?.trustedIssuer) {
+    throw new Error("Token signer public key does not match trusted public key");
+  }
+
+  if (decoded.metadata.ocrText === "[CORRUPTED OR TAMPERED SECTION II METADATA]") {
+    throw new Error("Section II metadata is corrupted or tampered");
+  }
+
+  return decoded;
 }
 
 /**

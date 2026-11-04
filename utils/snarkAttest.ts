@@ -22,8 +22,15 @@
  * - 236..255 (20B) : GF(2^8) Polynomial Evaluation Audit Tags over `signature[0..63]`
  */
 
-import type { EmbeddingModelId, PreviewFormat, SnarkAttestationInfo } from "../models/token";
+import type {
+  AttestationStatus,
+  EmbeddingModelId,
+  PreviewFormat,
+  SnarkAttestationInfo,
+} from "../models/token";
 import { gfPolyEval } from "./galois";
+
+export type { AttestationStatus };
 
 const ED25519_ATTEST_MAGIC = [0x45, 0x44, 0x32, 0x35] as const; // "ED25"
 const DEFAULT_KEYPAIR_PATH = "./data/attestation_ed25519.json";
@@ -364,6 +371,12 @@ export async function verifySnarkAttestationStub(
       valid: false,
       signatureVerified: false,
       trustedKeyMatch: false,
+      attestationStatus: {
+        signatureValid: false,
+        trustedIssuer: false,
+        merkleValid: false,
+        envelopeValid: false,
+      },
       sectionsVerified: {
         originHeader: false,
         vqGrid: false,
@@ -417,10 +430,12 @@ export async function verifySnarkAttestationStub(
   );
   const merkleRootOk = constantTimeBytesEqual(actualMerkleRoot, merkleRoot);
 
-  // 3. Verify signer public key matches pinned authority public key (prevents rogue key forgery)
-  const expectedPubRaw =
-    inputs.trustedPublicKeyRaw ?? (await getAuthorityAttestationKeys()).publicKeyRaw;
-  const trustedKeyMatch = constantTimeBytesEqual(stubPublicKeyRaw, expectedPubRaw);
+  // 3. Trusted authority public key verification
+  // If caller doesn't supply a trusted public key, trustedIssuer is strictly false (does not imply trusted issuer)
+  const hasTrustedKey = inputs.trustedPublicKeyRaw !== undefined;
+  const trustedIssuer = hasTrustedKey
+    ? constantTimeBytesEqual(stubPublicKeyRaw, inputs.trustedPublicKeyRaw!)
+    : false;
   const expectedKeyId = computeKeyId(stubPublicKeyRaw);
   const keyIdOk = constantTimeBytesEqual(stubKeyId, expectedKeyId);
 
@@ -436,47 +451,58 @@ export async function verifySnarkAttestationStub(
     }
   }
 
-  // 5. Verify Ed25519 cryptographic signature against the pinned authority public key
+  // 5. Verify Ed25519 signature mathematically against the public key embedded in the stub
   let signatureVerified = false;
-  if (trustedKeyMatch) {
-    try {
-      const verifyKey = await importRawEd25519PublicKey(expectedPubRaw);
-      const sigCopy = new Uint8Array(new ArrayBuffer(64));
-      sigCopy.set(stubSignature);
-      const transcript = buildSigningTranscript(
-        merkleRoot,
-        stubOriginHash,
-        stubPreviewHash,
-        stubMetaHash,
-        stubVqHash,
-      );
-      signatureVerified = await crypto.subtle.verify(
-        { name: "Ed25519" },
-        verifyKey,
-        sigCopy,
-        transcript,
-      );
-    } catch {
-      signatureVerified = false;
-    }
+  try {
+    const verifyKey = await importRawEd25519PublicKey(stubPublicKeyRaw);
+    const sigCopy = new Uint8Array(new ArrayBuffer(64));
+    sigCopy.set(stubSignature);
+    const transcript = buildSigningTranscript(
+      merkleRoot,
+      stubOriginHash,
+      stubPreviewHash,
+      stubMetaHash,
+      stubVqHash,
+    );
+    signatureVerified = await crypto.subtle.verify(
+      { name: "Ed25519" },
+      verifyKey,
+      sigCopy,
+      transcript,
+    );
+  } catch {
+    signatureVerified = false;
   }
 
-  const allValid =
+  const merkleValid =
     originHeaderOk &&
     section3PreviewOk &&
     section2MetadataOk &&
     vqGridOk &&
-    merkleRootOk &&
-    trustedKeyMatch &&
+    merkleRootOk;
+
+  const envelopeValid = inputs.envelopeBoundsValid !== false;
+
+  const attestationStatus: AttestationStatus = {
+    signatureValid: signatureVerified,
+    trustedIssuer,
+    merkleValid,
+    envelopeValid,
+  };
+
+  const allValid =
+    signatureVerified &&
+    merkleValid &&
+    envelopeValid &&
     keyIdOk &&
     polyOk &&
-    signatureVerified;
+    (!hasTrustedKey || trustedIssuer);
 
   let failureReason: string | undefined;
   if (!allValid) {
-    if (!trustedKeyMatch) failureReason = "untrusted_signer_public_key";
-    else if (!signatureVerified) failureReason = "ed25519_signature_invalid";
-    else if (inputs.envelopeBoundsValid === false) failureReason = "token_envelope_length_mismatch";
+    if (!signatureVerified) failureReason = "ed25519_signature_invalid";
+    else if (hasTrustedKey && !trustedIssuer) failureReason = "untrusted_signer_public_key";
+    else if (!envelopeValid) failureReason = "token_envelope_length_mismatch";
     else if (!originHeaderOk) failureReason = "origin_header_commitment_mismatch";
     else if (!vqGridOk) failureReason = "vq_grid_commitment_mismatch";
     else if (!section2MetadataOk) failureReason = "section2_metadata_hash_mismatch";
@@ -492,7 +518,8 @@ export async function verifySnarkAttestationStub(
     protocol: "ED25519-MERKLE-GF28-v3",
     valid: allValid,
     signatureVerified,
-    trustedKeyMatch,
+    trustedKeyMatch: trustedIssuer,
+    attestationStatus,
     sectionsVerified: {
       originHeader: originHeaderOk,
       vqGrid: vqGridOk,

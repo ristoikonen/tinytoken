@@ -12,6 +12,7 @@ export const TOKEN_VERSION = 2;
 export const MAX_TOKEN_BYTES = 25 * 1024; // 25,600 bytes
 export const SECTION1_HEADER_BYTES = 704;
 export const SECTION2_MAX_META_BYTES = 4096;
+export const SECTION2_MAX_UNCOMPRESSED_META_BYTES = SECTION2_MAX_META_BYTES * 8; // 32,768 bytes (32 KB)
 export const SECTION3_MAX_PREVIEW_BYTES = 20800; // 25,600 - 704 - 4,096
 
 export const SNARK_STUB_OFFSET = 128;
@@ -70,11 +71,19 @@ export interface TokenMetadataPayload {
   };
 }
 
+export interface AttestationStatus {
+  signatureValid: boolean;
+  trustedIssuer: boolean;
+  merkleValid: boolean;
+  envelopeValid: boolean;
+}
+
 export interface SnarkAttestationInfo {
   protocol: "ED25519-MERKLE-GF28-v3";
   valid: boolean;
   signatureVerified: boolean;
   trustedKeyMatch: boolean;
+  attestationStatus?: AttestationStatus;
   sectionsVerified: {
     originHeader: boolean;
     vqGrid: boolean;
@@ -118,6 +127,7 @@ export interface DecodedToken {
   vqIndices: Uint8Array; // 256 bytes (16x16 codebook indices)
   rsParityValid: boolean;
   rsCorrectedErrors: number;
+  envelopeBoundsValid: boolean;
   metadata: TokenMetadataPayload;
   previewBytes: Uint8Array;
   byteMap: {
