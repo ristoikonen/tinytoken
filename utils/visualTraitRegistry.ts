@@ -76,10 +76,7 @@ export class VisualTraitRegistry {
     objectRegistryFilePath?: string,
     learningEvidenceFilePath?: string,
   ) {
-    const isVercel =
-      (Bun.env.VERCEL === "1" || Bun.env.VERCEL === "true" || Bun.env.APP_VERCEL === "true") &&
-      Bun.env.VERCEL !== "false";
-    const dataDir = Bun.env.DATA_DIR ?? (isVercel ? "/tmp/data" : "./data");
+    const dataDir = Bun.env.DATA_DIR ?? "/tmp/data";
 
     this.isDefaultPaths = !filePath && !objectRegistryFilePath && !learningEvidenceFilePath;
     this.registryFilePath = filePath ?? `${dataDir}/manual_token_registry.json`;
@@ -135,7 +132,7 @@ export class VisualTraitRegistry {
               this.registry.set(id, { ...val, isManuallyVerified: val.isManuallyVerified ?? true });
             }
           }
-        } catch {}
+        } catch { }
       } else {
         for (const [key, val] of Object.entries(VisualTraitRegistry.DEFAULT_CURATED_MAP)) {
           this.registry.set(Number(key), val);
@@ -145,7 +142,7 @@ export class VisualTraitRegistry {
             this.registryFilePath,
             JSON.stringify(VisualTraitRegistry.DEFAULT_CURATED_MAP, null, 2),
           );
-        } catch {}
+        } catch { }
       }
 
       // 2. Migrate legacy object_registry.json if it contains token-dependent records
@@ -188,7 +185,7 @@ export class VisualTraitRegistry {
       if (await evidenceFile.exists()) {
         try {
           existingEvidence = (await evidenceFile.json()) as LearningEvidenceRecord[];
-        } catch {}
+        } catch { }
       }
 
       const recipeMap = new Map<string, AbstractObjectRecipe>();
@@ -356,7 +353,7 @@ export class VisualTraitRegistry {
         const raw = (await objFile.json()) as any[];
         recipes = raw.filter((r) => r && typeof r.recipeId === "string");
       }
-    } catch {}
+    } catch { }
 
     let recipeIndex = recipes.findIndex((r) => r.recipeId === recipeId);
     let recipe: AbstractObjectRecipe;
@@ -431,7 +428,7 @@ export class VisualTraitRegistry {
       if (await eviFile.exists()) {
         try {
           existingEvidence = (await eviFile.json()) as LearningEvidenceRecord[];
-        } catch {}
+        } catch { }
       }
       existingEvidence.push(evidence);
       await Bun.write(this.learningEvidenceFilePath, JSON.stringify(existingEvidence, null, 2));
@@ -469,7 +466,7 @@ export class VisualTraitRegistry {
         const raw = (await file.json()) as any[];
         return raw.filter((r) => r && typeof r.recipeId === "string");
       }
-    } catch {}
+    } catch { }
     return [];
   }
 
@@ -488,7 +485,7 @@ export class VisualTraitRegistry {
       if (await file.exists()) {
         return (await file.json()) as LearningEvidenceRecord[];
       }
-    } catch {}
+    } catch { }
     return [];
   }
 
@@ -522,7 +519,7 @@ export class VisualTraitRegistry {
         const raw = (await objFile.json()) as any[];
         return raw.filter((a) => a && typeof a.tokenId === "string");
       }
-    } catch {}
+    } catch { }
     return [];
   }
 

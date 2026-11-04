@@ -14,10 +14,8 @@ import { VqInvertedIndexEngine } from "./utils/vqInvertedIndex";
 import { CompressedTokenSearchEngine } from "./utils/zipEngine";
 
 // Configuration
-const isVercel =
-  (Bun.env.VERCEL === "1" || Bun.env.VERCEL === "true" || Bun.env.APP_VERCEL === "true") &&
-  Bun.env.VERCEL !== "false";
-const DATA_DIR = Bun.env.DATA_DIR ?? (isVercel ? "/tmp/data" : "./data");
+const isVercel = Bun.env.APP_VERCEL;
+const DATA_DIR = Bun.env.DATA_DIR ?? "/tmp/data";
 const ZIP_ARCHIVE_PATH = Bun.env.ZIP_ARCHIVE_PATH ?? `${DATA_DIR}/tokens.zip`;
 const IMAGE_DIR =
   Bun.env.IMAGE_DIR ??
@@ -31,8 +29,8 @@ const rawPort = Bun.env.PORT ?? Bun.env.APP_PORT ?? process.env.PORT;
 const port = isTest
   ? 0
   : isVercel
-  ? (rawPort ? Number(rawPort) : undefined)
-  : Number(rawPort ?? 3000);
+    ? (rawPort ? Number(rawPort) : undefined)
+    : Number(rawPort ?? 3000);
 const host = isVercel ? (Bun.env.APP_HOST ?? "0.0.0.0") : (Bun.env.APP_HOST ?? "localhost");
 
 // Cached HTML template
