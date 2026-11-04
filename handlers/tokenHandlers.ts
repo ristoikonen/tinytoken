@@ -53,7 +53,7 @@ export class TokenApiHandlers {
 
     return jsonResponse({
       success: true,
-      engine: "TinyToken GF(2^8) + DINOv2-384B + VQ-16x16 + SHARK/SNARK v2",
+      engine: "TinyToken GF(2^8) + DINOv3-384B + VQ-16x16 + SHARK/SNARK v2",
       tokenCount: entries.length,
       snarkVerifiedCount,
       archivePath: this.engine.getZipFilePath(),

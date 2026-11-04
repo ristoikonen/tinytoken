@@ -1,10 +1,10 @@
 /**
- * Vector Quantization (VQ) 16x16 Latent Codebook & Hybrid DINOv2 + ADC Similarity Engine
+ * Vector Quantization (VQ) 16x16 Latent Codebook & Hybrid DINOv3 + ADC Similarity Engine
  *
  * Maps any image or document page into a 256-byte (16x16) discrete codebook grid over GF(2^8) (0..255).
  * Dual Purpose:
  * 1. Neural Micro-Thumbnail: Reconstructs a true 16x16 RGB color grid in < 0.01 ms with zero disk I/O.
- * 2. Hybrid DINOv2 + Asymmetric Distance Computation (ADC): Combines 384-byte DINOv2 ViT-14 semantic
+ * 2. Hybrid DINOv3 + Asymmetric Distance Computation (ADC): Combines 384-byte DINOv3 ViT-S/16 semantic
  *    embeddings with the 256x256 VQ centroid distance LUT to rank tokens in microseconds.
  */
 
@@ -70,65 +70,92 @@ const G_LEVELS = [10, 48, 88, 128, 168, 208, 248] as const;
 const B_LEVELS = [16, 64, 112, 160, 208, 250] as const;
 
 /**
- * Quantizes an (R, G, B) triplet to its nearest GF(2^8) codebook centroid index (0..255)
- * using the perceptual luminance-weighted Euclidean distance metric:
+ * Precomputed 32,768-entry (32x32x32 = 15-bit RGB) Quantization Lookup Table (LUT).
+ * Precomputed during module initialization: maps every 5-bit (R, G, B) cube directly
+ * to the exact nearest centroid in VQ_CODEBOOK under the weighted perceptual metric:
  *   dist = 2*(dr^2) + 4*(dg^2) + 1*(db^2)
  *
- * Separable axis search across the 252 orthogonal lattice centroids followed by checking
- * the 4 high-contrast greyscale anchors (252..255) mathematically guarantees finding the
- * exact nearest centroid across all 256 codebook entries in O(1) time without 5-bit LUT rounding errors.
+ * Accounts for 4x green weighting, non-uniform channel spacing, and makes all four
+ * greyscale anchors (#252 black, #253 charcoal, #254 silver, #255 white) reachable.
+ */
+export const RGB_TO_VQ_LUT: Uint8Array = (() => {
+  const lut = new Uint8Array(32768);
+  for (let r5 = 0; r5 < 32; r5++) {
+    const r = (r5 << 3) + 4;
+    let bestRi = 0;
+    let minR = Math.abs(r - R_LEVELS[0]!);
+    for (let ri = 1; ri < 6; ri++) {
+      const d = Math.abs(r - R_LEVELS[ri]!);
+      if (d < minR) {
+        minR = d;
+        bestRi = ri;
+      }
+    }
+
+    for (let g5 = 0; g5 < 32; g5++) {
+      const g = (g5 << 3) + 4;
+      let bestGi = 0;
+      let minG = Math.abs(g - G_LEVELS[0]!);
+      for (let gi = 1; gi < 7; gi++) {
+        const d = Math.abs(g - G_LEVELS[gi]!);
+        if (d < minG) {
+          minG = d;
+          bestGi = gi;
+        }
+      }
+
+      for (let b5 = 0; b5 < 32; b5++) {
+        const b = (b5 << 3) + 4;
+        let bestBi = 0;
+        let minB = Math.abs(b - B_LEVELS[0]!);
+        for (let bi = 1; bi < 6; bi++) {
+          const d = Math.abs(b - B_LEVELS[bi]!);
+          if (d < minB) {
+            minB = d;
+            bestBi = bi;
+          }
+        }
+
+        let bestIdx = bestRi * 42 + bestGi * 6 + bestBi;
+        const latticeC = VQ_CODEBOOK[bestIdx]!;
+        let bestDist =
+          2 * (r - latticeC.r) ** 2 +
+          4 * (g - latticeC.g) ** 2 +
+          1 * (b - latticeC.b) ** 2;
+
+        // Check 4 contrast greyscale anchors (252..255)
+        for (let a = 252; a <= 255; a++) {
+          const c = VQ_CODEBOOK[a]!;
+          const dist =
+            2 * (r - c.r) ** 2 +
+            4 * (g - c.g) ** 2 +
+            1 * (b - c.b) ** 2;
+          if (dist < bestDist) {
+            bestDist = dist;
+            bestIdx = a;
+          }
+        }
+
+        lut[(r5 << 10) | (g5 << 5) | b5] = bestIdx;
+      }
+    }
+  }
+  return lut;
+})();
+
+/**
+ * Quantizes an (R, G, B) triplet to its nearest GF(2^8) codebook centroid index (0..255)
+ * using the precomputed 32 KB RGB_TO_VQ_LUT in O(1) single-memory-lookup time.
  */
 export function quantizeRgbToCentroid(r: number, g: number, b: number): number {
-  // Find closest R, G, B in lattice levels (separable across orthogonal axes)
-  let ri = 0;
-  let minR = Math.abs(r - R_LEVELS[0]);
-  for (let i = 1; i < 6; i++) {
-    const d = Math.abs(r - R_LEVELS[i]!);
-    if (d < minR) {
-      minR = d;
-      ri = i;
-    }
-  }
-  let gi = 0;
-  let minG = Math.abs(g - G_LEVELS[0]);
-  for (let i = 1; i < 7; i++) {
-    const d = Math.abs(g - G_LEVELS[i]!);
-    if (d < minG) {
-      minG = d;
-      gi = i;
-    }
-  }
-  let bi = 0;
-  let minB = Math.abs(b - B_LEVELS[0]);
-  for (let i = 1; i < 6; i++) {
-    const d = Math.abs(b - B_LEVELS[i]!);
-    if (d < minB) {
-      minB = d;
-      bi = i;
-    }
-  }
-
-  let bestIdx = ri * 42 + gi * 6 + bi;
-  const bestC = VQ_CODEBOOK[bestIdx]!;
-  const dr = r - bestC.r;
-  const dg = g - bestC.g;
-  const db = b - bestC.b;
-  let bestDist = 2 * dr * dr + 4 * dg * dg + db * db;
-
-  // Check 4 contrast greyscale anchors (252..255)
-  for (let i = 252; i <= 255; i++) {
-    const c = VQ_CODEBOOK[i]!;
-    const adr = r - c.r;
-    const adg = g - c.g;
-    const adb = b - c.b;
-    const adist = 2 * adr * adr + 4 * adg * adg + adb * adb;
-    if (adist < bestDist) {
-      bestDist = adist;
-      bestIdx = i;
-    }
-  }
-
-  return bestIdx;
+  const rClamped = r < 0 ? 0 : r > 255 ? 255 : r;
+  const gClamped = g < 0 ? 0 : g > 255 ? 255 : g;
+  const bClamped = b < 0 ? 0 : b > 255 ? 255 : b;
+  const index =
+    ((rClamped >>> 3) << 10) |
+    ((gClamped >>> 3) << 5) |
+    (bClamped >>> 3);
+  return RGB_TO_VQ_LUT[index]!;
 }
 
 /**
@@ -256,7 +283,7 @@ export function adcDistanceToSimilarityPct(adcDist: number): number {
 }
 
 /**
- * Hybrid DINOv2 (384B ViT-S/14 Int8) + 16x16 VQ Perceptual Color-Layout Similarity.
+ * Hybrid DINOv3 (384B ViT-S/16 Int8) + 16x16 VQ Perceptual Color-Layout Similarity.
  * When both models are known and compatible, combines 90% semantic DINO cosine similarity with 10% VQ spatial palette similarity.
  * When DINO embeddings are absent or models are not verified compatible, returns VQ-only similarity and dinoSimilarityPct: null.
  */

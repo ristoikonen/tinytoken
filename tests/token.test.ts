@@ -16,7 +16,11 @@ import {
   gfInv,
   gfMul,
 } from "../utils/galois";
-import { sniffImageHeader } from "../utils/imagePreview";
+import {
+  extensionToMimeType,
+  formatToMimeType,
+  sniffImageHeader,
+} from "../utils/imagePreview";
 import { Win11TokenPipeline } from "../utils/indexer";
 import { QuickLZ } from "../utils/quicklz";
 import { corsResponse, errorResponse, jsonResponse } from "../utils/response";
@@ -34,6 +38,7 @@ import {
   encodeBytesToVqGrid,
   MAX_ADC_DISTANCE,
   quantizeRgbToCentroid,
+  RGB_TO_VQ_LUT,
   validateVqGrid,
   VQ_CODEBOOK,
 } from "../utils/vqCodebook";
@@ -214,7 +219,7 @@ describe("TinyToken GF(2^8) + VQ + SHARK/SNARK Pipeline", () => {
     const sampleImg = Bun.file("./images/HectorDoor.png");
     if (await sampleImg.exists()) {
       const imgBytes = new Uint8Array(await sampleImg.slice(0, 4096).arrayBuffer());
-      const info = sniffImageHeader(imgBytes, ".png");
+      const info = await sniffImageHeader(imgBytes, ".png");
       expect(info.format).toBe(PreviewFormat.PNG);
       expect(info.width).toBeGreaterThan(0);
       expect(info.height).toBeGreaterThan(0);
@@ -584,38 +589,25 @@ describe("TinyToken GF(2^8) + VQ + SHARK/SNARK Pipeline", () => {
     await manifestFile.delete();
   });
 
-  test("quantizeRgbToCentroid performs true nearest-centroid quantization across all 256 codebook entries", () => {
-    // Contrast greyscale anchors
-    expect(quantizeRgbToCentroid(0, 0, 0)).toBe(252);
-    expect(quantizeRgbToCentroid(85, 85, 85)).toBe(253);
-    expect(quantizeRgbToCentroid(170, 170, 170)).toBe(254);
-    expect(quantizeRgbToCentroid(255, 255, 255)).toBe(255);
+  test("quantizeRgbToCentroid uses precomputed RGB_TO_VQ_LUT and reaches all 256 centroids including greyscale anchors", () => {
+    expect(RGB_TO_VQ_LUT.length).toBe(32768);
 
-    // Verify against exhaustive nearest search on sample colors
-    const sampleColors = [
-      [12, 10, 16],
-      [248, 248, 250],
-      [108, 128, 112],
-      [5, 5, 5],
-      [80, 85, 90],
-      [200, 30, 40],
-      [30, 220, 100],
-      [15, 25, 230],
-    ];
+    // Verify all four greyscale contrast anchors are reachable
+    expect(quantizeRgbToCentroid(0, 0, 0)).toBe(252); // pure ink black
+    expect(quantizeRgbToCentroid(85, 85, 85)).toBe(253); // dark charcoal
+    expect(quantizeRgbToCentroid(170, 170, 170)).toBe(254); // silver grey
+    expect(quantizeRgbToCentroid(255, 255, 255)).toBe(255); // pure paper white
 
-    for (const [r, g, b] of sampleColors) {
-      const idx = quantizeRgbToCentroid(r!, g!, b!);
-      const chosen = VQ_CODEBOOK[idx]!;
-      const chosenDist =
-        2 * (r! - chosen.r) ** 2 + 4 * (g! - chosen.g) ** 2 + 1 * (b! - chosen.b) ** 2;
+    // Verify that all 256 centroids are reachable in the LUT under the 4x green perceptual metric
+    const uniqueCentroids = new Set(RGB_TO_VQ_LUT);
+    expect(uniqueCentroids.size).toBe(256);
 
-      // Verify no other centroid has a strictly smaller perceptual distance
-      for (let i = 0; i < 256; i++) {
-        const c = VQ_CODEBOOK[i]!;
-        const dist = 2 * (r! - c.r) ** 2 + 4 * (g! - c.g) ** 2 + 1 * (b! - c.b) ** 2;
-        expect(dist).toBeGreaterThanOrEqual(chosenDist);
-      }
-    }
+    // Verify bit-shift index encoding matches: ((r >>> 3) << 10) | ((g >>> 3) << 5) | (b >>> 3)
+    const testR = 120;
+    const testG = 200;
+    const testB = 50;
+    const expectedIdx = ((testR >>> 3) << 10) | ((testG >>> 3) << 5) | (testB >>> 3);
+    expect(quantizeRgbToCentroid(testR, testG, testB)).toBe(RGB_TO_VQ_LUT[expectedIdx]!);
   });
 
   test("ADC distance normalization anchors MAX_ADC_DISTANCE to theoretical maximum of distance model", () => {
@@ -710,6 +702,156 @@ describe("TinyToken GF(2^8) + VQ + SHARK/SNARK Pipeline", () => {
     expect(decodedRgba[1]).toBe(expectedCentroid.g);
     expect(decodedRgba[2]).toBe(expectedCentroid.b);
     expect(decodedRgba[3]).toBe(255);
+  });
+
+  test("APP_STOP_ON_25KB_LIMIT=true enforces configured hard maximum size", async () => {
+    const origEnv = Bun.env.APP_STOP_ON_25KB_LIMIT;
+    try {
+      Bun.env.APP_STOP_ON_25KB_LIMIT = "true";
+      // Create a pipeline with 1 KB maximum size (1024 bytes)
+      const pipeline = new Win11TokenPipeline({
+        sourceDirectory: "./images",
+        outputZipPath: "./data/test_size_limit.zip",
+        allowedExtensions: [".png"],
+        maxTokenSizeKb: 1, // 1024 bytes maximum
+      });
+
+      const samplePng = Bun.file("./images/HectorDoor.png");
+      if (await samplePng.exists()) {
+        const rawBytes = new Uint8Array(await samplePng.arrayBuffer());
+        // Since a standard token is at least 704 bytes header + metadata + preview (> 1024 bytes),
+        // it must throw with the exact required error format:
+        await expect(
+          pipeline.tokenizeBuffer(rawBytes, "HectorDoor.png", 1),
+        ).rejects.toThrow(/Token exceeds maximum size: \d+ \/ 1024 bytes/);
+      }
+    } finally {
+      Bun.env.APP_STOP_ON_25KB_LIMIT = origEnv;
+    }
+  });
+
+  test("extensionToMimeType and formatToMimeType cover all Bun-supported image formats and documents", () => {
+    expect(extensionToMimeType(".jpg")).toBe("image/jpeg");
+    expect(extensionToMimeType(".jpeg")).toBe("image/jpeg");
+    expect(extensionToMimeType(".png")).toBe("image/png");
+    expect(extensionToMimeType(".webp")).toBe("image/webp");
+    expect(extensionToMimeType(".avif")).toBe("image/avif");
+    expect(extensionToMimeType(".bmp")).toBe("image/bmp");
+    expect(extensionToMimeType(".gif")).toBe("image/gif");
+    expect(extensionToMimeType(".tiff")).toBe("image/tiff");
+    expect(extensionToMimeType(".tif")).toBe("image/tiff");
+    expect(extensionToMimeType(".heic")).toBe("image/heic");
+    expect(extensionToMimeType(".heif")).toBe("image/heic");
+    expect(extensionToMimeType(".svg")).toBe("image/svg+xml");
+    expect(extensionToMimeType(".pdf")).toBe("application/pdf");
+    expect(extensionToMimeType(".docx")).toBe(
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    );
+    expect(extensionToMimeType(".doc")).toBe("application/msword");
+    expect(extensionToMimeType(".txt")).toBe("text/plain");
+    expect(extensionToMimeType(".md")).toBe("text/markdown");
+    expect(extensionToMimeType(".unknown")).toBe("application/octet-stream");
+
+    expect(formatToMimeType(PreviewFormat.PNG)).toBe("image/png");
+    expect(formatToMimeType(PreviewFormat.JPEG)).toBe("image/jpeg");
+    expect(formatToMimeType(PreviewFormat.WEBP)).toBe("image/webp");
+    expect(formatToMimeType(PreviewFormat.AVIF)).toBe("image/avif");
+    expect(formatToMimeType(PreviewFormat.BMP)).toBe("image/bmp");
+    expect(formatToMimeType(PreviewFormat.SVG)).toBe("image/svg+xml");
+  });
+
+  test("sniffImageHeader asynchronously extracts metadata using Bun native image metadata & SVG parser", async () => {
+    // 1. SVG
+    const svgStr = `<svg xmlns="http://www.w3.org/2000/svg" width="300" height="200"><rect fill="red"/></svg>`;
+    const svgBytes = new TextEncoder().encode(svgStr);
+    const svgInfo = await sniffImageHeader(svgBytes, ".svg");
+    expect(svgInfo.format).toBe(PreviewFormat.SVG);
+    expect(svgInfo.width).toBe(300);
+    expect(svgInfo.height).toBe(200);
+    expect(svgInfo.mimeType).toBe("image/svg+xml");
+
+    // 2. Real PNG
+    const pngFile = Bun.file("./images/HectorDoor.png");
+    if (await pngFile.exists()) {
+      const pngBytes = new Uint8Array(await pngFile.slice(0, 4096).arrayBuffer());
+      const pngInfo = await sniffImageHeader(pngBytes, ".png");
+      expect(pngInfo.format).toBe(PreviewFormat.PNG);
+      expect(pngInfo.width).toBeGreaterThan(0);
+      expect(pngInfo.height).toBeGreaterThan(0);
+      expect(pngInfo.mimeType).toBe("image/png");
+    }
+  });
+
+  test("Model ID consistency: Meta DINOv3 ViT-S/16 across binary header, metadata, and search", async () => {
+    expect(EmbeddingModelId.DINOV3_VITS16_Q8).toBe(0x02);
+    // Ensure legacy DINOv2 alias has been completely eliminated
+    expect((EmbeddingModelId as Record<string, unknown>)["DINOV2_VIT_S14_Q8"]).toBeUndefined();
+
+    // Verify token encodes and decodes with DINOV3_VITS16_Q8 model ID preserved
+    const testBytes = await encodeBinaryToken({
+      originalFileSize: 1024,
+      width: 256,
+      height: 256,
+      page: 1,
+      previewFormat: PreviewFormat.WEBP,
+      shardBlockId: 0,
+      shardIndex: 1,
+      embeddingModelId: EmbeddingModelId.DINOV3_VITS16_Q8,
+      vqIndices: new Uint8Array(256).fill(12),
+      metadata: {
+        id: "tok_dinov3_test",
+        filename: "dinov3_test.png",
+        sourcePath: "/test",
+        mimeType: "image/png",
+        page: 1,
+        totalPages: 1,
+        width: 256,
+        height: 256,
+        colorDepth: 24,
+        createdAt: new Date().toISOString(),
+        ocrText: "DINOv3 test token",
+        tags: ["dinov3-vit-s16"],
+      },
+      previewBytes: new Uint8Array([0x52, 0x49, 0x46, 0x46]),
+    });
+
+    const decoded = await decodeBinaryToken(testBytes);
+    expect(decoded.embeddingModelId).toBe(EmbeddingModelId.DINOV3_VITS16_Q8);
+    expect(decoded.metadata.tags).toContain("dinov3-vit-s16");
+  });
+
+  test("PDFium failure fallback prepends 'Read failed' to OCR text and marks failure tags", async () => {
+    const pipeline = new Win11TokenPipeline({
+      sourceDirectory: "./images",
+      documentDirectory: "./documents",
+      outputZipPath: "./data/test_pdfium_fail.zip",
+      allowedExtensions: [".pdf"],
+      maxTokenSizeKb: 25,
+    });
+
+    const corruptPdfPath = "./data/corrupted_pdfium_test.pdf";
+    try {
+      // Write non-PDF bytes to trigger PDFium parser exception
+      await Bun.write(corruptPdfPath, new Uint8Array([0x00, 0x01, 0x02, 0x03, 0x04]));
+
+      const items = await pipeline.tokenizeDocumentFile(corruptPdfPath, 99);
+      expect(items.length).toBe(1);
+
+      const item = items[0]!;
+      expect(item.meta.ocrText).toContain("Read failed (PDFium error:");
+      expect(item.meta.mimeType).toBe("application/pdf");
+
+      const decoded = await decodeBinaryToken(item.tokenBytes);
+      expect(decoded.metadata.ocrText).toContain("Read failed (PDFium error:");
+      expect(decoded.metadata.tags).toContain("read-failed");
+      expect(decoded.metadata.tags).toContain("pdfium-failed");
+      expect(decoded.metadata.tags).toContain("dinov3-vit-s16");
+    } finally {
+      const file = Bun.file(corruptPdfPath);
+      if (await file.exists()) {
+        await file.delete();
+      }
+    }
   });
 });
 

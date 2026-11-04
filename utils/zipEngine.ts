@@ -664,8 +664,8 @@ export class CompressedTokenSearchEngine {
   }
 
   /**
-   * Sub-millisecond Hybrid DINOv2 (384B ViT-14 Int8) + VQ (256B 16x16 ADC) visual similarity search.
-   * Ranks all indexed tokens by semantic DINOv2 cosine + perceptual VQ distance to `targetId`.
+   * Sub-millisecond Hybrid DINOv3 (384B ViT-S/16 Int8) + VQ (256B 16x16 ADC) visual similarity search.
+   * Ranks all indexed tokens by semantic DINOv3 cosine + perceptual VQ distance to `targetId`.
    */
   public searchSimilarVQ(
     targetIdOrVqGrid: string | Uint8Array,

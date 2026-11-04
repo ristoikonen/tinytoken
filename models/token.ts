@@ -30,7 +30,7 @@ export enum TokenFlags {
   QUICKLZ_COMPRESSED = 1 << 2, // 0x04: Section II metadata is QuickLZ compressed
   HOMOMORPHIC_MASKED = 1 << 3, // 0x08: GF(2^8) homomorphic redaction/watermark applied
   MULTI_PAGE_DOC = 1 << 4,     // 0x10: Token represents a page from a multi-page document
-  HAS_DINO_EMBEDDING = 1 << 5, // 0x20: 384-byte DINOv2 ViT-14 Int8 semantic embedding present
+  HAS_DINO_EMBEDDING = 1 << 5, // 0x20: 384-byte DINOv3 ViT-S/16 Int8 semantic embedding present
 }
 
 export enum PreviewFormat {
@@ -47,7 +47,6 @@ export enum EmbeddingModelId {
   NONE = 0x00,
   COLOR_HOG_FALLBACK = 0x01, // Synchronous 384B Color/HOG fallback descriptor
   DINOV3_VITS16_Q8 = 0x02,   // Real Meta DINOv3 ViT-S/16 ONNX (384-dim CLS int8)
-  DINOV2_VIT_S14_Q8 = 0x02,  // Legacy alias for DINOv2
 }
 
 export interface TokenMetadataPayload {
@@ -62,7 +61,7 @@ export interface TokenMetadataPayload {
   colorDepth: number;
   createdAt: string;
   ocrText: string;
-  dinoEmbeddingHex?: string; // 384-byte (768 hex chars) Int8 DINOv2 ViT-14 semantic embedding
+  dinoEmbeddingHex?: string; // 384-byte (768 hex chars) Int8 DINOv3 ViT-S/16 semantic embedding
   tags?: string[];
   environmentClass?: string;
   geoCoordinates?: {
@@ -156,7 +155,7 @@ export interface ZipTokenIndexEntry {
   merkleRootHex: string;
   snarkVerified: boolean;
   vqIndices: Uint8Array; // 256 bytes kept in RAM for 0ms neural preview & ADC search
-  dinoEmbedding?: Int8Array; // 384 bytes kept in RAM for sub-ms DINOv2 semantic similarity
+  dinoEmbedding?: Int8Array; // 384 bytes kept in RAM for sub-ms DINOv3 semantic similarity
   embeddingModelId?: EmbeddingModelId;
 }
 
@@ -178,8 +177,8 @@ export interface SearchHitDTO {
   merkleRootHex: string;
   snarkVerified: boolean;
   vqHex: string; // 512-char hex of 256-byte VQ 16x16 grid
-  similarityScore?: number; // 0..100% hybrid DINOv2 + VQ similarity score
-  dinoSimilarity?: number | null; // 0..100% DINOv2 ViT-14 semantic cosine score (null if un-evaluated or incompatible)
+  similarityScore?: number; // 0..100% hybrid DINOv3 + VQ similarity score
+  dinoSimilarity?: number | null; // 0..100% DINOv3 ViT-S/16 semantic cosine score (null if un-evaluated or incompatible)
   adcDistance?: number;
 }
 

@@ -7,13 +7,13 @@
  * - Renders actual PDF pages at 1.5x scale into raw RGBA bitmaps and pipes them through `sharp` to produce:
  *   1. Portrait-aspect 320px-wide WebP page previews (`~5 - 14 KB`, Section III)
  *   2. True 16x16 RGB VQ codebook grids (`256 B`, Section I)
- *   3. Real `Xenova/dinov2-small` 384-byte `[CLS]` visual embeddings (`Section II`)
+ *   3. Real Meta DINOv3 ViT-S/16 384-byte `[CLS]` visual embeddings (`Section II`)
  */
 
 import { PDFiumLibrary } from "@hyzyla/pdfium";
 import sharp from "sharp";
 import { EmbeddingModelId, PreviewFormat } from "../models/token";
-import { extractRealDinoV2Embedding } from "./dinoEmbedding";
+import { extractRealDinoEmbedding } from "./dinoEmbedding";
 import { encodeRgb16x16ToVqGrid } from "./vqCodebook";
 
 export interface RenderedPdfPageBundle {
@@ -61,7 +61,7 @@ export function selectPdfPageIndices(totalPages: number, maxPagesPerDoc = 3): nu
 }
 
 /**
- * Renders selected pages of a PDF using `@hyzyla/pdfium` + `sharp` + `Xenova/dinov2-small`.
+ * Renders selected pages of a PDF using `@hyzyla/pdfium` + `sharp` + `dinoEmbedding`.
  */
 export async function renderPdfPagesWithPdfium(
   pdfBytes: Uint8Array,
@@ -142,7 +142,7 @@ export async function renderPdfPagesWithPdfium(
         new Uint8Array(rgb16Buf.buffer, rgb16Buf.byteOffset, rgb16Buf.byteLength),
       );
 
-      const dinoRes = await extractRealDinoV2Embedding(
+      const dinoRes = await extractRealDinoEmbedding(
         new Uint8Array(
           dinoRgbResult.data.buffer,
           dinoRgbResult.data.byteOffset,

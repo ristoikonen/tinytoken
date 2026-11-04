@@ -1,19 +1,19 @@
 /**
- * Fast Binary Image Header Sniffer, WebP Raster Preview Generator & DINOv2/VQ Tensor Extractor
+ * Bun Native Image Header Metadata Sniffer, WebP Raster Preview Generator & DINOv3/VQ Tensor Extractor
  * (utils/imagePreview.ts)
  *
- * Uses `DataView` for sub-0.05ms header sniffing and `sharp` (libvips) to decode PNG, JPEG, WebP,
- * AVIF, BMP, SVG, and PDF cover layouts into:
- * 1. A lean 220x220 WebP raster preview (~2.5 - 9 KB) for Section III (leaving 15+ KB free in 25 KB token)
+ * Uses Bun's native `Blob.image().metadata()` for fast header extraction and `sharp` (libvips) to decode
+ * PNG, JPEG, WebP, AVIF, BMP, SVG, and PDF cover layouts into:
+ * 1. A lean 320x320 WebP raster preview (~2.5 - 9 KB) for Section III (leaving 15+ KB free in 25 KB token)
  * 2. A true decoded 16x16 RGB pixel grid (256 B VQ codebook indices) for Section I
- * 3. A 224x224 ViT-14 RGB tensor -> 384-byte Int8 DINOv2 semantic embedding for Section II
+ * 3. A 224x224 ViT-16 RGB tensor -> 384-byte Int8 DINOv3 semantic embedding for Section II
  */
 
 import sharp from "sharp";
 import { EmbeddingModelId, PreviewFormat } from "../models/token";
 import {
   extractColorHogFallbackFromRgb224,
-  extractRealDinoV2Embedding,
+  extractRealDinoEmbedding,
 } from "./dinoEmbedding";
 import {
   VQ_CODEBOOK,
@@ -128,136 +128,104 @@ export function parseSvgMetadataAndText(svgBytes: Uint8Array): {
 }
 
 /**
- * Inspects the first 4 KB of an image buffer to extract exact dimensions and format in < 0.05 ms.
+ * Maps a file extension to its standard MIME type.
+ * Covers all Bun metadata-recognizable image formats (JPEG, PNG, WebP, AVIF, BMP, GIF, TIFF, HEIC) plus SVG and documents.
  */
-export function sniffImageHeader(bytes: Uint8Array, extHint = ""): ImageHeaderInfo {
-  const len = bytes.length;
-  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-
-  // 1. PNG: 89 50 4E 47 0D 0A 1A 0A + IHDR at offset 16..24
-  if (
-    len >= 26 &&
-    bytes[0] === 0x89 &&
-    bytes[1] === 0x50 &&
-    bytes[2] === 0x4e &&
-    bytes[3] === 0x47
-  ) {
-    const width = view.getUint32(16, false);
-    const height = view.getUint32(20, false);
-    const bitDepth = bytes[24] ?? 8;
-    const colorType = bytes[25] ?? 2;
-    const channels = colorType === 6 ? 4 : colorType === 2 ? 3 : 1;
-    return {
-      width: width || 220,
-      height: height || 220,
-      colorDepth: bitDepth * channels,
-      format: PreviewFormat.PNG,
-      mimeType: "image/png",
-    };
+export function extensionToMimeType(ext: string): string {
+  const clean = ext.startsWith(".") ? ext.toLowerCase() : `.${ext.toLowerCase()}`;
+  switch (clean) {
+    case ".jpg":
+    case ".jpeg":
+      return "image/jpeg";
+    case ".png":
+      return "image/png";
+    case ".webp":
+      return "image/webp";
+    case ".avif":
+      return "image/avif";
+    case ".bmp":
+      return "image/bmp";
+    case ".gif":
+      return "image/gif";
+    case ".tiff":
+    case ".tif":
+      return "image/tiff";
+    case ".heic":
+    case ".heif":
+      return "image/heic";
+    case ".svg":
+      return "image/svg+xml";
+    case ".pdf":
+      return "application/pdf";
+    case ".docx":
+      return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+    case ".doc":
+      return "application/msword";
+    case ".txt":
+      return "text/plain";
+    case ".md":
+      return "text/markdown";
+    default:
+      return "application/octet-stream";
   }
+}
 
-  // 2. JPEG: FF D8 ... scan for SOF0 (FF C0), SOF1 (FF C1), SOF2 (FF C2)
-  if (len >= 4 && bytes[0] === 0xff && bytes[1] === 0xd8) {
-    let offset = 2;
-    while (offset + 9 < len) {
-      if (bytes[offset] !== 0xff) {
-        offset++;
-        continue;
-      }
-      const marker = bytes[offset + 1] ?? 0;
-      if (marker === 0xff) {
-        offset++;
-        continue;
-      }
-      if (marker === 0xc0 || marker === 0xc1 || marker === 0xc2 || marker === 0xc3) {
-        const precision = bytes[offset + 4] ?? 8;
-        const height = view.getUint16(offset + 5, false);
-        const width = view.getUint16(offset + 7, false);
-        const components = bytes[offset + 9] ?? 3;
-        return {
-          width: width || 220,
-          height: height || 220,
-          colorDepth: precision * components,
-          format: PreviewFormat.JPEG,
-          mimeType: "image/jpeg",
-        };
-      }
-      if (marker === 0xd9 || marker === 0xda) break;
-      const segLen = view.getUint16(offset + 2, false);
-      if (segLen < 2) break;
-      offset += 2 + segLen;
+/**
+ * Maps Bun's `image.metadata().format` string or a PreviewFormat enum to its standard MIME type.
+ */
+export function formatToMimeType(format: string | PreviewFormat): string {
+  if (typeof format === "number") {
+    switch (format) {
+      case PreviewFormat.PNG:
+        return "image/png";
+      case PreviewFormat.JPEG:
+        return "image/jpeg";
+      case PreviewFormat.WEBP:
+        return "image/webp";
+      case PreviewFormat.AVIF:
+        return "image/avif";
+      case PreviewFormat.BMP:
+        return "image/bmp";
+      case PreviewFormat.SVG:
+        return "image/svg+xml";
+      default:
+        return "application/octet-stream";
     }
-    return {
-      width: 1024,
-      height: 768,
-      colorDepth: 24,
-      format: PreviewFormat.JPEG,
-      mimeType: "image/jpeg",
-    };
   }
-
-  // 3. WebP: "RIFF" .... "WEBP"
-  if (
-    len >= 30 &&
-    bytes[0] === 0x52 &&
-    bytes[1] === 0x49 &&
-    bytes[2] === 0x46 &&
-    bytes[3] === 0x46 &&
-    bytes[8] === 0x57 &&
-    bytes[9] === 0x45 &&
-    bytes[10] === 0x42 &&
-    bytes[11] === 0x50
-  ) {
-    let width = 220;
-    let height = 220;
-    if (bytes[12] === 0x56 && bytes[13] === 0x50 && bytes[14] === 0x38 && bytes[15] === 0x20) {
-      width = view.getUint16(26, true) & 0x3fff;
-      height = view.getUint16(28, true) & 0x3fff;
-    } else if (bytes[12] === 0x56 && bytes[13] === 0x50 && bytes[14] === 0x38 && bytes[15] === 0x4c) {
-      const bits = view.getUint32(21, true);
-      width = (bits & 0x3fff) + 1;
-      height = ((bits >> 14) & 0x3fff) + 1;
-    }
-    return {
-      width: width || 220,
-      height: height || 220,
-      colorDepth: 32,
-      format: PreviewFormat.WEBP,
-      mimeType: "image/webp",
-    };
+  const f = String(format).toLowerCase().trim();
+  switch (f) {
+    case "jpg":
+    case "jpeg":
+      return "image/jpeg";
+    case "png":
+      return "image/png";
+    case "webp":
+      return "image/webp";
+    case "avif":
+      return "image/avif";
+    case "bmp":
+      return "image/bmp";
+    case "gif":
+      return "image/gif";
+    case "tiff":
+      return "image/tiff";
+    case "heic":
+      return "image/heic";
+    case "svg":
+      return "image/svg+xml";
+    default:
+      return "image/jpeg";
   }
+}
 
-  // 4. BMP: "BM"
-  if (len >= 26 && bytes[0] === 0x42 && bytes[1] === 0x4d) {
-    const width = Math.abs(view.getInt32(18, true));
-    const height = Math.abs(view.getInt32(22, true));
-    const bpp = view.getUint16(28, true) || 24;
-    return {
-      width: width || 220,
-      height: height || 220,
-      colorDepth: bpp,
-      format: PreviewFormat.BMP,
-      mimeType: "image/bmp",
-    };
-  }
-
-  // 5. AVIF / ISO BMFF ("ftypavif" or "ftypavis")
-  if (
-    len >= 16 &&
-    bytes[4] === 0x66 &&
-    bytes[5] === 0x74 &&
-    bytes[6] === 0x79 &&
-    bytes[7] === 0x70
-  ) {
-    return {
-      width: 220,
-      height: 220,
-      colorDepth: 24,
-      format: PreviewFormat.AVIF,
-      mimeType: "image/avif",
-    };
-  }
-
+/**
+ * Inspects image dimensions and format using Bun's native `Blob.image().metadata()`
+ * for all supported binary formats (JPEG, PNG, WebP, AVIF, BMP, GIF) and SVG XML parsing for SVG.
+ */
+export async function sniffImageHeader(
+  bytes: Uint8Array,
+  extHint = "",
+): Promise<ImageHeaderInfo> {
   const lowerExt = extHint.toLowerCase();
   if (lowerExt === ".svg") {
     const svgInfo = parseSvgMetadataAndText(bytes);
@@ -270,12 +238,37 @@ export function sniffImageHeader(bytes: Uint8Array, extHint = ""): ImageHeaderIn
     };
   }
 
+  try {
+    const blob = new Blob([bytes]);
+    if (typeof (blob as any).image === "function") {
+      const meta = await (blob as any).image().metadata();
+      if (meta && meta.width && meta.height) {
+        const fmtStr = String(meta.format || "").toLowerCase();
+        let format = PreviewFormat.JPEG;
+        if (fmtStr === "png") format = PreviewFormat.PNG;
+        else if (fmtStr === "webp") format = PreviewFormat.WEBP;
+        else if (fmtStr === "avif") format = PreviewFormat.AVIF;
+        else if (fmtStr === "bmp") format = PreviewFormat.BMP;
+
+        return {
+          width: meta.width,
+          height: meta.height,
+          colorDepth: 24,
+          format,
+          mimeType: formatToMimeType(fmtStr || extHint),
+        };
+      }
+    }
+  } catch {
+    // Edge-case fallback if Bun native image parser throws on corrupted payload
+  }
+
   return {
-    width: 1200,
-    height: 1600,
+    width: 1024,
+    height: 768,
     colorDepth: 24,
-    format: PreviewFormat.SVG,
-    mimeType: "image/svg+xml",
+    format: PreviewFormat.JPEG,
+    mimeType: extensionToMimeType(extHint),
   };
 }
 
@@ -283,7 +276,7 @@ export function sniffImageHeader(bytes: Uint8Array, extHint = ""): ImageHeaderIn
  * Decodes any image or SVG (or synthesized document cover) via `sharp` into:
  * - A lean 220x220 WebP preview (`PreviewFormat.WEBP`, typically 2.5 - 9 KB)
  * - A true decoded 16x16 RGB VQ codebook grid (`256 B`)
- * - A 224x224 RGB ViT-14 tensor -> 384-byte `Int8Array(384)` DINOv2 embedding
+ * - A 224x224 RGB ViT-16 tensor -> 384-byte `Int8Array(384)` DINOv3 embedding
  */
 export async function rasterizeAssetToWebpAndTensors(
   sourceBytes: Uint8Array,
@@ -299,7 +292,7 @@ export async function rasterizeAssetToWebpAndTensors(
 
   let svgExtractedText: string | undefined;
   let inputBuffer: Uint8Array = sourceBytes;
-  let fallbackHeader = sniffImageHeader(sourceBytes, lowerExt);
+  let fallbackHeader = await sniffImageHeader(sourceBytes, lowerExt);
 
   if (lowerExt === ".svg") {
     const svgMeta = parseSvgMetadataAndText(sourceBytes);
@@ -402,7 +395,7 @@ export async function rasterizeAssetToWebpAndTensors(
     const vqIndices = encodeRgb16x16ToVqGrid(
       new Uint8Array(rgb16Buf.buffer, rgb16Buf.byteOffset, rgb16Buf.byteLength),
     );
-    const dinoRes = await extractRealDinoV2Embedding(
+    const dinoRes = await extractRealDinoEmbedding(
       new Uint8Array(
         dinoRgbResult.data.buffer,
         dinoRgbResult.data.byteOffset,

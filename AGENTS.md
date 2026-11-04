@@ -1,6 +1,6 @@
 # AGENTS.md — TinyToken Architecture & AI Agent Directives
 
-> **System Overview**: TinyToken is an ultra-dense, self-attesting 25 KB binary token format ($GF(2^8)$ + VQ-VAE + DINOv2 + Ed25519) combined with a high-performance in-memory search engine and a **Persistent Knowledge Layer**.
+> **System Overview**: TinyToken is an ultra-dense, self-attesting 25 KB binary token format ($GF(2^8)$ + VQ-VAE + DINOv3 + Ed25519) combined with a high-performance in-memory search engine and a **Persistent Knowledge Layer**.
 > 
 > This document provides autonomous AI agents with the foundational invariants, architectural contracts, and operational guidelines required to read, modify, and extend TinyToken without corrupting state or conflating conceptual abstractions.
 
@@ -28,7 +28,7 @@ TinyToken organizes visual intelligence into **three hierarchical levels**:
 ```
                      ┌──────────────────────────────────────────────┐
   LEVEL 3            │             OBJECT INTELLIGENCE              │
-  Semantic Entities  │  Human Box + DINOv2 Embedding + VQ Layout   │
+  Semantic Entities  │  Human Box + DINOv3 Embedding + VQ Layout   │
                      │  "Charred Tree Trunk", "Red Kangaroo"        │
                      └──────────────────────▲───────────────────────┘
                                             │ composed of
@@ -47,7 +47,7 @@ TinyToken organizes visual intelligence into **three hierarchical levels**:
 
 * **Level 1 (Centroid Intelligence)**: A single quantized color cell in $GF(2^8)$ ($0\dots 255$). Represents a color primitive, luminance value, or ink anchor.
 * **Level 2 (Pattern Intelligence)**: A spatial arrangement, 2D co-occurrence, or local color histogram across a patch (e.g. $4\times 4$ cells). Represents a surface texture (bark, fur, water, asphalt).
-* **Level 3 (Object Intelligence)**: Multimodal fusion combining human bounding-box regions, local VQ spatial layouts, and global 384-byte **DINOv2 ViT-S/14 embeddings** (`[CLS]` token). Represents an entity (*"Charred Tree Trunk"*).
+* **Level 3 (Object Intelligence)**: Multimodal fusion combining human bounding-box regions, local VQ spatial layouts, and global 384-byte **DINOv3 ViT-S/16 embeddings** (`[CLS]` token). Represents an entity (*"Charred Tree Trunk"*).
 
 ---
 
@@ -76,7 +76,7 @@ TinyToken strictly decouples transient binary content (`data/tokens.zip`) from p
 * **CRITICAL INVARIANT FOR AGENTS**:
   > [!IMPORTANT]
   > **Never make an object definition dependent on a specific token ID!**
-  > An object recipe represents an abstract entity. It stores a normalized centroid distribution (`dominantCentroidDist`), spatial priors, and DINOv2 prototype vectors. It must **never** contain an `observedTokenId` or `tokenId` field.
+  > An object recipe represents an abstract entity. It stores a normalized centroid distribution (`dominantCentroidDist`), spatial priors, and DINOv3 prototype vectors. It must **never** contain an `observedTokenId` or `tokenId` field.
 
 ```typescript
 export interface AbstractObjectRecipe {
@@ -125,7 +125,7 @@ export interface LearningEvidenceRecord {
 TinyToken provides a dual-buffered, generation-based hot-swap mechanism managed by [`ArchiveManager`](file:///c:/Users/risto/source/repos/tinytoken/utils/archiveManager.ts) and [`LearningHandlers`](file:///c:/Users/risto/source/repos/tinytoken/handlers/learningHandlers.ts).
 
 ### Why It Exists
-Users can upload, replace, or swap `tokens.zip` at runtime with an entirely new dataset **without deleting or invalidating learned intelligence**. Because VQ centroids and DINOv2 embeddings operate in a universal vector space, all previously learned traits and recipes transfer **zero-shot** to the newly ingested image tokens.
+Users can upload, replace, or swap `tokens.zip` at runtime with an entirely new dataset **without deleting or invalidating learned intelligence**. Because VQ centroids and DINOv3 embeddings operate in a universal vector space, all previously learned traits and recipes transfer **zero-shot** to the newly ingested image tokens.
 
 ### Two-Phase Commit Lifecycle
 
@@ -208,7 +208,7 @@ When modifying or extending this codebase, agents must strictly follow these rul
 In a new environment, lighting or camera white balance will shift raw RGB values, but the underlying object semantics remain stable. You evaluate matches using a fused score combining Level 1/2 VQ Centroid 		​
 
 Histogram Intersection (VQ Overlap): Measures whether the same material/color pigments (e.g. umber charcoal #222, terracotta clay #97) are present in the new scene.
-DINOv2 Cosine Similarity: Invariant to illumination and viewpoint changes; ensures the candidate actually has the shape and semantic structure of the entity.
+DINOv3 Cosine Similarity: Invariant to illumination and viewpoint changes; ensures the candidate actually has the shape and semantic structure of the entity.
 Set 
 𝛼
 =
@@ -243,7 +243,7 @@ True Positives: Top-ranked hits that genuinely contain the entity
 ⟹
 ⟹ High generalization.
 False Positives: Top-ranked hits that contain similar colors but the wrong entity (e.g. reddish soil mistaken for kangaroo fur) 
-⟹ Centroid over-reliance; increase DINOv2 weight 𝛼
+⟹ Centroid over-reliance; increase DINOv3 weight 𝛼
 α or add spatial adjacency priors.
 
 #### Calculate Centroid Distribution Drift (Δ)

@@ -101,7 +101,6 @@ export async function extractRealDinoEmbedding(
 }
 
 export const extractRealDinoV3Embedding = extractRealDinoEmbedding;
-export const extractRealDinoV2Embedding = extractRealDinoEmbedding;
 
 /**
  * Synchronous 384-byte Color/HOG/Gram fallback descriptor (`EmbeddingModelId.COLOR_HOG_FALLBACK = 0x01`)

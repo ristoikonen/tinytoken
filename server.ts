@@ -144,10 +144,10 @@ async function initIndex(): Promise<void> {
     const totalMs = (performance.now() - t0).toFixed(2);
     const storageLabel = isZip ? "archive" : "*.token files in ./data";
     console.log(
-      `Indexed ${searchEngine.getCount()} tokens into RAM + bun:sqlite Inverted Index in ${totalMs} ms (${(searchEngine.archiveSizeBytes / 1024).toFixed(1)} KB, ${storageLabel})`,
+      `Indexed ${searchEngine.getCount()} tokens into RAM in ${totalMs} ms (${(searchEngine.archiveSizeBytes / 1024).toFixed(1)} KB, ${storageLabel})`,
     );
   } catch (err) {
-    console.error("Warning: Could not build/sync token index:", err);
+    console.error("Warning: Could not build index/sync tokens:", err);
   }
 }
 

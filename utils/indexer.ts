@@ -3,7 +3,7 @@
  *
  * Implements `Win11TokenPipeline` using:
  * - Bun native I/O (`Bun.Glob`, `Bun.file`, `Bun.write`, `Bun.inflateSync`)
- * - Real Meta/Xenova DINOv2 ViT-S/14 ONNX (`q8`) 384-byte `[CLS]` embeddings (`EmbeddingModelId.DINOV2_VIT_S14_Q8 = 0x02`)
+ * - Real Meta DINOv3 ViT-S/16 ONNX (`q8`) 384-byte `[CLS]` embeddings (`EmbeddingModelId.DINOV3_VITS16_Q8 = 0x02`)
  * - Google Chrome PDFium WASM (`@hyzyla/pdfium`) for real multi-page PDF rasterization & clean Unicode text extraction
  * - `sharp` for 320px `smartSubsample` WebP previews and true 16x16 RGB VQ codebook grids
  */
@@ -13,7 +13,10 @@ import {
   type ZipTokenIndexEntry,
 } from "../models/token";
 import { dinoEmbeddingToHex } from "./dinoEmbedding";
-import { rasterizeAssetToWebpAndTensors } from "./imagePreview";
+import {
+  extensionToMimeType,
+  rasterizeAssetToWebpAndTensors,
+} from "./imagePreview";
 import { renderPdfPagesWithPdfium } from "./pdfEngine";
 import { decodeBinaryToken, encodeBinaryToken } from "./tokenCodec";
 import { vqGridToHex } from "./vqCodebook";
@@ -78,6 +81,20 @@ export class Win11TokenPipeline {
 
   public getSourceDirectory(): string {
     return this.config.sourceDirectory;
+  }
+
+  /**
+   * Enforces the hard 25 KB token limit when APP_STOP_ON_25KB_LIMIT=true.
+   */
+  private enforceMaxTokenSize(tokenBytes: Uint8Array): void {
+    if (Bun.env.APP_STOP_ON_25KB_LIMIT === "true") {
+      const maxBytes = this.config.maxTokenSizeKb * 1024;
+      if (tokenBytes.byteLength > maxBytes) {
+        throw new Error(
+          `Token exceeds maximum size: ${tokenBytes.byteLength} / ${maxBytes} bytes`,
+        );
+      }
+    }
   }
 
   /**
@@ -216,7 +233,7 @@ export class Win11TokenPipeline {
 
     const createdAt = options?.createdAt || new Date().toISOString();
     const sourcePath = options?.sourcePath || `/api/image/${encodeURIComponent(filename)}`;
-    const mimeType = options?.mimeType || (ext === ".svg" ? "image/svg+xml" : "image/jpeg");
+    const mimeType = options?.mimeType || extensionToMimeType(ext);
     const svgTextNote = bundle.svgExtractedText ? ` | SVG Text: ${bundle.svgExtractedText}` : "";
     const extraOcr = options?.ocrNote ? ` | ${options.ocrNote}` : "";
     const ocrText =
@@ -252,6 +269,8 @@ export class Win11TokenPipeline {
       metadata,
       previewBytes: bundle.previewBytes,
     });
+
+    this.enforceMaxTokenSize(tokenBytes);
 
     const decoded = await decodeBinaryToken(tokenBytes);
     return {
@@ -302,7 +321,7 @@ export class Win11TokenPipeline {
     return this.tokenizeBuffer(rawBytes, filename, tokenCounter, {
       createdAt: new Date(bunFile.lastModified || Date.now()).toISOString(),
       sourcePath: `/api/image/${encodeURIComponent(filename)}`,
-      mimeType: bunFile.type || (ext === ".svg" ? "image/svg+xml" : "image/jpeg"),
+      mimeType: bunFile.type || extensionToMimeType(ext),
       tags: ["local-image", ext.replace(".", ""), "dinov3-vit-s16", "webp-preview", "verified"],
       ocrNote: `Source path: ${fullPath}`,
     });
@@ -329,6 +348,7 @@ export class Win11TokenPipeline {
     const createdAt = new Date(bunFile.lastModified || Date.now()).toISOString();
     const maxPagesPerDoc = this.config.maxPagesPerDocument ?? 3;
 
+    let pdfiumFailureReason: string | null = null;
     if (ext === ".pdf") {
       try {
         const pageBundles = await renderPdfPagesWithPdfium(rawBytes, maxPagesPerDoc);
@@ -365,7 +385,7 @@ export class Win11TokenPipeline {
               "pdf",
               `page-${pg.page}-of-${pg.totalPages}`,
               "pdfium-rendered",
-              "dinov2-vit-s14",
+              "dinov3-vit-s16",
               "verified",
             ],
           };
@@ -383,6 +403,8 @@ export class Win11TokenPipeline {
             metadata,
             previewBytes: pg.previewBytes,
           });
+
+          this.enforceMaxTokenSize(tokenBytes);
 
           const decoded = await decodeBinaryToken(tokenBytes);
           items.push({
@@ -413,6 +435,7 @@ export class Win11TokenPipeline {
         }
         return items;
       } catch (err) {
+        pdfiumFailureReason = err instanceof Error ? err.message : String(err);
         console.warn(`PDFium fallback for ${filename}:`, err);
       }
     }
@@ -436,15 +459,29 @@ export class Win11TokenPipeline {
     const dinoEmbeddingHex = dinoEmbeddingToHex(bundle.dinoEmbedding);
 
     const snippetPart = docInfo.extractedText ? ` | Excerpt: ${docInfo.extractedText}` : "";
+    const failurePrefix = pdfiumFailureReason
+      ? `Read failed (PDFium error: ${pdfiumFailureReason}) | `
+      : "";
     const ocrText =
-      `Document: ${filename} (${docInfo.totalPages} pages, ${(rawBytes.length / 1024).toFixed(1)} KB, ${docInfo.width}x${docInfo.height}px @ 150 DPI)` +
+      `${failurePrefix}Document: ${filename} (${docInfo.totalPages} pages, ${(rawBytes.length / 1024).toFixed(1)} KB, ${docInfo.width}x${docInfo.height}px @ 150 DPI)` +
       `${snippetPart} | Source path: ${fullPath}`;
+
+    const tags = [
+      "local-document",
+      ext.replace(".", ""),
+      `${docInfo.totalPages}-pages`,
+      "dinov3-vit-s16",
+      "verified",
+    ];
+    if (pdfiumFailureReason) {
+      tags.push("read-failed", "pdfium-failed");
+    }
 
     const metadata: TokenMetadataPayload = {
       id,
       filename,
       sourcePath: `/api/document/${encodeURIComponent(filename)}`,
-      mimeType: bunFile.type || (ext === ".pdf" ? "application/pdf" : "application/octet-stream"),
+      mimeType: bunFile.type || extensionToMimeType(ext),
       page: 1,
       totalPages: docInfo.totalPages,
       width: docInfo.width,
@@ -453,7 +490,7 @@ export class Win11TokenPipeline {
       createdAt,
       ocrText,
       dinoEmbeddingHex,
-      tags: ["local-document", ext.replace(".", ""), `${docInfo.totalPages}-pages`, "dinov2-vit-s14", "verified"],
+      tags,
     };
 
     const tokenBytes = await encodeBinaryToken({
@@ -469,6 +506,8 @@ export class Win11TokenPipeline {
       metadata,
       previewBytes: bundle.previewBytes,
     });
+
+    this.enforceMaxTokenSize(tokenBytes);
 
     const decoded = await decodeBinaryToken(tokenBytes);
     return [

@@ -116,7 +116,7 @@ export async function encodeBinaryToken(
 
   const resolvedEmbeddingModelId =
     input.embeddingModelId ??
-    (input.metadata.dinoEmbeddingHex ? EmbeddingModelId.DINOV2_VIT_S14_Q8 : EmbeddingModelId.NONE);
+    (input.metadata.dinoEmbeddingHex ? EmbeddingModelId.DINOV3_VITS16_Q8 : EmbeddingModelId.NONE);
 
   // Generate 256B Ed25519 + 4-Leaf SHA-256 Merkle Provenance Attestation & 32B Merkle Root
   const { snarkStub, merkleRoot } = await generateSnarkAttestationStub({
@@ -176,7 +176,7 @@ export async function encodeBinaryToken(
   view.setUint16(86, Math.floor(now / 0x100000000) & 0xffff, true);
   // 88: Homomorphic GF(2^8) state tag byte
   tokenBuffer[88] = 0x01;
-  // 89: Embedding Model ID byte (0x01 = Color/HOG fallback, 0x02 = DINOv2 ViT-S/14 ONNX q8)
+  // 89: Embedding Model ID byte (0x01 = Color/HOG fallback, 0x02 = DINOv3 ViT-S/16 ONNX q8)
   tokenBuffer[89] = resolvedEmbeddingModelId;
 
   // 128..383: 256-Byte Ed25519 + SHA-256 Merkle Provenance Attestation Block
