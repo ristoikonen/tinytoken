@@ -1,0 +1,17 @@
+{
+  "protocol": "ED25519-MERKLE-GF28-v3",
+  "keyIdHex": "37aa7cfddc67488f",
+  "publicKeyHex": "c18556f9ba03d0bec3da7a784074e098c1d13c83d69ecbe4cc2e75ebb70dcfa5",
+  "privateKeyJwk": {
+    "alg": "Ed25519",
+    "crv": "Ed25519",
+    "d": "MUvWV1_oLu_hGGjrECpwMIm-n4HwanPlJjwONTOm-_c",
+    "ext": true,
+    "key_ops": [
+      "sign"
+    ],
+    "kty": "OKP",
+    "x": "wYVW-boD0L7D2np4QHTgmMHRPIPWnsvkzC5167cNz6U"
+  },
+  "createdAt": "2026-10-30T12:02:34.533Z"
+}

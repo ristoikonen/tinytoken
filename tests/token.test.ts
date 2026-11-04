@@ -476,7 +476,11 @@ describe("TinyToken GF(2^8) + VQ + SHARK/SNARK Pipeline", () => {
 
   test("VisualTraitRegistry evaluates 16x16 grids and handles manual registrations in sub-0.1ms", async () => {
     const { VisualTraitRegistry } = await import("../utils/visualTraitRegistry");
-    const registry = new VisualTraitRegistry("./data/test_manual_token_registry.json");
+    const registry = new VisualTraitRegistry(
+      "./data/test_manual_token_registry.json",
+      "./data/test_object_registry.json",
+      "./data/test_learning_evidence.json",
+    );
 
     // Synthetic 16x16 grid with kangaroo (108), paper white (255), and ink (252)
     const grid = new Uint8Array(256).fill(255); // 250 white cells
@@ -521,10 +525,18 @@ describe("TinyToken GF(2^8) + VQ + SHARK/SNARK Pipeline", () => {
     const annotations = await registry.getObjectAnnotations();
     expect(annotations.some((a) => a.label === "Red Kangaroo Juvenile")).toBe(true);
 
-    // Clean up test file if created
-    const testFile = Bun.file("./data/test_manual_token_registry.json");
-    if (await testFile.exists()) {
-      await Bun.write("./data/test_manual_token_registry.json", "{}");
+    // Clean up test files if created
+    for (const p of [
+      "./data/test_manual_token_registry.json",
+      "./data/test_object_registry.json",
+      "./data/test_learning_evidence.json",
+    ]) {
+      try {
+        const file = Bun.file(p);
+        if (await file.exists()) {
+          await file.delete();
+        }
+      } catch {}
     }
   });
 

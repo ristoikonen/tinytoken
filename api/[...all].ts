@@ -1,1 +1,1 @@
-export { default, GET, POST, OPTIONS } from "./index";
+export { default, GET, POST, PUT, DELETE, OPTIONS } from "./index";

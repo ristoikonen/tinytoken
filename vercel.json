@@ -5,5 +5,15 @@
     "api/**/*.ts": {
       "includeFiles": "data/**"
     }
-  }
+  },
+  "rewrites": [
+    {
+      "source": "/api",
+      "destination": "/api/index"
+    },
+    {
+      "source": "/api/:match*",
+      "destination": "/api/[...all]"
+    }
+  ]
 }

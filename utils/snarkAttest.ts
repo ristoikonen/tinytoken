@@ -34,6 +34,14 @@ export type { AttestationStatus };
 
 const ED25519_ATTEST_MAGIC = [0x45, 0x44, 0x32, 0x35] as const; // "ED25"
 const DEFAULT_KEYPAIR_PATH = "./data/attestation_ed25519.json";
+
+function getDefaultKeypairPath(): string {
+  const isVercel =
+    (Bun.env.VERCEL === "1" || Bun.env.VERCEL === "true" || Bun.env.APP_VERCEL === "true") &&
+    Bun.env.VERCEL !== "false";
+  const dataDir = Bun.env.DATA_DIR ?? (isVercel ? "/tmp/data" : "./data");
+  return `${dataDir}/attestation_ed25519.json`;
+}
 const TRANSCRIPT_DOMAIN = new TextEncoder().encode("TinyToken-Ed25519-Attest-v3\0"); // 28 bytes
 
 export interface AuthorityAttestationKeys {
@@ -240,8 +248,15 @@ async function loadOrInitAuthorityKeys(): Promise<AuthorityAttestationKeys> {
     };
   }
 
-  // 3. Persisted local authority keypair in gitignored `./data/attestation_ed25519.json`
-  const keyFile = Bun.file(DEFAULT_KEYPAIR_PATH);
+  // 3. Persisted local authority keypair
+  const keyPath = getDefaultKeypairPath();
+  let keyFile = Bun.file(keyPath);
+  if (!(await keyFile.exists()) && keyPath !== DEFAULT_KEYPAIR_PATH) {
+    const fallback = Bun.file(DEFAULT_KEYPAIR_PATH);
+    if (await fallback.exists()) {
+      keyFile = fallback;
+    }
+  }
   if (await keyFile.exists()) {
     try {
       const saved = (await keyFile.json()) as PersistedKeyFile;
@@ -269,7 +284,7 @@ async function loadOrInitAuthorityKeys(): Promise<AuthorityAttestationKeys> {
     }
   }
 
-  // 4. First-run bootstrap: generate Ed25519 authority keypair and persist to `./data/`
+  // 4. First-run bootstrap: generate Ed25519 authority keypair and persist
   const generated = await generateAttestationKeyPair();
   const privateKeyJwk = await crypto.subtle.exportKey("jwk", generated.privateKey!);
   const record: PersistedKeyFile = {
@@ -279,7 +294,11 @@ async function loadOrInitAuthorityKeys(): Promise<AuthorityAttestationKeys> {
     privateKeyJwk,
     createdAt: new Date().toISOString(),
   };
-  await Bun.write(DEFAULT_KEYPAIR_PATH, JSON.stringify(record, null, 2));
+  try {
+    await Bun.write(keyPath, JSON.stringify(record, null, 2));
+  } catch (err) {
+    console.warn(`Could not persist generated keypair to ${keyPath}:`, err);
+  }
   importedPublicKeyCache.set(generated.publicKeyRaw.toHex(), generated.publicKey);
   return generated;
 }

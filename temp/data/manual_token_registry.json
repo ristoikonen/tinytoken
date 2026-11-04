@@ -1,0 +1,1112 @@
+{
+  "0": {
+    "name": "Possum",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      12,
+      10,
+      16
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-03T08:07:14.752Z"
+  },
+  "1": {
+    "name": "Risto",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      12,
+      10,
+      64
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T09:10:45.602Z"
+  },
+  "2": {
+    "name": "Evening Sky",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      12,
+      10,
+      112
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T06:44:24.741Z"
+  },
+  "6": {
+    "name": "Tree",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      12,
+      48,
+      16
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T09:00:40.838Z"
+  },
+  "7": {
+    "name": "Risto",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      12,
+      48,
+      64
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T09:10:45.602Z"
+  },
+  "8": {
+    "name": "Risto",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      12,
+      48,
+      112
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T06:54:21.556Z"
+  },
+  "12": {
+    "name": "Dense Foliage Greenery",
+    "category": "Texture",
+    "isManuallyVerified": true
+  },
+  "29": {
+    "name": "Clear Atmospheric Sky",
+    "category": "ColorSpace",
+    "isManuallyVerified": true
+  },
+  "42": {
+    "name": "Possum",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      60,
+      10,
+      16
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-03T08:07:14.752Z"
+  },
+  "43": {
+    "name": "Bogong Moth",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      60,
+      10,
+      64
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T08:59:30.797Z"
+  },
+  "48": {
+    "name": "Possum",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      60,
+      48,
+      16
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-03T08:07:14.752Z"
+  },
+  "49": {
+    "name": "Possum",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      60,
+      48,
+      64
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-03T08:07:14.752Z"
+  },
+  "50": {
+    "name": "Bogong Moth",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      60,
+      48,
+      112
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T08:59:19.069Z"
+  },
+  "51": {
+    "name": "Evening Sky",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      60,
+      48,
+      160
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T06:44:24.741Z"
+  },
+  "54": {
+    "name": "Hector",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      60,
+      88,
+      16
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T09:10:28.746Z"
+  },
+  "55": {
+    "name": "Hector",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      60,
+      88,
+      64
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T09:10:20.194Z"
+  },
+  "56": {
+    "name": "Risto",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      60,
+      88,
+      112
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T09:10:45.602Z"
+  },
+  "57": {
+    "name": "Risto",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      60,
+      88,
+      160
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T06:54:21.556Z"
+  },
+  "61": {
+    "name": "Eucalyptus Canopy Texture",
+    "category": "Texture",
+    "isManuallyVerified": true
+  },
+  "63": {
+    "name": "Ocean",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      60,
+      128,
+      160
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T06:53:04.027Z"
+  },
+  "77": {
+    "name": "High Horizon Cyan Envelope",
+    "category": "ColorSpace",
+    "isManuallyVerified": true
+  },
+  "84": {
+    "name": "Christine",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      108,
+      10,
+      16
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T06:42:46.045Z"
+  },
+  "90": {
+    "name": "Hector",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      108,
+      48,
+      16
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T21:48:11.120Z"
+  },
+  "91": {
+    "name": "Hector",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      108,
+      48,
+      64
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T21:48:11.120Z"
+  },
+  "92": {
+    "name": "Bogong Moth",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      108,
+      48,
+      112
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T08:59:19.069Z"
+  },
+  "96": {
+    "name": "Grass Field",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      108,
+      88,
+      16
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T09:00:56.262Z"
+  },
+  "97": {
+    "name": "Possum",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      108,
+      88,
+      64
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-03T08:07:14.752Z"
+  },
+  "98": {
+    "name": "Possum",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      108,
+      88,
+      112
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-03T08:07:14.752Z"
+  },
+  "99": {
+    "name": "Risto",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      108,
+      88,
+      160
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T09:10:45.602Z"
+  },
+  "103": {
+    "name": "Grass Field",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      108,
+      128,
+      64
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T09:00:56.262Z"
+  },
+  "104": {
+    "name": "Hector",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      108,
+      128,
+      112
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T09:10:20.194Z"
+  },
+  "105": {
+    "name": "Risto",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      108,
+      128,
+      160
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T09:10:45.602Z"
+  },
+  "106": {
+    "name": "Clear sky",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      108,
+      128,
+      208
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T06:36:07.457Z"
+  },
+  "107": {
+    "name": "Sky with few clouds",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      108,
+      128,
+      250
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T06:34:58.976Z"
+  },
+  "108": {
+    "name": "Familiar Red Kangaroo Silhouette",
+    "category": "Silhouette",
+    "isManuallyVerified": true
+  },
+  "110": {
+    "name": "Eucaluptys leaves",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      108,
+      168,
+      112
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T06:55:47.164Z"
+  },
+  "111": {
+    "name": "Ocean",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      108,
+      168,
+      160
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T06:52:17.850Z"
+  },
+  "112": {
+    "name": "Risto",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      108,
+      168,
+      208
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T09:10:45.602Z"
+  },
+  "113": {
+    "name": "Risto",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      108,
+      168,
+      250
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T09:10:45.602Z"
+  },
+  "126": {
+    "name": "Christine",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      156,
+      10,
+      16
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T06:42:46.045Z"
+  },
+  "132": {
+    "name": "Christine",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      156,
+      48,
+      16
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T06:42:46.045Z"
+  },
+  "133": {
+    "name": "Hector",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      156,
+      48,
+      64
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T21:48:11.120Z"
+  },
+  "138": {
+    "name": "Hector",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      156,
+      88,
+      16
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T21:48:11.120Z"
+  },
+  "139": {
+    "name": "Hector",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      156,
+      88,
+      64
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T21:48:11.120Z"
+  },
+  "140": {
+    "name": "Hector",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      156,
+      88,
+      112
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T21:48:11.120Z"
+  },
+  "141": {
+    "name": "Bogong Moth",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      156,
+      88,
+      160
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T08:59:30.797Z"
+  },
+  "144": {
+    "name": "Car",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      156,
+      128,
+      16
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T08:59:52.453Z"
+  },
+  "145": {
+    "name": "Hector",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      156,
+      128,
+      64
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T21:48:11.120Z"
+  },
+  "146": {
+    "name": "Possum",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      156,
+      128,
+      112
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-03T08:07:14.752Z"
+  },
+  "147": {
+    "name": "Risto",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      156,
+      128,
+      160
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T09:10:37.954Z"
+  },
+  "148": {
+    "name": "Bogong Moth",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      156,
+      128,
+      208
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T08:59:39.877Z"
+  },
+  "151": {
+    "name": "Christine",
+    "category": "Silhouette",
+    "isManuallyVerified": true
+  },
+  "152": {
+    "name": "Gray Kangaroos",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      156,
+      168,
+      112
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T06:56:10.813Z"
+  },
+  "153": {
+    "name": "Possum",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      156,
+      168,
+      160
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-03T08:07:14.752Z"
+  },
+  "154": {
+    "name": "Risto",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      156,
+      168,
+      208
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T09:10:45.602Z"
+  },
+  "155": {
+    "name": "Risto",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      156,
+      168,
+      250
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T09:10:45.602Z"
+  },
+  "160": {
+    "name": "Clear sky",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      156,
+      208,
+      208
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T06:35:37.016Z"
+  },
+  "161": {
+    "name": "Risto",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      156,
+      208,
+      250
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T09:10:45.602Z"
+  },
+  "174": {
+    "name": "Charred Tree Trunk",
+    "category": "Silhouette",
+    "isManuallyVerified": true
+  },
+  "180": {
+    "name": "Charred Tree Trunk",
+    "category": "Silhouette",
+    "isManuallyVerified": true
+  },
+  "181": {
+    "name": "Hector",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      204,
+      88,
+      64
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T21:48:11.120Z"
+  },
+  "182": {
+    "name": "Hector",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      204,
+      88,
+      112
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T21:48:11.120Z"
+  },
+  "186": {
+    "name": "Car",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      204,
+      128,
+      16
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T08:59:52.453Z"
+  },
+  "187": {
+    "name": "Hector",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      204,
+      128,
+      64
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T21:48:11.120Z"
+  },
+  "188": {
+    "name": "Hector",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      204,
+      128,
+      112
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T21:48:11.120Z"
+  },
+  "189": {
+    "name": "Risto",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      204,
+      128,
+      160
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T09:10:37.954Z"
+  },
+  "190": {
+    "name": "Bogong Moth",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      204,
+      128,
+      208
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T08:59:30.797Z"
+  },
+  "192": {
+    "name": "Grass Field",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      204,
+      168,
+      16
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T09:00:56.262Z"
+  },
+  "193": {
+    "name": "Car",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      204,
+      168,
+      64
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T08:59:52.453Z"
+  },
+  "194": {
+    "name": "Possum",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      204,
+      168,
+      112
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-03T08:07:14.752Z"
+  },
+  "195": {
+    "name": "Possum",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      204,
+      168,
+      160
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-03T08:07:14.752Z"
+  },
+  "196": {
+    "name": "Risto",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      204,
+      168,
+      208
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T09:10:37.954Z"
+  },
+  "201": {
+    "name": "Hector",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      204,
+      208,
+      160
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T09:10:20.194Z"
+  },
+  "202": {
+    "name": "Possum",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      204,
+      208,
+      208
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-03T08:07:14.752Z"
+  },
+  "203": {
+    "name": "Risto",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      204,
+      208,
+      250
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T06:54:21.556Z"
+  },
+  "209": {
+    "name": "Ocean",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      204,
+      248,
+      250
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T09:11:22.099Z"
+  },
+  "215": {
+    "name": "Risto Ikonen (Facial Alignment Structure)",
+    "category": "Silhouette",
+    "isManuallyVerified": true
+  },
+  "216": {
+    "name": "Christine",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      248,
+      48,
+      16
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T06:42:46.045Z"
+  },
+  "222": {
+    "name": "Charred Tree Trunk",
+    "category": "Silhouette",
+    "isManuallyVerified": true
+  },
+  "223": {
+    "name": "Charred Tree Trunk",
+    "category": "Silhouette",
+    "isManuallyVerified": true
+  },
+  "229": {
+    "name": "Evening Sky",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      248,
+      128,
+      64
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T06:44:24.741Z"
+  },
+  "230": {
+    "name": "Charred Tree Trunk",
+    "category": "Silhouette",
+    "isManuallyVerified": true
+  },
+  "234": {
+    "name": "Car",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      248,
+      168,
+      16
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T08:59:52.453Z"
+  },
+  "235": {
+    "name": "Evening Sky",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      248,
+      168,
+      64
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T06:44:24.741Z"
+  },
+  "237": {
+    "name": "Hector",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      248,
+      168,
+      160
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T09:02:36.951Z"
+  },
+  "238": {
+    "name": "Bogong Moth",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      248,
+      168,
+      208
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T08:59:30.797Z"
+  },
+  "243": {
+    "name": "Eucaluptys Tree",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      248,
+      208,
+      160
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T09:01:35.438Z"
+  },
+  "244": {
+    "name": "Ocean",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      248,
+      208,
+      208
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T09:11:22.099Z"
+  },
+  "250": {
+    "name": "Ocean",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      248,
+      248,
+      208
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T09:11:22.099Z"
+  },
+  "251": {
+    "name": "Ocean",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      248,
+      248,
+      250
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T09:11:22.099Z"
+  },
+  "252": {
+    "name": "Magpie",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      0,
+      0,
+      0
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-02T03:29:33.688Z"
+  },
+  "253": {
+    "name": "Dark Shadow & Boundary Horizon",
+    "category": "StructuralGrid",
+    "isManuallyVerified": true
+  },
+  "254": {
+    "name": "Silver Grey Document Intermediate",
+    "category": "ColorSpace",
+    "isManuallyVerified": true
+  },
+  "255": {
+    "name": "Ocean",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      255,
+      255,
+      255
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-01T09:11:22.099Z"
+  }
+}

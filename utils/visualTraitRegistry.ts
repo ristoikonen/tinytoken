@@ -69,15 +69,22 @@ export class VisualTraitRegistry {
   private registryFilePath: string;
   private objectRegistryFilePath: string;
   private learningEvidenceFilePath: string;
+  private isDefaultPaths: boolean;
 
   constructor(
-    filePath = "./data/manual_token_registry.json",
-    objectRegistryFilePath = "./data/object_registry.json",
-    learningEvidenceFilePath = "./data/learning_evidence.json",
+    filePath?: string,
+    objectRegistryFilePath?: string,
+    learningEvidenceFilePath?: string,
   ) {
-    this.registryFilePath = filePath;
-    this.objectRegistryFilePath = objectRegistryFilePath;
-    this.learningEvidenceFilePath = learningEvidenceFilePath;
+    const isVercel =
+      (Bun.env.VERCEL === "1" || Bun.env.VERCEL === "true" || Bun.env.APP_VERCEL === "true") &&
+      Bun.env.VERCEL !== "false";
+    const dataDir = Bun.env.DATA_DIR ?? (isVercel ? "/tmp/data" : "./data");
+
+    this.isDefaultPaths = !filePath && !objectRegistryFilePath && !learningEvidenceFilePath;
+    this.registryFilePath = filePath ?? `${dataDir}/manual_token_registry.json`;
+    this.objectRegistryFilePath = objectRegistryFilePath ?? `${dataDir}/object_registry.json`;
+    this.learningEvidenceFilePath = learningEvidenceFilePath ?? `${dataDir}/learning_evidence.json`;
 
     // Seed in-memory map with baseline curated entries
     for (const [key, val] of Object.entries(VisualTraitRegistry.DEFAULT_CURATED_MAP)) {
@@ -112,7 +119,13 @@ export class VisualTraitRegistry {
   public async initRegistry(): Promise<void> {
     try {
       // 1. Load Level 1 manual token registry
-      const file = Bun.file(this.registryFilePath);
+      let file = Bun.file(this.registryFilePath);
+      if (!(await file.exists()) && this.isDefaultPaths && this.registryFilePath !== "./data/manual_token_registry.json") {
+        const fallback = Bun.file("./data/manual_token_registry.json");
+        if (await fallback.exists()) {
+          file = fallback;
+        }
+      }
       if (await file.exists() && file.size > 2) {
         try {
           const data = (await file.json()) as Record<string, TokenTraitMetadata>;
@@ -148,7 +161,13 @@ export class VisualTraitRegistry {
    */
   private async ensureStoresSeparated(): Promise<void> {
     try {
-      const objFile = Bun.file(this.objectRegistryFilePath);
+      let objFile = Bun.file(this.objectRegistryFilePath);
+      if (!(await objFile.exists()) && this.isDefaultPaths && this.objectRegistryFilePath !== "./data/object_registry.json") {
+        const fallback = Bun.file("./data/object_registry.json");
+        if (await fallback.exists()) {
+          objFile = fallback;
+        }
+      }
       if (!(await objFile.exists())) return;
 
       const raw = (await objFile.json()) as any[];
@@ -158,7 +177,13 @@ export class VisualTraitRegistry {
       const hasLegacy = raw.some((item) => typeof item.tokenId === "string");
       if (!hasLegacy) return;
 
-      const evidenceFile = Bun.file(this.learningEvidenceFilePath);
+      let evidenceFile = Bun.file(this.learningEvidenceFilePath);
+      if (!(await evidenceFile.exists()) && this.isDefaultPaths && this.learningEvidenceFilePath !== "./data/learning_evidence.json") {
+        const fallback = Bun.file("./data/learning_evidence.json");
+        if (await fallback.exists()) {
+          evidenceFile = fallback;
+        }
+      }
       let existingEvidence: LearningEvidenceRecord[] = [];
       if (await evidenceFile.exists()) {
         try {
@@ -320,7 +345,13 @@ export class VisualTraitRegistry {
     const currentDist = this.computeCentroidDistribution(taughtCentroids);
     let recipes: AbstractObjectRecipe[] = [];
     try {
-      const objFile = Bun.file(this.objectRegistryFilePath);
+      let objFile = Bun.file(this.objectRegistryFilePath);
+      if (!(await objFile.exists()) && this.isDefaultPaths && this.objectRegistryFilePath !== "./data/object_registry.json") {
+        const fallback = Bun.file("./data/object_registry.json");
+        if (await fallback.exists()) {
+          objFile = fallback;
+        }
+      }
       if (await objFile.exists()) {
         const raw = (await objFile.json()) as any[];
         recipes = raw.filter((r) => r && typeof r.recipeId === "string");
@@ -390,7 +421,13 @@ export class VisualTraitRegistry {
 
     try {
       let existingEvidence: LearningEvidenceRecord[] = [];
-      const eviFile = Bun.file(this.learningEvidenceFilePath);
+      let eviFile = Bun.file(this.learningEvidenceFilePath);
+      if (!(await eviFile.exists()) && this.isDefaultPaths && this.learningEvidenceFilePath !== "./data/learning_evidence.json") {
+        const fallback = Bun.file("./data/learning_evidence.json");
+        if (await fallback.exists()) {
+          eviFile = fallback;
+        }
+      }
       if (await eviFile.exists()) {
         try {
           existingEvidence = (await eviFile.json()) as LearningEvidenceRecord[];
@@ -421,7 +458,13 @@ export class VisualTraitRegistry {
    */
   public async getRecipes(): Promise<AbstractObjectRecipe[]> {
     try {
-      const file = Bun.file(this.objectRegistryFilePath);
+      let file = Bun.file(this.objectRegistryFilePath);
+      if (!(await file.exists()) && this.isDefaultPaths && this.objectRegistryFilePath !== "./data/object_registry.json") {
+        const fallback = Bun.file("./data/object_registry.json");
+        if (await fallback.exists()) {
+          file = fallback;
+        }
+      }
       if (await file.exists()) {
         const raw = (await file.json()) as any[];
         return raw.filter((r) => r && typeof r.recipeId === "string");
@@ -435,7 +478,13 @@ export class VisualTraitRegistry {
    */
   public async getEvidence(): Promise<LearningEvidenceRecord[]> {
     try {
-      const file = Bun.file(this.learningEvidenceFilePath);
+      let file = Bun.file(this.learningEvidenceFilePath);
+      if (!(await file.exists()) && this.isDefaultPaths && this.learningEvidenceFilePath !== "./data/learning_evidence.json") {
+        const fallback = Bun.file("./data/learning_evidence.json");
+        if (await fallback.exists()) {
+          file = fallback;
+        }
+      }
       if (await file.exists()) {
         return (await file.json()) as LearningEvidenceRecord[];
       }
@@ -462,7 +511,13 @@ export class VisualTraitRegistry {
       }
 
       // Fallback if legacy object_registry.json hasn't been migrated yet
-      const objFile = Bun.file(this.objectRegistryFilePath);
+      let objFile = Bun.file(this.objectRegistryFilePath);
+      if (!(await objFile.exists()) && this.isDefaultPaths && this.objectRegistryFilePath !== "./data/object_registry.json") {
+        const fallback = Bun.file("./data/object_registry.json");
+        if (await fallback.exists()) {
+          objFile = fallback;
+        }
+      }
       if (await objFile.exists()) {
         const raw = (await objFile.json()) as any[];
         return raw.filter((a) => a && typeof a.tokenId === "string");

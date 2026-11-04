@@ -475,7 +475,10 @@ export class TokenApiHandlers {
       const decoded = await decodeBinaryToken(mutated);
       const elapsedUs = Math.round((performance.now() - t0) * 1000);
 
-      await Bun.write("./data/.indexed_dir", this.imageDir);
+      try {
+        const stampPath = `${this.engine.getDataDirPath ? this.engine.getDataDirPath() : "./data"}/.indexed_dir`;
+        await Bun.write(stampPath, this.imageDir);
+      } catch {}
 
       return jsonResponse({
         success: true,
@@ -527,7 +530,10 @@ export class TokenApiHandlers {
         await this.invertedIndex.syncTokens(this.engine.getAllEntries());
       }
 
-      await Bun.write("./data/.indexed_dir", this.imageDir);
+      try {
+        const stampPath = `${this.engine.getDataDirPath ? this.engine.getDataDirPath() : "./data"}/.indexed_dir`;
+        await Bun.write(stampPath, this.imageDir);
+      } catch {}
 
       return jsonResponse({
         success: true,

@@ -14,7 +14,10 @@ import { VqInvertedIndexEngine } from "./utils/vqInvertedIndex";
 import { CompressedTokenSearchEngine } from "./utils/zipEngine";
 
 // Configuration
-const DATA_DIR = Bun.env.DATA_DIR ?? "./data";
+const isVercel =
+  (Bun.env.VERCEL === "1" || Bun.env.VERCEL === "true" || Bun.env.APP_VERCEL === "true") &&
+  Bun.env.VERCEL !== "false";
+const DATA_DIR = Bun.env.DATA_DIR ?? (isVercel ? "/tmp/data" : "./data");
 const ZIP_ARCHIVE_PATH = Bun.env.ZIP_ARCHIVE_PATH ?? `${DATA_DIR}/tokens.zip`;
 const IMAGE_DIR =
   Bun.env.IMAGE_DIR ??
@@ -24,8 +27,13 @@ const DOCUMENT_DIR = "./documents";
 const INDEXED_DIR_STAMP = `${DATA_DIR}/.indexed_dir`;
 const useZip = Bun.env.APP_ZIP_USE !== "false";
 const isTest = Bun.env.NODE_ENV === "test";
-const port = isTest ? 0 : Number(Bun.env.PORT ?? Bun.env.APP_PORT ?? 3000);
-const host = Bun.env.APP_HOST ?? "localhost";
+const rawPort = Bun.env.PORT ?? Bun.env.APP_PORT ?? process.env.PORT;
+const port = isTest
+  ? 0
+  : isVercel
+  ? (rawPort ? Number(rawPort) : undefined)
+  : Number(rawPort ?? 3000);
+const host = isVercel ? (Bun.env.APP_HOST ?? "0.0.0.0") : (Bun.env.APP_HOST ?? "localhost");
 
 // Cached HTML template
 let cachedHtml: string | null = null;
@@ -102,7 +110,34 @@ async function directoryExists(dir: string): Promise<boolean> {
   }
 }
 
+async function ensureDataDirectory(targetDir: string, zipPath: string): Promise<void> {
+  if (targetDir === "./data") return;
+  const filesToSeed = [
+    { src: "./data/tokens.zip", dst: zipPath },
+    { src: "./data/manual_token_registry.json", dst: `${targetDir}/manual_token_registry.json` },
+    { src: "./data/object_registry.json", dst: `${targetDir}/object_registry.json` },
+    { src: "./data/learning_evidence.json", dst: `${targetDir}/learning_evidence.json` },
+    { src: "./data/attestation_ed25519.json", dst: `${targetDir}/attestation_ed25519.json` },
+  ];
+
+  for (const { src, dst } of filesToSeed) {
+    try {
+      const dstFile = Bun.file(dst);
+      if (!(await dstFile.exists()) || dstFile.size === 0) {
+        const srcFile = Bun.file(src);
+        if (await srcFile.exists()) {
+          const content = await srcFile.arrayBuffer();
+          await Bun.write(dst, content);
+        }
+      }
+    } catch (err) {
+      console.warn(`Could not seed ${dst} from ${src}:`, err);
+    }
+  }
+}
+
 async function initIndex(): Promise<void> {
+  await ensureDataDirectory(DATA_DIR, ZIP_ARCHIVE_PATH);
   const t0 = performance.now();
   const isZip = searchEngine.isZipMode();
   const zipFile = Bun.file(ZIP_ARCHIVE_PATH);
@@ -142,7 +177,7 @@ async function initIndex(): Promise<void> {
     await searchEngine.buildIndex();
     await invertedIndex.syncTokens(searchEngine.getAllEntries());
     const totalMs = (performance.now() - t0).toFixed(2);
-    const storageLabel = isZip ? "archive" : "*.token files in ./data";
+    const storageLabel = isZip ? "archive" : `*.token files in ${DATA_DIR}`;
     console.log(
       `Indexed ${searchEngine.getCount()} tokens into RAM in ${totalMs} ms (${(searchEngine.archiveSizeBytes / 1024).toFixed(1)} KB, ${storageLabel})`,
     );
@@ -222,10 +257,30 @@ async function handleApiRoute(path: string, req: BunRequest, url: URL): Promise<
   return errorResponse("Not Found", 404, false);
 }
 
+// Unified Request Handler
+export async function fetchHandler(req: Request): Promise<Response> {
+  if (req.method === "OPTIONS") return corsResponse(req);
+  const url = new URL(req.url);
+  try {
+    await ensureInitialized();
+    if (url.pathname === "/" || url.pathname === "/index.html") {
+      return new Response(await getIndexHtml(), {
+        headers: { "Content-Type": "text/html; charset=utf-8" },
+      });
+    }
+    return await handleApiRoute(url.pathname, req as BunRequest, url);
+  } catch (err) {
+    if (err instanceof URIError) {
+      return errorResponse("Invalid URI encoding", 400);
+    }
+    throw err;
+  }
+}
+
 // HTTP Server
 const server = serve({
   hostname: host,
-  port,
+  ...(port !== undefined ? { port } : {}),
   routes: {
     "/": async () =>
       new Response(await getIndexHtml(), {
@@ -236,23 +291,8 @@ const server = serve({
         headers: { "Content-Type": "text/html; charset=utf-8" },
       }),
   },
-  async fetch(req: BunRequest) {
-    if (req.method === "OPTIONS") return corsResponse(req);
-    const url = new URL(req.url);
-    try {
-      await ensureInitialized();
-      if (url.pathname === "/" || url.pathname === "/index.html") {
-        return new Response(await getIndexHtml(), {
-          headers: { "Content-Type": "text/html; charset=utf-8" },
-        });
-      }
-      return await handleApiRoute(url.pathname, req, url);
-    } catch (err) {
-      if (err instanceof URIError) {
-        return errorResponse("Invalid URI encoding", 400);
-      }
-      throw err;
-    }
+  fetch(req: BunRequest) {
+    return fetchHandler(req);
   },
 });
 
