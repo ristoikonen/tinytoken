@@ -14,6 +14,7 @@ import { PDFiumLibrary } from "@hyzyla/pdfium";
 import sharp from "sharp";
 import { EmbeddingModelId, PreviewFormat } from "../models/token";
 import { extractRealDinoEmbedding } from "./dinoEmbedding";
+import { boxDownsampleRgbTo16x16 } from "./imagePreview";
 import { encodeRgb16x16ToVqGrid } from "./vqCodebook";
 
 export interface RenderedPdfPageBundle {
@@ -114,32 +115,37 @@ export async function renderPdfPagesWithPdfium(
       };
 
       const tSharp0 = Bun.nanoseconds();
-      const [webpBuf, rgb16Buf, dinoRgbResult] = await Promise.all([
-        sharp(rawRgba, rawInput)
-          .flatten({ background: { r: 255, g: 255, b: 255 } })
-          .resize(320, 452, { fit: "inside", withoutEnlargement: true })
-          .webp({ quality: 78, smartSubsample: true, effort: 4 })
-          .toBuffer(),
-        sharp(rawRgba, rawInput)
-          .flatten({ background: { r: 255, g: 255, b: 255 } })
-          .resize(16, 16, { fit: "fill", kernel: "lanczos3" })
-          .removeAlpha()
-          .raw()
-          .toBuffer(),
-        sharp(rawRgba, rawInput)
-          .flatten({ background: { r: 255, g: 255, b: 255 } })
-          .resize(384, 384, { fit: "inside", withoutEnlargement: true })
-          .removeAlpha()
-          .raw()
-          .toBuffer({ resolveWithObject: true }),
-      ]);
 
-      let finalWebp = webpBuf;
+      // 1. Single decode: resize and flatten PDF page to 384x384 raw RGB buffer with cubic resampling
+      const dinoRgbResult = await sharp(rawRgba, rawInput)
+        .flatten({ background: { r: 255, g: 255, b: 255 } })
+        .resize(384, 384, { fit: "inside", withoutEnlargement: true, kernel: "cubic" })
+        .removeAlpha()
+        .raw()
+        .toBuffer({ resolveWithObject: true });
+
+      // 2. WebP preview encoded directly from the 384x384 raw RGB buffer (effort: 2, smartSubsample: false)
+      let finalWebp = await sharp(dinoRgbResult.data, {
+        raw: {
+          width: dinoRgbResult.info.width,
+          height: dinoRgbResult.info.height,
+          channels: 3,
+        },
+      })
+        .resize(320, 452, { fit: "inside", withoutEnlargement: true })
+        .webp({ quality: 78, smartSubsample: false, effort: 2 })
+        .toBuffer();
+
       if (finalWebp.byteLength > maxPreviewBytes) {
-        finalWebp = await sharp(rawRgba, rawInput)
-          .flatten({ background: { r: 255, g: 255, b: 255 } })
+        finalWebp = await sharp(dinoRgbResult.data, {
+          raw: {
+            width: dinoRgbResult.info.width,
+            height: dinoRgbResult.info.height,
+            channels: 3,
+          },
+        })
           .resize(240, 340, { fit: "inside", withoutEnlargement: true })
-          .webp({ quality: 68, smartSubsample: true, effort: 4 })
+          .webp({ quality: 68, smartSubsample: false, effort: 2 })
           .toBuffer();
       }
       const sharpNs = Bun.nanoseconds() - tSharp0;
@@ -147,10 +153,14 @@ export async function renderPdfPagesWithPdfium(
       const previewBytes = new Uint8Array(new ArrayBuffer(finalWebp.byteLength));
       previewBytes.set(new Uint8Array(finalWebp.buffer, finalWebp.byteOffset, finalWebp.byteLength));
 
+      // 3. 16x16 extraction via pure Bun typed-array 24x24 box average (no Sharp enc/dec)
       const tVq0 = Bun.nanoseconds();
-      const vqIndices = encodeRgb16x16ToVqGrid(
-        new Uint8Array(rgb16Buf.buffer, rgb16Buf.byteOffset, rgb16Buf.byteLength),
+      const rgb16Buf = boxDownsampleRgbTo16x16(
+        dinoRgbResult.data,
+        dinoRgbResult.info.width,
+        dinoRgbResult.info.height,
       );
+      const vqIndices = encodeRgb16x16ToVqGrid(rgb16Buf);
       const vqNs = Bun.nanoseconds() - tVq0;
 
       const tDino0 = Bun.nanoseconds();

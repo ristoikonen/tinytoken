@@ -183,23 +183,29 @@ All mutating endpoints (`POST`) enforce same-origin verification via [`verifySam
 ## 5. Agent Development & Engineering Rules
 
 When modifying or extending this codebase, agents must strictly follow these rules:
-
-1. **Use TypeScript and Bun Native I/O**:
-   - Always use `Bun.file(path)`, `Bun.write(path, data)`, and `Bun.Glob`.
+## 5. Agent Development & Engineering Rules
+1. **Use TypeScript and Bun Native Features Always**:
+   - Always use `Bun.file(path)`, `Bun.write(path, data)`, `Bun.nanoseconds()`, and `Bun.Glob`.
    - Never import or use Node's `fs` or `fs/promises`.
-2. **Never Conflate Learning Tiers**:
+2. **Prefer Simple, Direct Code**:
+   - Avoid speculative abstraction layers; do the same work with less indirection.
+3. **Never Conflate Learning Tiers**:
    - Do not write object labels directly into centroid slots unless explicitly marked as a dominant representative.
    - Never write a `tokenId` into `object_registry.json`.
-3. **Always Set Provenance & Confidence**:
+4. **Always Set Provenance & Confidence**:
    - When a human explicitly names or confirms a trait/recipe, set `source: "human_verified"` and `confidence: 1.0`.
    - When clustering or auto-suggesting, set `source: "human_suggested"` or `source: "model_cluster"` with `confidence: 0.3` (or model score).
-4. **Always Populate Geo & Temporal Context**:
-   - If token metadata lacks GPS, default to NSW/Australia coordinates: `latitude = -33.8688`, `longitude = 151.2093`.
+5. **Always Populate Geo & Temporal Context**:
+   - If token metadata lacks GPS, default to ACT/Australia coordinates: `latitude = -35.1843`, `longitude = 149.1328`.
    - Always record both `utcTimestamp` (ISO 8601 UTC) and `observedAt`.
-5. **Run Test Suites Before Submitting Changes**:
+6. **Run Test Suites Before Submitting Changes**:
    - All tests must pass: `bun test`.
    - Ensure both `tests/token.test.ts` and `tests/learning.test.ts` pass with zero regressions.
-
+7. **Size and speed are essential**:
+   - If developer needs features/ increase fields sizes/ anything that will slow processing, report and ask immediately.
+   - Suggest improvements immediately, be proactive.
+   - Ensure that tokens's size stays below 25Kb and ask before any field size increase immediately.
+   - Do simple optimisation when there is a clear benefit, like calculate and use precalculated (multidim)arrays and codepages, report generation.
 
 ## Learning
 

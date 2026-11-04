@@ -278,6 +278,51 @@ export async function sniffImageHeader(
 }
 
 /**
+ * Downsamples any raw RGB image buffer (e.g. 384x384 or proportional) to a 16x16 raw RGB grid (768 bytes)
+ * using pure Bun typed-array 24x24 box averaging without invoking Sharp or libvips.
+ */
+export function boxDownsampleRgbTo16x16(
+  rawRgb: Uint8Array,
+  width: number,
+  height: number,
+): Uint8Array {
+  const out = new Uint8Array(16 * 16 * 3);
+  const blockW = width / 16;
+  const blockH = height / 16;
+
+  for (let gy = 0; gy < 16; gy++) {
+    const yStart = Math.floor(gy * blockH);
+    const yEnd = Math.max(yStart + 1, Math.floor((gy + 1) * blockH));
+    for (let gx = 0; gx < 16; gx++) {
+      const xStart = Math.floor(gx * blockW);
+      const xEnd = Math.max(xStart + 1, Math.floor((gx + 1) * blockW));
+
+      let rSum = 0;
+      let gSum = 0;
+      let bSum = 0;
+      let count = 0;
+
+      for (let y = yStart; y < yEnd; y++) {
+        const rowOffset = y * width * 3;
+        for (let x = xStart; x < xEnd; x++) {
+          const idx = rowOffset + x * 3;
+          rSum += rawRgb[idx]!;
+          gSum += rawRgb[idx + 1]!;
+          bSum += rawRgb[idx + 2]!;
+          count++;
+        }
+      }
+
+      const outIdx = (gy * 16 + gx) * 3;
+      out[outIdx] = Math.round(rSum / count);
+      out[outIdx + 1] = Math.round(gSum / count);
+      out[outIdx + 2] = Math.round(bSum / count);
+    }
+  }
+  return out;
+}
+
+/**
  * Decodes any image or SVG (or synthesized document cover) via `sharp` into:
  * - A lean 220x220 WebP preview (`PreviewFormat.WEBP`, typically 2.5 - 9 KB)
  * - A true decoded 16x16 RGB VQ codebook grid (`256 B`)
@@ -418,37 +463,38 @@ export async function rasterizeAssetToWebpAndTensors(
       : (isRotated90or270 ? (meta.width ?? fallbackHeader.width) : (meta.height ?? fallbackHeader.height));
 
     const tSharp0 = Bun.nanoseconds();
-    const [webpBuf, rgb16Buf, dinoRgbResult] = await Promise.all([
-      sharp(inputBuffer, { failOn: "none" })
-        .rotate()
-        .resize(320, 320, {
-          fit: "inside",
-          withoutEnlargement: true,
-          background: { r: 20, g: 33, b: 61, alpha: 1 },
-        })
-        .webp({ quality: 78, smartSubsample: true, effort: 4 })
-        .toBuffer(),
-      sharp(inputBuffer, { failOn: "none" })
-        .rotate()
-        .flatten({ background: { r: 20, g: 33, b: 61 } })
-        .resize(16, 16, { fit: "fill", kernel: "lanczos3" })
-        .removeAlpha()
-        .raw()
-        .toBuffer(),
-      sharp(inputBuffer, { failOn: "none" })
-        .rotate()
-        .flatten({ background: { r: 255, g: 255, b: 255 } })
-        .resize(384, 384, { fit: "inside", withoutEnlargement: true, kernel: "lanczos3" })
-        .removeAlpha()
-        .raw()
-        .toBuffer({ resolveWithObject: true }),
-    ]);
-    let finalWebp = webpBuf;
+
+    // 1. Single decode: decode source image once to 384x384 raw RGB buffer with cubic resampling
+    const dinoRgbResult = await sharp(inputBuffer, { failOn: "none" })
+      .rotate()
+      .flatten({ background: { r: 255, g: 255, b: 255 } })
+      .resize(384, 384, { fit: "inside", withoutEnlargement: true, kernel: "cubic" })
+      .removeAlpha()
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+
+    // 2. WebP preview encoded directly from the 384x384 raw RGB buffer (effort: 2, smartSubsample: false)
+    let finalWebp = await sharp(dinoRgbResult.data, {
+      raw: {
+        width: dinoRgbResult.info.width,
+        height: dinoRgbResult.info.height,
+        channels: 3,
+      },
+    })
+      .resize(320, 320, { fit: "inside" })
+      .webp({ quality: 78, smartSubsample: false, effort: 2 })
+      .toBuffer();
+
     if (finalWebp.byteLength > maxPreviewBytes) {
-      finalWebp = await sharp(inputBuffer, { failOn: "none" })
-        .rotate()
+      finalWebp = await sharp(dinoRgbResult.data, {
+        raw: {
+          width: dinoRgbResult.info.width,
+          height: dinoRgbResult.info.height,
+          channels: 3,
+        },
+      })
         .resize(240, 240, { fit: "inside", withoutEnlargement: true })
-        .webp({ quality: 68, smartSubsample: true, effort: 4 })
+        .webp({ quality: 68, smartSubsample: false, effort: 2 })
         .toBuffer();
     }
     const sharpNs = Bun.nanoseconds() - tSharp0;
@@ -456,10 +502,14 @@ export async function rasterizeAssetToWebpAndTensors(
     const previewBytes = new Uint8Array(new ArrayBuffer(finalWebp.byteLength));
     previewBytes.set(new Uint8Array(finalWebp.buffer, finalWebp.byteOffset, finalWebp.byteLength));
 
+    // 3. 16x16 extraction via pure Bun typed-array 24x24 box average (no Sharp enc/dec)
     const tVq0 = Bun.nanoseconds();
-    const vqIndices = encodeRgb16x16ToVqGrid(
-      new Uint8Array(rgb16Buf.buffer, rgb16Buf.byteOffset, rgb16Buf.byteLength),
+    const rgb16Buf = boxDownsampleRgbTo16x16(
+      dinoRgbResult.data,
+      dinoRgbResult.info.width,
+      dinoRgbResult.info.height,
     );
+    const vqIndices = encodeRgb16x16ToVqGrid(rgb16Buf);
     const vqNs = Bun.nanoseconds() - tVq0;
 
     const tDino0 = Bun.nanoseconds();
