@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#ffffff">
+  <title>TinyToken CLI Documentation</title>
+
+  <!-- Fast Tailwind CSS Play CDN Script -->
+  <script src="https://tailwindcss.com"></script>
+
+  <style>
+    :root {
+      --bg: #ffffff;
+      --sidebar: #fafafa;
+      --text: #242424;
+      --muted: #777;
+      --border: #e8e8e8;
+      --accent: #6757d9;
+      --accent-light: #f1efff;
+      --code-bg: #f7f7f8;
+      --code-border: #e9e9ec;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inclusive Sans, Paper Mono, Inter, -apple-system, BlinkMacSystemFont,
+        "Segoe UI", sans-serif;
+      font-size: 14px;
+      line-height: 1.65;
+    }
+
+    /* Top navigation */
+
+    .topbar {
+      height: 60px;
+      position: fixed;
+      inset: 0 0 auto 0;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      padding: 0 28px;
+      background: rgba(255, 255, 255, .94);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(12px);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: -.4px;
+    }
+
+    .brand-icon {
+      width: 29px;
+      height: 29px;
+      display: grid;
+      place-items: center;
+      border-radius: 8px;
+      background: #242424;
+      color: white;
+      font-size: 15px;
+      font-weight: 800;
+    }
+
+    .topbar-right {
+      margin-left: auto;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    /* Sidebar */
+
+    .sidebar {
+      position: fixed;
+      top: 60px;
+      bottom: 0;
+      left: 0;
+      width: 255px;
+      padding: 27px 18px;
+      overflow-y: auto;
+      background: var(--sidebar);
+      border-right: 1px solid var(--border);
+    }
+
+    .nav-heading {
+      margin: 0 0 12px 9px;
+      color: #999;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    .nav-link {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      margin: 3px 0;
+      padding: 8px 10px;
+      border-radius: 6px;
+      color: #555;
+      text-decoration: none;
+      font-size: 13px;
+      transition: .15s;
+    }
+
+    .nav-link:hover {
+      background: #eeeeef;
+      color: #222;
+    }
+
+    .nav-link.active {
+      background: var(--accent-light);
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    .nav-icon {
+      width: 17px;
+      text-align: center;
+      opacity: .8;
+    }
+
+    .sidebar-note {
+      margin: 28px 8px;
+      padding-top: 17px;
+      border-top: 1px solid var(--border);
+      color: #999;
+      font-size: 11px;
+    }
+
+    /* Main content */
+
+    main {
+      max-width: 1040px;
+      margin-left: 255px;
+      padding: 104px 65px 100px;
+    }
+
+    .breadcrumb {
+      margin-bottom: 19px;
+      color: #999;
+      font-size: 12px;
+    }
+
+    .breadcrumb span {
+      color: #555;
+    }
+
+    h1 {
+      margin: 0 0 12px;
+      font-size: 35px;
+      font-weight: 720;
+      letter-spacing: -1.3px;
+      line-height: 1.2;
+    }
+
+    .intro {
+      max-width: 690px;
+      margin: 0 0 34px;
+      color: #666;
+      font-size: 15px;
+    }
+
+    h2 {
+      margin: 43px 0 15px;
+      padding-bottom: 9px;
+      border-bottom: 1px solid var(--border);
+      font-size: 20px;
+      letter-spacing: -.4px;
+    }
+
+    h3 {
+      margin: 25px 0 9px;
+      font-size: 15px;
+    }
+
+    p {
+      color: #555;
+    }
+
+    .required {
+      display: inline-block;
+      margin-left: 5px;
+      color: #d45b52;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    /* Command syntax */
+
+    .syntax {
+      position: relative;
+      margin: 23px 0 29px;
+      padding: 20px 22px;
+      overflow-x: auto;
+      background: #202127;
+      border: 1px solid #303139;
+      border-radius: 9px;
+      color: #f2f2f5;
+      font-family: "Cascadia Code", Consolas, monospace;
+      font-size: 14px;
+      line-height: 1.8;
+    }
+
+    .syntax-label {
+      margin-bottom: 9px;
+      color: #a9a9b4;
+      font-family: inherit;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    .syntax .command {
+      color: #c5b8ff;
+    }
+
+    .syntax .argument {
+      color: #80d6c1;
+    }
+
+    .syntax .option {
+      color: #e6bd85;
+    }
+
+    /* Option reference */
+
+    .option-list {
+      border-top: 1px solid var(--border);
+    }
+
+    .option-row {
+      display: grid;
+      grid-template-columns: 205px 1fr;
+      gap: 20px;
+      padding: 14px 5px;
+      border-bottom: 1px solid var(--border);
+      align-items: start;
+    }
+
+    .option-name {
+      color: #333;
+      font-family: "Cascadia Code", Consolas, monospace;
+      font-size: 12px;
+      font-weight: 600;
+      overflow-wrap: anywhere;
+    }
+
+    .option-description {
+      color: #666;
+      font-size: 13px;
+    }
+
+    kbd {
+      padding: 2px 5px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      background: #f7f7f7;
+      color: #444;
+      font-family: Consolas, monospace;
+      font-size: 11px;
+    }
+
+    /* Example blocks */
+
+    .example {
+      margin: 18px 0 25px;
+      overflow: hidden;
+      border: 1px solid var(--code-border);
+      border-radius: 8px;
+      background: var(--code-bg);
+    }
+
+    .example-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 39px;
+      padding: 0 13px;
+      border-bottom: 1px solid var(--code-border);
+      color: #777;
+      font-size: 11px;
+    }
+
+    .example-title {
+      font-weight: 600;
+      color: #555;
+    }
+
+    .copy-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 9px;
+      border: 1px solid transparent;
+      border-radius: 5px;
+      background: transparent;
+      color: #777;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 11px;
+      transition: .15s;
+    }
+
+    .copy-btn:hover {
+      border-color: #ddd;
+      background: white;
+      color: #333;
+    }
+
+    .copy-btn.copied {
+      color: #16835d;
+    }
+
+    .example pre {
+      margin: 0;
+      padding: 15px 17px;
+      overflow-x: auto;
+      color: #303039;
+      font-family: "Cascadia Code", Consolas, monospace;
+      font-size: 12px;
+      line-height: 1.8;
+      white-space: pre;
+    }
+
+    .comment {
+      color: #999;
+    }
+
+    .cmd {
+      color: #7257c8;
+    }
+
+    .flag {
+      color: #b16b2b;
+    }
+
+    /* Footer */
+
+    .footer {
+      margin-top: 65px;
+      padding-top: 19px;
+      border-top: 1px solid var(--border);
+      color: #aaa;
+      font-size: 11px;
+    }
+
+    /* Responsive */
+
+    @media (max-width: 850px) {
+      .sidebar {
+        width: 205px;
+      }
+
+      main {
+        margin-left: 205px;
+        padding: 95px 30px 70px;
+      }
+
+      .option-row {
+        grid-template-columns: 165px 1fr;
+      }
+    }
+
+    @media (max-width: 620px) {
+      .sidebar {
+        display: none;
+      }
+
+      main {
+        margin-left: 0;
+        padding: 91px 21px 60px;
+      }
+
+      .topbar {
+        padding: 0 18px;
+      }
+
+      h1 {
+        font-size: 29px;
+      }
+
+      .option-row {
+        grid-template-columns: 1fr;
+        gap: 4px;
+      }
+
+      /* Base Callout Structure */
+      .callout {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.75rem;
+        border-left: 4px solid transparent;
+        border-radius: 0.375rem;
+        padding: 1rem;
+        margin: 1.5rem 0;
+        font-family: system-ui, -apple-system, sans-serif;
+        font-size: 0.95rem;
+      }
+
+      .callout-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        margin-top: 0.15rem;
+      }
+
+      .callout-content {
+        color: #374151;
+        /* Slate-700 / Dark Gray text */
+      }
+
+      /* Tip Specific (Green) */
+      .callout-tip {
+        background-color: rgba(16, 185, 129, 0.08);
+        /* Transparent emerald */
+        border-color: #10b981;
+        color: #065f46;
+      }
+
+      .callout-tip .callout-icon {
+        color: #10b981;
+      }
+
+      /* Note Specific (Blue) */
+      .callout-note {
+        background-color: rgba(59, 130, 246, 0.08);
+        /* Transparent blue */
+        border-color: #3b82f6;
+        color: #1e3a8a;
+      }
+
+      .callout-note .callout-icon {
+        color: #3b82f6;
+      }
+
+      /* Warning Specific (Amber) */
+      .callout-warning {
+        background-color: rgba(245, 158, 11, 0.08);
+        /* Transparent amber */
+        border-color: #f59e0b;
+        color: #78350f;
+      }
+
+      .callout-warning .callout-icon {
+        color: #f59e0b;
+      }
+
+
+    }
+  </style>
+</head>
+
+<body>
+
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-icon">
+
+
+        <svg version="1.0" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%"
+          viewBox="0 0 128.000000 128.000000" preserveAspectRatio="xMidYMid meet"
+          style="filter:drop-shadow(0 0 6px rgba(56,189,248,0.5));">
+          <g transform="translate(0.000000,128.000000) scale(0.100000,-0.100000)" fill="#e15e12" stroke="none">
+            <path
+              d="M1130 1261 c-5 -11 -10 -25 -10 -31 0 -19 -50 -113 -73 -138 -25 -27 -155 -109 -272 -172 -44 -23 -93 -52 -109 -63 -70 -49 -301 -185 -308 -181 -4 3 23 51 60 108 l66 104 65 7 c85 9 155 53 204 127 20 29 52 68 72 85 37 33 44 65 15 71 -13 2 -64 -44 -197 -180 -55 -56 -158 -66 -165 -15 -2 12 -11 23 -20 25 -15 3 -18 -4 -18 -35 0 -30 -13 -57 -64 -133 -84 -124 -154 -210 -192 -235 -17 -11 -65 -29 -107 -39 l-77 -18 0 -55 c0 -51 1 -54 22 -48 11 4 54 8 93 8 56 0 82 -5 114 -21 23 -12 49 -22 58 -22 20 0 348 -169 407 -209 23 -16 48 -36 55 -45 8 -9 21 -16 30 -16 33 0 61 -43 61 -93 0 -40 3 -47 19 -47 16 0 20 8 23 38 4 51 26 52 125 2 65 -32 91 -40 137 -40 48 0 56 3 56 18 0 14 -24 30 -88 60 -48 23 -95 42 -105 42 -23 0 -243 114 -287 149 -19 16 -46 32 -60 36 -37 11 -300 147 -300 155 0 8 450 33 550 30 41 -1 139 -2 218 -1 140 1 142 1 142 24 0 46 -7 47 -181 48 -90 0 -295 -3 -455 -7 -198 -5 -293 -4 -297 3 -9 14 28 41 213 154 85 53 218 134 295 181 77 48 166 98 197 111 31 14 74 37 95 51 20 14 48 26 61 26 30 0 82 39 82 62 0 24 -29 23 -91 -3 -27 -12 -52 -19 -56 -16 -3 3 6 36 21 72 14 36 26 70 26 75 0 18 -39 10 -50 -9z">
+            </path>
+          </g>
+        </svg>
+
+      </div>
+      TinyToken
+      <span style=" color:#e15e12;font-weight:400">Docs</span>
+    </div>
+    <div class="topbar-right">Command-line reference</div>
+  </header>
+
+  <aside class="sidebar">
+    <div class="nav-heading">Documentation</div>
+
+    <a class="nav-link" href="#overview">
+      <span class="nav-icon">⌂</span> Overview
+    </a>
+
+    <div style="height:24px"></div>
+    <div class="nav-heading">Commands</div>
+
+    <a class="nav-link active" href="#tokenize">
+      <span class="nav-icon">⌘</span>info on tinytoken
+    </a>
+
+    <a class="nav-link active" href="#generate">
+      <span class="nav-icon">&#x2699;</span> generate tinytoken
+    </a>
+    <a class="nav-link active" href="#search">
+      <span class="nav-icon">&#x2315;</span> find tinytoken by name, closest, text
+    </a>
+
+    <a class="nav-link active" href="#struct">
+      <span class="nav-icon">&#x2315;</span>fist some or all fileds, enables looping via chosen field, fgast. Uses
+      memeory mapped file kind of file read -feature
+    </a>
+
+
+    <!-- Add further commands here -->
+    <!--
+  <a class="nav-link" href="#verify">
+    <span class="nav-icon">✓</span> verify
+  </a>
+  -->
+
+    <div class="sidebar-note">
+      TinyToken CLI<br>
+      Command reference
+    </div>
+  </aside>
+
+  <main>
+
+    <div class="breadcrumb">
+      Documentation / Commands / <span>tinytoken</span>
+    </div>
+
+    <section id="overview">
+      <h1>Command-line reference</h1>
+
+      <p class="intro">
+        TinyToken provides a command-line interface for creating,
+        inspecting and verifying compact, cryptographically
+        attested image and document tokens.
+      </p>
+    </section>
+
+    <section id="tokenize">
+
+      <h1>tinytoken</h1>
+
+      <p>
+        Create a TinyToken from an image or document, or inspect
+        an existing <kbd>.token</kbd> file.
+      </p>
+
+      <div class="syntax">
+        <div class="syntax-label">Syntax</div>
+        <span class="command">tinytoken</span>
+        <span class="argument">&lt;file&gt;</span>
+        <span class="option">[options]</span>
+      </div>
+
+      <h2>Arguments</h2>
+
+      <div class="option-list">
+        <div class="option-row">
+          <div class="option-name">&lt;file&gt;</div>
+          <div class="option-description">
+            Source file path (image, document, or existing
+            <kbd>.token</kbd> file).
+            <span class="required">REQUIRED</span>
+          </div>
+        </div>
+      </div>
+
+      <h2>Options</h2>
+
+      <div class="option-list">
+
+        <div class="option-row">
+          <div class="option-name">
+            -o, --out &lt;path&gt;
+          </div>
+          <div class="option-description">
+            Custom output <kbd>.token</kbd> path.
+            Defaults to
+            <kbd>&lt;input_dir&gt;/&lt;basename&gt;.token</kbd>.
+          </div>
+        </div>
+
+        <div class="option-row">
+          <div class="option-name">-v, --verify</div>
+          <div class="option-description">
+            Explicitly run and print decode and cryptographic
+            signature audit.
+          </div>
+        </div>
+
+        <div class="option-row">
+          <div class="option-name">--info</div>
+          <div class="option-description">
+            Verbose breakdown: token size, uncompressed estimate,
+            dates and all fields.
+          </div>
+        </div>
+
+        <div class="option-row">
+          <div class="option-name">--filetype</div>
+          <div class="option-description">
+            Print preview filetype (e.g. WEBP, PNG, JPEG, AVIF).
+          </div>
+        </div>
+
+        <div class="option-row">
+          <div class="option-name">--preview</div>
+          <div class="option-description">
+            Stream raw binary preview data to stdout
+            (for saving or piping).
+          </div>
+        </div>
+
+        <div class="option-row">
+          <div class="option-name">--json</div>
+          <div class="option-description">
+            Print token metadata, attestation and Merkle proof
+            as JSON to stdout.
+          </div>
+        </div>
+
+        <div class="option-row">
+          <div class="option-name">-h, --help</div>
+          <div class="option-description">
+            Display this help message.
+          </div>
+        </div>
+
+      </div>
+
+      <h2>Examples</h2>
+
+      <p>
+        Inspect an existing token using the available inspection options.
+      </p>
+
+      <div class="example">
+        <div class="example-header">
+          <span class="example-title">Inspect token information</span>
+          <button class="copy-btn" onclick="copyExample(this)">▢ Copy</button>
+        </div>
+        <pre><span class="comment"># Inspect an existing token</span>
+tinytoken tok_00004_Henri.jpg.token --info</pre>
+      </div>
+
+      <div class="example">
+        <div class="example-header">
+          <span class="example-title">Detect preview filetype</span>
+          <button class="copy-btn" onclick="copyExample(this)">▢ Copy</button>
+        </div>
+        <pre>tinytoken tok_00004_Henri.jpg.token --filetype</pre>
+      </div>
+
+      <div class="example">
+        <div class="example-header">
+          <span class="example-title">Extract preview</span>
+          <button class="copy-btn" onclick="copyExample(this)">▢ Copy</button>
+        </div>
+        <pre>tinytoken tok_00004_Henri.jpg.token --preview &gt; preview.webp</pre>
+      </div>
+
+      <div class="example">
+        <div class="example-header">
+          <span class="example-title">Verify token integrity</span>
+          <button class="copy-btn" onclick="copyExample(this)">▢ Copy</button>
+        </div>
+        <pre>tinytoken tok_00004_Henri.jpg.token -v</pre>
+      </div>
+
+      <h3>Create a token</h3>
+
+      <p>
+        Create tokens from images or documents. Specify a custom
+        output location when required.
+      </p>
+
+      <div class="example">
+        <div class="example-header">
+          <span class="example-title">Tokenize an image</span>
+          <button class="copy-btn" onclick="copyExample(this)">▢ Copy</button>
+        </div>
+        <pre><span class="comment"># Create a token from an image</span>
+bun tinytoken ./images/Henri.jpg</pre>
+      </div>
+
+      <div class="example">
+        <div class="example-header">
+          <span class="example-title">Tokenize a document</span>
+          <button class="copy-btn" onclick="copyExample(this)">▢ Copy</button>
+        </div>
+        <pre><span class="comment"># Create a token with a custom output path</span>
+bun tinytoken ./documents/report.pdf -o ./output/report.token --info</pre>
+      </div>
+
+    </section>
+    <section id="generate">
+      <h1>generate<h1>
+
+          <p>
+            Create a TinyToken <kbd>token</kbd> from an image or document file.
+          </p>
+
+          <div class="syntax">
+            <div class="syntax-label">Syntax</div>
+            <span class="command">tinytoken</span>
+            <span class="argument">&lt;file&gt;</span>
+            <span class="option">[options]</span>
+          </div>
+
+          <h2>Arguments</h2>
+
+
+    </section>
+
+
+    <!-- <div class="callout callout-tip">
+      <div class="callout-icon">
+        <svg xmlns="http://w3.org" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path
+            d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .6 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5" />
+          <path d="M9 18h6" />
+          <path d="M10 22h4" />
+        </svg>
+      </div>
+      <div class="callout-content">
+        <strong>Tip:</strong> Only events that happen after you set a trigger live can send messages.
+      </div>
+    </div>
+
+    <div class="callout callout-warning">
+      <div class="callout-icon">
+        <svg xmlns="http://w3.org" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
+          <line x1="12" y1="9" x2="12" y2="13" />
+          <line x1="12" y1="17" x2="12.01" y2="17" />
+        </svg>
+      </div>
+      <div class="callout-content">
+        Once a trigger is saved, you cannot switch it between real-time and Aampe optimised.
+      </div>
+    </div>
+
+
+    <div class="my-5 flex gap-3 border-l-4 border-amber-500 bg-amber-500/10 rounded-r-lg p-4 text-[15px] leading-6">
+      <div class="flex-shrink-0 text-amber-500 mt-0.5">
+        <svg xmlns="http://w3.org" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
+          <line x1="12" y1="9" x2="12" y2="13" />
+          <line x1="12" y1="17" x2="12.01" y2="17" />
+        </svg>
+      </div>
+      <div class="text-slate-700 dark:text-slate-300">
+        Once a trigger is saved or attached to a message, you can't switch it between real-time and Aampe optimised.
+      </div>
+    </div>
+    <div class="my-5 flex gap-3 border-l-4 border-emerald-500 bg-emerald-500/10 rounded-r-lg p-4 text-[15px] leading-6">
+      <div class="flex-shrink-0 text-emerald-500 mt-0.5">
+        <svg xmlns="http://w3.org" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path
+            d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .6 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5" />
+          <path d="M9 18h6" />
+          <path d="M10 22h4" />
+        </svg>
+      </div>
+      <div class="text-slate-700 dark:text-slate-300">
+        <strong class="font-semibold text-emerald-800 dark:text-emerald-400">Tip:</strong> Only events that happen
+        <strong class="font-semibold text-slate-900 dark:text-white">after</strong> you set a trigger live can send
+        messages.
+      </div>
+    </div>
+
+
+    <footer class="footer">
+      TinyToken CLI Documentation · Command reference
+    </footer>
+
+  </main>
+
+  <script>
+    async function copyExample(button) {
+      const pre = button.closest(".example").querySelector("pre");
+
+      // Copy the actual command, excluding explanatory comments.
+      const command = pre.innerText
+        .split("\n")
+        .filter(line => !line.trim().startsWith("#"))
+        .join("\n")
+        .trim();
+
+      try {
+        await navigator.clipboard.writeText(command);
+        button.textContent = "✓ Copied";
+        button.classList.add("copied");
+
+        setTimeout(() => {
+          button.textContent = "▢ Copy";
+          button.classList.remove("copied");
+        }, 1600);
+      } catch {
+        const textarea = document.createElement("textarea");
+        textarea.value = command;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand("copy");
+        textarea.remove();
+
+        button.textContent = "✓ Copied";
+        setTimeout(() => button.textContent = "▢ Copy", 1600);
+      }
+    }
+  </script>
+
+</body>
+
+</html>

@@ -14,7 +14,12 @@ import {
   jsonResponse,
   verifySameOriginMutation,
 } from "../utils/response";
-import { decodeBinaryToken } from "../utils/tokenCodec";
+import {
+  decodeBinaryToken,
+  extractTokenMetadata,
+  extractTokenPreviewBytes,
+  inspectBinaryTokenHeader,
+} from "../utils/tokenCodec";
 import { VQ_CODEBOOK, vqGridToHex } from "../utils/vqCodebook";
 import {
   DEFAULT_OBSERVATION_LATITUDE,
@@ -283,10 +288,11 @@ export class TokenApiHandlers {
         return errorResponse(`Token '${id}' not found`, 404);
       }
 
-      const decoded = await decodeBinaryToken(rawToken);
+      // Fast inspection: extract VQ grid from Section I without full decode
+      const insp = inspectBinaryTokenHeader(rawToken);
 
       // If centroidIds was empty, derive them from 16x16 grid and boundingBox
-      if (targetCentroids.length === 0 && decoded.vqIndices && decoded.vqIndices.length === 256) {
+      if (targetCentroids.length === 0 && insp.vqIndices && insp.vqIndices.length === 256) {
         const [bx, by, bw, bh] = boundingBox;
         const startX = Math.max(0, Math.min(15, Math.floor(bx * 16)));
         const endX = Math.max(0, Math.min(15, Math.floor((bx + bw) * 16)));
@@ -297,13 +303,21 @@ export class TokenApiHandlers {
         for (let y = startY; y <= endY; y++) {
           for (let x = startX; x <= endX; x++) {
             const cellIdx = y * 16 + x;
-            extracted.add(decoded.vqIndices[cellIdx]!);
+            extracted.add(insp.vqIndices[cellIdx]!);
           }
         }
         targetCentroids = Array.from(extracted);
       }
 
-      const geo = decoded.metadata?.geoCoordinates;
+      let geoCoordinates: { latitude?: number; longitude?: number } | undefined;
+      try {
+        const meta = extractTokenMetadata(rawToken);
+        geoCoordinates = meta.geoCoordinates;
+      } catch {
+        // Metadata unpack optional
+      }
+
+      const geo = geoCoordinates;
       const { taughtCentroids, annotation, evidence, recipe } = await visualTraitRegistry.teachObject(
         id,
         label,
@@ -318,7 +332,7 @@ export class TokenApiHandlers {
         },
       );
 
-      const updatedTraits = visualTraitRegistry.evaluateGrid(decoded.vqIndices);
+      const updatedTraits = visualTraitRegistry.evaluateGrid(insp.vqIndices);
 
       return jsonResponse({
         success: true,
@@ -358,24 +372,25 @@ export class TokenApiHandlers {
       return errorResponse(`Token '${id}' not found`, 404);
     }
 
-    const decoded = await decodeBinaryToken(rawToken);
-    const mimeType = previewFormatToMime(decoded.previewFormat);
+    // Zero-copy inspection: read format from Section I & slice Section III preview directly
+    const insp = inspectBinaryTokenHeader(rawToken);
+    const previewBytes = extractTokenPreviewBytes(rawToken);
+    const mimeType = previewFormatToMime(insp.previewFormat);
     const extractMs = (performance.now() - t0).toFixed(3);
 
     const headers: Record<string, string> = {
       "Content-Type": mimeType,
       "Cache-Control": "no-cache",
       "X-Token-Extract-Ms": extractMs,
-      "X-RS-Parity-Valid": String(decoded.rsParityValid),
-      "X-SNARK-Attested": String(decoded.snarkAttestation.valid),
+      "X-Preview-Format": insp.previewFormatLabel,
       "X-Content-Type-Options": "nosniff",
     };
 
-    if (decoded.previewFormat === PreviewFormat.SVG || mimeType === "image/svg+xml") {
+    if (insp.previewFormat === PreviewFormat.SVG || mimeType === "image/svg+xml") {
       headers["Content-Security-Policy"] = "default-src 'none'; sandbox";
     }
 
-    return new Response(new Uint8Array(decoded.previewBytes), {
+    return new Response(new Uint8Array(previewBytes), {
       status: 200,
       headers,
     });

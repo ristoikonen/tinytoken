@@ -7,6 +7,9 @@
   <meta name="theme-color" content="#ffffff">
   <title>TinyToken CLI Documentation</title>
 
+  <!-- Fast Tailwind CSS Play CDN Script -->
+  <script src="https://tailwindcss.com"></script>
+
   <style>
     :root {
       --bg: #ffffff;
@@ -398,6 +401,70 @@
         grid-template-columns: 1fr;
         gap: 4px;
       }
+
+      /* Base Callout Structure */
+      .callout {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.75rem;
+        border-left: 4px solid transparent;
+        border-radius: 0.375rem;
+        padding: 1rem;
+        margin: 1.5rem 0;
+        font-family: system-ui, -apple-system, sans-serif;
+        font-size: 0.95rem;
+      }
+
+      .callout-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        margin-top: 0.15rem;
+      }
+
+      .callout-content {
+        color: #374151;
+        /* Slate-700 / Dark Gray text */
+      }
+
+      /* Tip Specific (Green) */
+      .callout-tip {
+        background-color: rgba(16, 185, 129, 0.08);
+        /* Transparent emerald */
+        border-color: #10b981;
+        color: #065f46;
+      }
+
+      .callout-tip .callout-icon {
+        color: #10b981;
+      }
+
+      /* Note Specific (Blue) */
+      .callout-note {
+        background-color: rgba(59, 130, 246, 0.08);
+        /* Transparent blue */
+        border-color: #3b82f6;
+        color: #1e3a8a;
+      }
+
+      .callout-note .callout-icon {
+        color: #3b82f6;
+      }
+
+      /* Warning Specific (Amber) */
+      .callout-warning {
+        background-color: rgba(245, 158, 11, 0.08);
+        /* Transparent amber */
+        border-color: #f59e0b;
+        color: #78350f;
+      }
+
+      .callout-warning .callout-icon {
+        color: #f59e0b;
+      }
+
+
     }
   </style>
 </head>
@@ -437,8 +504,21 @@
     <div class="nav-heading">Commands</div>
 
     <a class="nav-link active" href="#tokenize">
-      <span class="nav-icon">⌘</span> tokenize
+      <span class="nav-icon">⌘</span>info on tinytoken
     </a>
+
+    <a class="nav-link active" href="#generate">
+      <span class="nav-icon">&#x2699;</span> generate tinytoken
+    </a>
+    <a class="nav-link active" href="#search">
+      <span class="nav-icon">&#x2315;</span> find tinytoken by name, closest, text
+    </a>
+
+    <a class="nav-link active" href="#struct">
+      <span class="nav-icon">&#x2315;</span>fist some or all fileds, enables looping via chosen field, fgast. Uses
+      memeory mapped file kind of file read -feature
+    </a>
+
 
     <!-- Add further commands here -->
     <!--
@@ -456,7 +536,7 @@
   <main>
 
     <div class="breadcrumb">
-      Documentation / Commands / <span>tokenize</span>
+      Documentation / Commands / <span>tinytoken</span>
     </div>
 
     <section id="overview">
@@ -471,7 +551,7 @@
 
     <section id="tokenize">
 
-      <h2>tokenize</h2>
+      <h1>tinytoken</h1>
 
       <p>
         Create a TinyToken from an image or document, or inspect
@@ -613,7 +693,7 @@ tinytoken tok_00004_Henri.jpg.token --info</pre>
           <button class="copy-btn" onclick="copyExample(this)">▢ Copy</button>
         </div>
         <pre><span class="comment"># Create a token from an image</span>
-bun tokenize ./images/Henri.jpg</pre>
+bun tinytoken ./images/Henri.jpg</pre>
       </div>
 
       <div class="example">
@@ -622,10 +702,90 @@ bun tokenize ./images/Henri.jpg</pre>
           <button class="copy-btn" onclick="copyExample(this)">▢ Copy</button>
         </div>
         <pre><span class="comment"># Create a token with a custom output path</span>
-bun tokenize ./documents/report.pdf -o ./output/report.token --info</pre>
+bun tinytoken ./documents/report.pdf -o ./output/report.token --info</pre>
       </div>
 
     </section>
+    <section id="generate">
+      <h1>generate<h1>
+
+          <p>
+            Create a TinyToken <kbd>token</kbd> from an image or document file.
+          </p>
+
+          <div class="syntax">
+            <div class="syntax-label">Syntax</div>
+            <span class="command">tinytoken</span>
+            <span class="argument">&lt;file&gt;</span>
+            <span class="option">[options]</span>
+          </div>
+
+          <h2>Arguments</h2>
+
+
+    </section>
+
+
+    <!-- <div class="callout callout-tip">
+      <div class="callout-icon">
+        <svg xmlns="http://w3.org" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path
+            d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .6 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5" />
+          <path d="M9 18h6" />
+          <path d="M10 22h4" />
+        </svg>
+      </div>
+      <div class="callout-content">
+        <strong>Tip:</strong> Only events that happen after you set a trigger live can send messages.
+      </div>
+    </div>
+
+    <div class="callout callout-warning">
+      <div class="callout-icon">
+        <svg xmlns="http://w3.org" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
+          <line x1="12" y1="9" x2="12" y2="13" />
+          <line x1="12" y1="17" x2="12.01" y2="17" />
+        </svg>
+      </div>
+      <div class="callout-content">
+        Once a trigger is saved, you cannot switch it between real-time and Aampe optimised.
+      </div>
+    </div>
+
+
+    <div class="my-5 flex gap-3 border-l-4 border-amber-500 bg-amber-500/10 rounded-r-lg p-4 text-[15px] leading-6">
+      <div class="flex-shrink-0 text-amber-500 mt-0.5">
+        <svg xmlns="http://w3.org" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
+          <line x1="12" y1="9" x2="12" y2="13" />
+          <line x1="12" y1="17" x2="12.01" y2="17" />
+        </svg>
+      </div>
+      <div class="text-slate-700 dark:text-slate-300">
+        Once a trigger is saved or attached to a message, you can't switch it between real-time and Aampe optimised.
+      </div>
+    </div>
+    <div class="my-5 flex gap-3 border-l-4 border-emerald-500 bg-emerald-500/10 rounded-r-lg p-4 text-[15px] leading-6">
+      <div class="flex-shrink-0 text-emerald-500 mt-0.5">
+        <svg xmlns="http://w3.org" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path
+            d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .6 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5" />
+          <path d="M9 18h6" />
+          <path d="M10 22h4" />
+        </svg>
+      </div>
+      <div class="text-slate-700 dark:text-slate-300">
+        <strong class="font-semibold text-emerald-800 dark:text-emerald-400">Tip:</strong> Only events that happen
+        <strong class="font-semibold text-slate-900 dark:text-white">after</strong> you set a trigger live can send
+        messages.
+      </div>
+    </div>
+
 
     <footer class="footer">
       TinyToken CLI Documentation · Command reference

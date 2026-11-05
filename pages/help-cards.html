@@ -1,0 +1,1730 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#ffffff">
+  <title>TinyToken CLI Documentation</title>
+
+  <!-- Fast Tailwind CSS Play CDN Script -->
+  <script src="https://tailwindcss.com"></script>
+
+  <style>
+    :root {
+      --bg: #ffffff;
+      --sidebar: #fbfbfb;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --border: #e5e7eb;
+      --accent: #e15e12;
+      --accent-light: #fff7ed;
+      --primary: #4f46e5;
+      --primary-light: #eef2ff;
+      --code-bg: #1e1e24;
+      --code-border: #2d2d38;
+      --card-bg: #ffffff;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    /* Top navigation bar */
+    .topbar {
+      height: 60px;
+      position: fixed;
+      inset: 0 0 auto 0;
+      z-index: 30;
+      display: flex;
+      align-items: center;
+      padding: 0 28px;
+      background: rgba(255, 255, 255, 0.94);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(12px);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: -0.4px;
+    }
+
+    .brand-icon {
+      width: 32px;
+      height: 32px;
+      display: grid;
+      place-items: center;
+      border-radius: 8px;
+      background: #18181b;
+      color: white;
+      padding: 4px;
+    }
+
+    .topbar-right {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .badge-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 10px;
+      border-radius: 9999px;
+      font-size: 11px;
+      font-weight: 600;
+      background: #f3f4f6;
+      color: #374151;
+      border: 1px solid #e5e7eb;
+    }
+
+    /* Left Sidebar */
+    .sidebar {
+      position: fixed;
+      top: 60px;
+      bottom: 0;
+      left: 0;
+      width: 250px;
+      padding: 28px 16px;
+      overflow-y: auto;
+      background: var(--sidebar);
+      border-right: 1px solid var(--border);
+      z-index: 20;
+    }
+
+    .nav-heading {
+      margin: 0 0 10px 10px;
+      color: #9ca3af;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+    }
+
+    .nav-link {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 3px 0;
+      padding: 8px 12px;
+      border-radius: 8px;
+      color: #4b5563;
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 500;
+      transition: all 0.15s ease;
+    }
+
+    .nav-link:hover {
+      background: #f3f4f6;
+      color: #111827;
+      transform: translateX(2px);
+    }
+
+    .nav-link.active {
+      background: var(--primary-light);
+      color: var(--primary);
+      font-weight: 600;
+    }
+
+    .nav-icon {
+      width: 20px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 6px;
+      font-size: 13px;
+      flex-shrink: 0;
+    }
+
+    /* 3-Column Layout Container */
+    .layout-container {
+      margin-left: 250px;
+      padding: 90px 36px 120px 48px;
+      display: flex;
+      justify-content: flex-start;
+      gap: 48px;
+      max-width: 1480px;
+    }
+
+    .main-column {
+      flex: 1;
+      min-width: 0;
+      max-width: 860px;
+    }
+
+    /* Right Table of Contents (Mintlify/Aampe Layout) */
+    .right-toc {
+      width: 220px;
+      flex-shrink: 0;
+      display: none;
+    }
+
+    @media (min-width: 1180px) {
+      .right-toc {
+        display: block;
+      }
+    }
+
+    .toc-sticky {
+      position: sticky;
+      top: 90px;
+      max-height: calc(100vh - 120px);
+      overflow-y: auto;
+    }
+
+    .toc-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: #6b7280;
+      margin-bottom: 12px;
+    }
+
+    .toc-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      border-left: 1px solid #e5e7eb;
+    }
+
+    .toc-item {
+      margin: 1px 0;
+    }
+
+    .toc-link {
+      display: block;
+      padding: 6px 0 6px 14px;
+      font-size: 13px;
+      color: #6b7280;
+      text-decoration: none;
+      border-left: 2px solid transparent;
+      margin-left: -1px;
+      transition: all 0.15s ease;
+      border-radius: 0 4px 4px 0;
+    }
+
+    .toc-link:hover {
+      color: #111827;
+      border-left-color: #9ca3af;
+    }
+
+    .toc-link.active {
+      color: #4f46e5;
+      border-left-color: #4f46e5;
+      font-weight: 600;
+      background: rgba(79, 70, 229, 0.04);
+    }
+
+    /* Breadcrumbs */
+    .breadcrumb {
+      margin-bottom: 20px;
+      color: #9ca3af;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .breadcrumb span {
+      color: #4b5563;
+      font-weight: 500;
+    }
+
+    /* Overview Header */
+    h1.hero-title {
+      font-size: 36px;
+      font-weight: 800;
+      letter-spacing: -1.2px;
+      line-height: 1.15;
+      color: #111827;
+      margin: 0 0 12px;
+    }
+
+    .intro-text {
+      font-size: 16px;
+      color: #4b5563;
+      max-width: 780px;
+      margin: 0 0 36px;
+      line-height: 1.6;
+    }
+
+    /* Aampe-style Card Grid Section */
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 18px;
+      margin-bottom: 56px;
+    }
+
+    .command-card {
+      position: relative;
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      border-radius: 16px;
+      padding: 22px;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      cursor: pointer;
+      text-decoration: none;
+      color: inherit;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    }
+
+    .command-card:hover {
+      border-color: var(--primary);
+      box-shadow: 0 10px 25px -5px rgba(79, 70, 229, 0.1), 0 8px 10px -6px rgba(79, 70, 229, 0.05);
+      transform: translateY(-2px);
+    }
+
+    .card-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+
+    .card-icon-box {
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.2s ease;
+    }
+
+    .command-card:hover .card-icon-box {
+      transform: scale(1.06);
+    }
+
+    .card-arrow {
+      color: #9ca3af;
+      transition: transform 0.2s ease, color 0.2s ease;
+    }
+
+    .command-card:hover .card-arrow {
+      color: var(--primary);
+      transform: translateX(4px);
+    }
+
+    .card-title {
+      font-size: 17px;
+      font-weight: 700;
+      color: #111827;
+      margin: 0 0 6px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .card-cmd-badge {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: 6px;
+      background: #f3f4f6;
+      color: #4b5563;
+      border: 1px solid #e5e7eb;
+      font-weight: 600;
+    }
+
+    .card-desc {
+      font-size: 13px;
+      color: #6b7280;
+      line-height: 1.5;
+      margin: 0 0 14px;
+      flex-grow: 1;
+    }
+
+    .card-footer {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11.5px;
+      color: #9ca3af;
+      padding-top: 12px;
+      border-top: 1px solid #f3f4f6;
+    }
+
+    /* Detailed Command Block Cards */
+    .detail-card {
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      border-radius: 20px;
+      padding: 36px 40px;
+      margin-bottom: 48px;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+      position: relative;
+      scroll-margin-top: 80px;
+    }
+
+    .detail-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 24px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid #f3f4f6;
+    }
+
+    .detail-title-group {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .detail-icon-wrap {
+      width: 48px;
+      height: 48px;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .detail-title {
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      color: #111827;
+      margin: 0;
+    }
+
+    .detail-tagline {
+      font-size: 14px;
+      color: #6b7280;
+      margin: 4px 0 0;
+    }
+
+    /* Syntax Codebox */
+    .syntax-box {
+      background: var(--code-bg);
+      border: 1px solid var(--code-border);
+      border-radius: 12px;
+      padding: 18px 22px;
+      margin: 20px 0 28px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 14px;
+      color: #f3f4f6;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      overflow-x: auto;
+    }
+
+    .syntax-code {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .syntax-cmd {
+      color: #a78bfa;
+      font-weight: 600;
+    }
+
+    .syntax-arg {
+      color: #34d399;
+    }
+
+    .syntax-opt {
+      color: #fbbf24;
+    }
+
+    /* Arguments and Options Table */
+    .specs-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0 28px;
+      font-size: 13.5px;
+    }
+
+    .specs-table th {
+      text-align: left;
+      padding: 10px 14px;
+      color: #6b7280;
+      font-weight: 600;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 1px solid #e5e7eb;
+      background: #fafafa;
+    }
+
+    .specs-table td {
+      padding: 14px;
+      border-bottom: 1px solid #f3f4f6;
+      vertical-align: top;
+    }
+
+    .specs-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .param-name {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-weight: 600;
+      color: #1f2937;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    .param-required {
+      display: inline-block;
+      margin-left: 6px;
+      color: #dc2626;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+
+    /* Callouts (Aampe exact styling) */
+    .callout {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      border-left: 4px solid transparent;
+      border-radius: 0 10px 10px 0;
+      padding: 14px 18px;
+      margin: 20px 0;
+      font-size: 13.5px;
+      line-height: 1.55;
+    }
+
+    .callout-icon {
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .callout-tip {
+      background-color: rgba(16, 185, 129, 0.08);
+      border-color: #10b981;
+      color: #065f46;
+    }
+
+    .callout-tip .callout-icon {
+      color: #10b981;
+    }
+
+    .callout-note {
+      background-color: rgba(59, 130, 246, 0.08);
+      border-color: #3b82f6;
+      color: #1e3a8a;
+    }
+
+    .callout-note .callout-icon {
+      color: #3b82f6;
+    }
+
+    .callout-warning {
+      background-color: rgba(245, 158, 11, 0.08);
+      border-color: #f59e0b;
+      color: #78350f;
+    }
+
+    .callout-warning .callout-icon {
+      color: #f59e0b;
+    }
+
+    /* Code Example Card */
+    .example-block {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      margin: 16px 0 24px;
+      background: #fafafa;
+    }
+
+    .example-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 14px;
+      background: #f4f4f5;
+      border-bottom: 1px solid var(--border);
+      font-size: 12px;
+      font-weight: 600;
+      color: #4b5563;
+    }
+
+    .copy-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      background: #ffffff;
+      border: 1px solid #d1d5db;
+      font-size: 11px;
+      font-weight: 500;
+      color: #374151;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .copy-btn:hover {
+      background: #f9fafb;
+      border-color: #9ca3af;
+      color: #111827;
+    }
+
+    .copy-btn.copied {
+      color: #059669;
+      border-color: #10b981;
+      background: #ecfdf5;
+    }
+
+    .example-block pre {
+      margin: 0;
+      padding: 16px 18px;
+      overflow-x: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 13px;
+      line-height: 1.7;
+      color: #1f2937;
+      background: #fafafa;
+    }
+
+    .code-comment {
+      color: #9ca3af;
+    }
+
+    .code-cmd {
+      color: #4f46e5;
+      font-weight: 600;
+    }
+
+    .code-flag {
+      color: #d97706;
+    }
+
+    .code-arg {
+      color: #059669;
+    }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      .sidebar {
+        display: none;
+      }
+
+      .layout-container {
+        margin-left: 0;
+        padding: 85px 20px 80px;
+      }
+
+      .detail-card {
+        padding: 24px 20px;
+      }
+
+      .card-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Topbar Navigation -->
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-icon">
+        <svg version="1.0" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 128 128"
+          preserveAspectRatio="xMidYMid meet">
+          <g transform="translate(0.0,128.0) scale(0.1,-0.1)" fill="#e15e12" stroke="none">
+            <path
+              d="M1130 1261 c-5 -11 -10 -25 -10 -31 0 -19 -50 -113 -73 -138 -25 -27 -155 -109 -272 -172 -44 -23 -93 -52 -109 -63 -70 -49 -301 -185 -308 -181 -4 3 23 51 60 108 l66 104 65 7 c85 9 155 53 204 127 20 29 52 68 72 85 37 33 44 65 15 71 -13 2 -64 -44 -197 -180 -55 -56 -158 -66 -165 -15 -2 12 -11 23 -20 25 -15 3 -18 -4 -18 -35 0 -30 -13 -57 -64 -133 -84 -124 -154 -210 -192 -235 -17 -11 -65 -29 -107 -39 l-77 -18 0 -55 c0 -51 1 -54 22 -48 11 4 54 8 93 8 56 0 82 -5 114 -21 23 -12 49 -22 58 -22 20 0 348 -169 407 -209 23 -16 48 -36 55 -45 8 -9 21 -16 30 -16 33 0 61 -43 61 -93 0 -40 3 -47 19 -47 16 0 20 8 23 38 4 51 26 52 125 2 65 -32 91 -40 137 -40 48 0 56 3 56 18 0 14 -24 30 -88 60 -48 23 -95 42 -105 42 -23 0 -243 114 -287 149 -19 16 -46 32 -60 36 -37 11 -300 147 -300 155 0 8 450 33 550 30 41 -1 139 -2 218 -1 140 1 142 1 142 24 0 46 -7 47 -181 48 -90 0 -295 -3 -455 -7 -198 -5 -293 -4 -297 3 -9 14 28 41 213 154 85 53 218 134 295 181 77 48 166 98 197 111 31 14 74 37 95 51 20 14 48 26 61 26 30 0 82 39 82 62 0 24 -29 23 -91 -3 -27 -12 -52 -19 -56 -16 -3 3 6 36 21 72 14 36 26 70 26 75 0 18 -39 10 -50 -9z" />
+          </g>
+        </svg>
+      </div>
+      <span>TinyToken <span style="color:#e15e12; font-weight:500;">Docs</span></span>
+    </div>
+
+    <div class="topbar-right">
+      <span class="badge-pill">
+        <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+        <span>TinyToken CLI Documentation</span>
+      </span>
+      <a href="/help" class="text-xs hover:text-indigo-600 transition">Classic View</a>
+    </div>
+  </header>
+
+  <!-- Left Sidebar Navigation -->
+  <aside class="sidebar">
+    <div class="nav-heading">Documentation</div>
+    <a class="nav-link" href="#overview">
+      <span class="nav-icon text-gray-500">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+          <polyline points="9 22 9 12 15 12 15 22" />
+        </svg>
+      </span>
+      Overview
+    </a>
+
+    <div class="my-5 border-t border-gray-200"></div>
+
+    <div class="nav-heading">Commands</div>
+
+    <!-- 0. tinytoken (Requirements) -->
+    <a class="nav-link" href="#tinytoken">
+      <span class="nav-icon text-gray-700 bg-gray-100">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+        </svg>
+      </span>
+      tinytoken
+    </a>
+
+    <!-- 1. tokenize -->
+    <a class="nav-link active" href="#tokenize">
+      <span class="nav-icon text-indigo-600 bg-indigo-50">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <path d="M4 17l6-6-6-6" />
+          <path d="M12 19h8" />
+        </svg>
+      </span>
+      tokenize
+    </a>
+
+    <!-- 2. generate -->
+    <a class="nav-link" href="#generate">
+      <span class="nav-icon text-emerald-600 bg-emerald-50">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <path d="M12 2v4" />
+          <path d="M12 18v4" />
+          <path d="m4.93 4.93 2.83 2.83" />
+          <path d="m16.24 16.24 2.83 2.83" />
+          <path d="M2 12h4" />
+          <path d="M18 12h4" />
+          <path d="m4.93 19.07 2.83-2.83" />
+          <path d="m16.24 7.76 2.83-2.83" />
+        </svg>
+      </span>
+      generate
+    </a>
+
+    <!-- 3. search -->
+    <a class="nav-link" href="#search">
+      <span class="nav-icon text-sky-600 bg-sky-50">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <circle cx="11" cy="11" r="8" />
+          <path d="m21 21-4.3-4.3" />
+        </svg>
+      </span>
+      search
+    </a>
+
+    <!-- 4. struct -->
+    <a class="nav-link" href="#struct">
+      <span class="nav-icon text-amber-600 bg-amber-50">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <rect width="18" height="18" x="3" y="3" rx="2" />
+          <path d="M3 9h18" />
+          <path d="M3 15h18" />
+          <path d="M9 3v18" />
+        </svg>
+      </span>
+      struct
+    </a>
+
+    <!-- 5. stream -->
+    <a class="nav-link" href="#stream">
+      <span class="nav-icon text-rose-600 bg-rose-50">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+        </svg>
+      </span>
+      stream
+    </a>
+
+    <div class="mt-8 pt-4 border-t border-gray-200 text-xs text-gray-400">
+      <br>
+
+    </div>
+  </aside>
+
+  <!-- 3-Column Layout: Main Content + Right TOC -->
+  <div class="layout-container">
+    <main class="main-column">
+      <div class="breadcrumb">
+        <span>Documentation</span>
+        <span>/</span>
+        <span class="text-gray-900 font-semibold">Command Index</span>
+      </div>
+
+      <section id="overview">
+        <h1 class="hero-title">TinyToken Commands</h1>
+        <p class="intro-text">
+          TinyToken provides a modular command suite for packing, inspecting, indexing, searching, and streaming
+          compact 25 KB self-attesting image and document tokens. Select a command card below to jump directly
+          to its specification and syntax.
+        </p>
+
+        <!-- ========================================================= -->
+        <!-- TOP COMMAND CARDS (Copy of kb.aampe.com/user-guide style) -->
+        <!-- ========================================================= -->
+        <div class="card-grid">
+
+          <!-- Card 1: tokenize (replaces User Guide / Quick Start) -->
+          <a href="#tokenize" class="command-card group">
+            <div class="card-top">
+              <div class="card-icon-box bg-indigo-50 text-indigo-600">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M4 17l6-6-6-6" />
+                  <path d="M12 19h8" />
+                </svg>
+              </div>
+              <div class="card-arrow">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="m9 18 6-6-6-6" />
+                </svg>
+              </div>
+            </div>
+            <div class="card-title">
+              <span>tokenize</span>
+              <span class="card-cmd-badge">inspect & create</span>
+            </div>
+            <div class="card-desc">
+              Single-token inspection, verification, and extraction. Audit Ed25519 signatures, inspect fields, and
+              export previews.
+            </div>
+            <div class="card-footer">
+              <span>Input: Single asset or .token</span>
+              <span class="ml-auto font-medium text-indigo-600 group-hover:underline">View details →</span>
+            </div>
+          </a>
+
+          <!-- Card 2: generate (replaces Account Management) -->
+          <a href="#generate" class="command-card group">
+            <div class="card-top">
+              <div class="card-icon-box bg-emerald-50 text-emerald-600">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 2v4" />
+                  <path d="M12 18v4" />
+                  <path d="m4.93 4.93 2.83 2.83" />
+                  <path d="m16.24 16.24 2.83 2.83" />
+                  <path d="M2 12h4" />
+                  <path d="M18 12h4" />
+                  <path d="m4.93 19.07 2.83-2.83" />
+                  <path d="m16.24 7.76 2.83-2.83" />
+                </svg>
+              </div>
+              <div class="card-arrow">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="m9 18 6-6-6-6" />
+                </svg>
+              </div>
+            </div>
+            <div class="card-title">
+              <span>generate</span>
+              <span class="card-cmd-badge">batch indexer</span>
+            </div>
+            <div class="card-desc">
+              Batch-process images and documents into 25 KB tokens with DINOv3 ViT-S/16 semantic vectors and VQ grids.
+            </div>
+            <div class="card-footer">
+              <span>Input: Directories (images/docs)</span>
+              <span class="ml-auto font-medium text-emerald-600 group-hover:underline">View details →</span>
+            </div>
+          </a>
+
+          <!-- Card 3: search (replaces Sending Messages) -->
+          <a href="#search" class="command-card group">
+            <div class="card-top">
+              <div class="card-icon-box bg-sky-50 text-sky-600">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="11" cy="11" r="8" />
+                  <path d="m21 21-4.3-4.3" />
+                </svg>
+              </div>
+              <div class="card-arrow">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="m9 18 6-6-6-6" />
+                </svg>
+              </div>
+            </div>
+            <div class="card-title">
+              <span>search</span>
+              <span class="card-cmd-badge">hybrid engine</span>
+            </div>
+            <div class="card-desc">
+              In-memory visual and semantic search querying across OCR text, DINOv3 vectors, and 16x16 VQ color
+              palettes.
+            </div>
+            <div class="card-footer">
+              <span>Mode: Visual, OCR, Semantic</span>
+              <span class="ml-auto font-medium text-sky-600 group-hover:underline">View details →</span>
+            </div>
+          </a>
+
+          <!-- Card 4: struct (replaces Create an Audience) -->
+          <a href="#struct" class="command-card group">
+            <div class="card-top">
+              <div class="card-icon-box bg-amber-50 text-amber-600">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect width="18" height="18" x="3" y="3" rx="2" />
+                  <path d="M3 9h18" />
+                  <path d="M3 15h18" />
+                  <path d="M9 3v18" />
+                </svg>
+              </div>
+              <div class="card-arrow">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="m9 18 6-6-6-6" />
+                </svg>
+              </div>
+            </div>
+            <div class="card-title">
+              <span>struct</span>
+              <span class="card-cmd-badge">zero-copy mmap</span>
+            </div>
+            <div class="card-desc">
+              Fast structured field extractor. Reads specific fields using zero-copy binary slices without full
+              decompression.
+            </div>
+            <div class="card-footer">
+              <span>Speed: &gt;1.2 GB/s field looping</span>
+              <span class="ml-auto font-medium text-amber-600 group-hover:underline">View details →</span>
+            </div>
+          </a>
+
+          <!-- Card 5: stream (replaces Product Surfaces) -->
+          <a href="#stream" class="command-card group">
+            <div class="card-top">
+              <div class="card-icon-box bg-rose-50 text-rose-600">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+                </svg>
+              </div>
+              <div class="card-arrow">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="m9 18 6-6-6-6" />
+                </svg>
+              </div>
+            </div>
+            <div class="card-title">
+              <span>stream</span>
+              <span class="card-cmd-badge">low-latency pipe</span>
+            </div>
+            <div class="card-desc">
+              Real-time binary token streaming over stdout, IPC pipes, or chunked HTTP for distributed agents and edge
+              viewers.
+            </div>
+            <div class="card-footer">
+              <span>Output: Binary stream / chunked</span>
+              <span class="ml-auto font-medium text-rose-600 group-hover:underline">View details →</span>
+            </div>
+          </a>
+
+        </div>
+      </section>
+
+      <!-- ========================================================= -->
+      <!-- DETAILED COMMAND CARDS -->
+      <!-- ========================================================= -->
+
+      <!-- 0. DETAIL CARD: tinytoken (replaces Requirements) -->
+      <article id="tinytoken" class="detail-card">
+        <div class="detail-header">
+          <div class="detail-title-group">
+            <div class="detail-icon-wrap bg-gray-100 text-gray-800">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+              </svg>
+            </div>
+            <div>
+              <h2 class="detail-title">tinytoken</h2>
+              <p class="detail-tagline">Core CLI foundation, environment requirements, and binary format invariants</p>
+            </div>
+          </div>
+          <span class="badge-pill font-mono">GF(2^8) V2 Engine</span>
+        </div>
+
+        <p class="text-gray-600 leading-relaxed mb-4">
+          TinyToken is an ultra-dense, self-attesting 25 KB binary token format combining $GF(2^8)$ Galois Field
+          arithmetic,
+          a 256-color perceptual VQ-VAE lattice, Meta DINOv3 ViT-S/16 semantic embeddings, and Ed25519 detached
+          signatures.
+          All commands conform to strict performance and memory constraints.
+        </p>
+
+        <!-- Requirements Callout -->
+        <div class="callout callout-note">
+          <div class="callout-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10" />
+              <path d="M12 16v-4" />
+              <path d="M12 8h.01" />
+            </svg>
+          </div>
+          <div>
+            <strong class="font-semibold text-blue-900">System Requirements:</strong>
+            Bun runtime (<code class="font-mono text-xs bg-blue-100/60 px-1 py-0.5 rounded">&gt;= 1.1.0</code>), native
+            typed arrays,
+            and a maximum token envelope ceiling of strictly <strong>25,600 bytes (25 KB)</strong>.
+          </div>
+        </div>
+
+        <!-- Envelope Structure Table -->
+        <h3 class="text-base font-bold text-gray-900 mt-6 mb-3">Binary Envelope Architecture</h3>
+        <table class="specs-table">
+          <thead>
+            <tr>
+              <th style="width: 180px;">Section</th>
+              <th>Offset Range</th>
+              <th>Max Size</th>
+              <th>Contents & Cryptographic Bounds</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="param-name">Section I: Origin Header</span></td>
+              <td><code class="text-xs font-mono">0 .. 703</code></td>
+              <td>704 B (Fixed)</td>
+              <td>Magic <code class="text-xs font-mono">"GF28"</code>, UUID, 256B Ed25519 signature + Merkle root, 256B
+                VQ 16x16 grid, 64B $GF(2^8)$ Reed-Solomon parity.</td>
+            </tr>
+            <tr>
+              <td><span class="param-name">Section II: Metadata & OCR</span></td>
+              <td><code class="text-xs font-mono">704 .. 704 + metaLen</code></td>
+              <td>&le; 4,096 B</td>
+              <td>QuickLZ compressed JSON payload containing asset metadata, OCR text witness, and 384-byte DINOv3
+                ViT-S/16 Int8 vector.</td>
+            </tr>
+            <tr>
+              <td><span class="param-name">Section III: Raster Preview</span></td>
+              <td><code class="text-xs font-mono">metaEnd .. End</code></td>
+              <td>&le; 20,800 B</td>
+              <td>High-efficiency 320x320 WebP/AVIF visual preview thumbnail.</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Syntax Box -->
+        <div class="syntax-box">
+          <div class="syntax-code">
+            <span class="syntax-cmd">tinytoken</span>
+            <span class="syntax-arg">[command]</span>
+            <span class="syntax-opt">[arguments...]</span>
+            <span class="syntax-opt">[options]</span>
+          </div>
+          <button class="copy-btn" onclick="copySnippet('tinytoken [command] [arguments...] [options]')">▢ Copy</button>
+        </div>
+      </article>
+
+      <!-- 1. DETAIL CARD: tokenize (replaces Create an SNS Publish Policy) -->
+      <article id="tokenize" class="detail-card">
+        <div class="detail-header">
+          <div class="detail-title-group">
+            <div class="detail-icon-wrap bg-indigo-50 text-indigo-600">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M4 17l6-6-6-6" />
+                <path d="M12 19h8" />
+              </svg>
+            </div>
+            <div>
+              <h2 class="detail-title">tokenize</h2>
+              <p class="detail-tagline">Single-token inspector, verifier, and standalone tokenizer</p>
+            </div>
+          </div>
+          <span class="badge-pill font-mono">cli.ts / bun tokenize</span>
+        </div>
+
+        <p class="text-gray-600 leading-relaxed mb-4">
+          Inspects an existing <kbd
+            class="px-1.5 py-0.5 bg-gray-100 border border-gray-300 rounded text-xs font-mono">.token</kbd> file,
+          audits its Ed25519 signature and Merkle root, extracts the high-resolution raster preview, or tokenizes a
+          single image/document asset.
+        </p>
+
+        <!-- Syntax Box -->
+        <div class="syntax-box">
+          <div class="syntax-code">
+            <span class="syntax-cmd">tinytoken</span>
+            <span class="syntax-arg">&lt;file&gt;</span>
+            <span class="syntax-opt">[options]</span>
+          </div>
+          <button class="copy-btn" onclick="copySnippet('tinytoken <file> [options]')">▢ Copy</button>
+        </div>
+
+        <!-- Arguments & Options Table -->
+        <h3 class="text-base font-bold text-gray-900 mt-6 mb-3">Arguments & Options</h3>
+        <table class="specs-table">
+          <thead>
+            <tr>
+              <th style="width: 200px;">Parameter</th>
+              <th>Type</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>
+                <span class="param-name">&lt;file&gt;</span>
+                <span class="param-required">REQUIRED</span>
+              </td>
+              <td>Path</td>
+              <td>Source asset path (image/doc) to tokenize, or path to an existing <kbd
+                  class="px-1 py-0.5 bg-gray-100 rounded text-xs">.token</kbd> file.</td>
+            </tr>
+            <tr>
+              <td><span class="param-name">-o, --out &lt;path&gt;</span></td>
+              <td>Path</td>
+              <td>Custom output destination. Defaults to <kbd
+                  class="px-1 py-0.5 bg-gray-100 rounded text-xs">&lt;input_dir&gt;/&lt;basename&gt;.token</kbd>.</td>
+            </tr>
+            <tr>
+              <td><span class="param-name">--info</span></td>
+              <td>Flag</td>
+              <td>Verbose breakdown: token size, uncompressed estimate, dates, all fields across Sections I, II, and
+                III.</td>
+            </tr>
+            <tr>
+              <td><span class="param-name">--filetype</span></td>
+              <td>Flag</td>
+              <td>Outputs clean preview format name (<kbd class="px-1 py-0.5 bg-gray-100 rounded text-xs">WEBP</kbd>,
+                <kbd class="px-1 py-0.5 bg-gray-100 rounded text-xs">PNG</kbd>, etc.) to stdout for scripting.
+              </td>
+            </tr>
+            <tr>
+              <td><span class="param-name">--preview</span></td>
+              <td>Flag</td>
+              <td>Streams raw binary preview image bytes directly to stdout (for saving or piping).</td>
+            </tr>
+            <tr>
+              <td><span class="param-name">-v, --verify</span></td>
+              <td>Flag</td>
+              <td>Explicitly runs and prints cryptographic Ed25519 signature audit, Merkle commitments, and RS parity
+                status.</td>
+            </tr>
+            <tr>
+              <td><span class="param-name">--json</span></td>
+              <td>Flag</td>
+              <td>Outputs token metadata, attestation status, and Merkle root as pure JSON.</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Tip Callout -->
+        <div class="callout callout-tip">
+          <div class="callout-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path
+                d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .6 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5" />
+              <path d="M9 18h6" />
+              <path d="M10 22h4" />
+            </svg>
+          </div>
+          <div>
+            <strong class="font-semibold text-emerald-900">Piping Preview:</strong> You can pipe binary preview images
+            directly to disk or viewers using
+            <code
+              class="font-mono text-xs bg-emerald-100/60 px-1 py-0.5 rounded">tinytoken tok.token --preview &gt; preview.webp</code>.
+          </div>
+        </div>
+
+        <!-- Examples -->
+        <h3 class="text-base font-bold text-gray-900 mt-6 mb-3">Usage Examples</h3>
+        <div class="example-block">
+          <div class="example-bar">
+            <span>Inspect token metadata and fields</span>
+            <button class="copy-btn" onclick="copyExample(this)">▢ Copy</button>
+          </div>
+          <pre><span class="code-comment"># Display detailed breakdown of all 3 token sections</span>
+<span class="code-cmd">tinytoken</span> tok_00004_Henri.jpg.token <span class="code-flag">--info</span></pre>
+        </div>
+
+        <div class="example-block">
+          <div class="example-bar">
+            <span>Verify cryptographic signature & Merkle root</span>
+            <button class="copy-btn" onclick="copyExample(this)">▢ Copy</button>
+          </div>
+          <pre><span class="code-comment"># Run tamper-detection audit</span>
+<span class="code-cmd">tinytoken</span> tok_00004_Henri.jpg.token <span class="code-flag">-v</span></pre>
+        </div>
+
+        <div class="example-block">
+          <div class="example-bar">
+            <span>Create a token from an image</span>
+            <button class="copy-btn" onclick="copyExample(this)">▢ Copy</button>
+          </div>
+          <pre><span class="code-comment"># Pack single asset into a 25 KB token</span>
+<span class="code-cmd">bun tokenize</span> ./images/Henri.jpg <span class="code-flag">-o</span> ./output/henri.token <span class="code-flag">--info</span></pre>
+        </div>
+      </article>
+
+      <!-- 2. DETAIL CARD: generate (replaces Create an IAM User) -->
+      <article id="generate" class="detail-card">
+        <div class="detail-header">
+          <div class="detail-title-group">
+            <div class="detail-icon-wrap bg-emerald-50 text-emerald-600">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 2v4" />
+                <path d="M12 18v4" />
+                <path d="m4.93 4.93 2.83 2.83" />
+                <path d="m16.24 16.24 2.83 2.83" />
+                <path d="M2 12h4" />
+                <path d="M18 12h4" />
+                <path d="m4.93 19.07 2.83-2.83" />
+                <path d="m16.24 7.76 2.83-2.83" />
+              </svg>
+            </div>
+            <div>
+              <h2 class="detail-title">generate</h2>
+              <p class="detail-tagline">Batch token generator and archive indexing engine</p>
+            </div>
+          </div>
+          <span class="badge-pill font-mono">Win11TokenPipeline</span>
+        </div>
+
+        <p class="text-gray-600 leading-relaxed mb-4">
+          Scans entire directories of images and documents concurrently using a 4-worker pool. Generates 384x384 WebP
+          previews,
+          downsamples to 16x16 VQ grids, computes real Meta DINOv3 ViT-S/16 384-byte vectors, and packs the results into
+          <kbd class="px-1.5 py-0.5 bg-gray-100 border border-gray-300 rounded text-xs font-mono">tokens.zip</kbd>.
+        </p>
+
+        <div class="syntax-box">
+          <div class="syntax-code">
+            <span class="syntax-cmd">tinytoken generate</span>
+            <span class="syntax-arg">[source_dir]</span>
+            <span class="syntax-opt">[options]</span>
+          </div>
+          <button class="copy-btn" onclick="copySnippet('tinytoken generate [source_dir] [options]')">▢ Copy</button>
+        </div>
+
+        <h3 class="text-base font-bold text-gray-900 mt-6 mb-3">Arguments & Options</h3>
+        <table class="specs-table">
+          <thead>
+            <tr>
+              <th style="width: 200px;">Parameter</th>
+              <th>Type</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="param-name">[source_dir]</span></td>
+              <td>Directory</td>
+              <td>Directory of source images to ingest. Defaults to <kbd
+                  class="px-1 py-0.5 bg-gray-100 rounded text-xs">./images</kbd>.</td>
+            </tr>
+            <tr>
+              <td><span class="param-name">-d, --doc-dir &lt;path&gt;</span></td>
+              <td>Directory</td>
+              <td>Directory containing PDF, DOCX, or text files. Defaults to <kbd
+                  class="px-1 py-0.5 bg-gray-100 rounded text-xs">./documents</kbd>.</td>
+            </tr>
+            <tr>
+              <td><span class="param-name">-o, --output &lt;path&gt;</span></td>
+              <td>Path</td>
+              <td>Output archive path. Defaults to <kbd
+                  class="px-1 py-0.5 bg-gray-100 rounded text-xs">./data/tokens.zip</kbd>.</td>
+            </tr>
+            <tr>
+              <td><span class="param-name">--workers &lt;count&gt;</span></td>
+              <td>Integer</td>
+              <td>Parallel concurrency workers. Defaults to <kbd
+                  class="px-1 py-0.5 bg-gray-100 rounded text-xs">4</kbd>.</td>
+            </tr>
+            <tr>
+              <td><span class="param-name">--no-zip</span></td>
+              <td>Flag</td>
+              <td>Emits standalone <kbd class="px-1 py-0.5 bg-gray-100 rounded text-xs">*.token</kbd> files on disk
+                instead of writing a ZIP archive.</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Note Callout -->
+        <div class="callout callout-note">
+          <div class="callout-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10" />
+              <path d="M12 16v-4" />
+              <path d="M12 8h.01" />
+            </svg>
+          </div>
+          <div>
+            <strong class="font-semibold text-blue-900">Deterministic Ordering:</strong> Workers run concurrently, but
+            output tokens are sorted deterministically so archive CRC-32 hashes remain strictly reproducible across
+            identical input trees.
+          </div>
+        </div>
+
+        <div class="example-block">
+          <div class="example-bar">
+            <span>Batch generate archive</span>
+            <button class="copy-btn" onclick="copyExample(this)">▢ Copy</button>
+          </div>
+          <pre><span class="code-comment"># Build standard tokens.zip from ./images and ./documents</span>
+<span class="code-cmd">tinytoken generate</span> ./images <span class="code-flag">-d</span> ./documents <span class="code-flag">-o</span> ./data/tokens.zip</pre>
+        </div>
+      </article>
+
+      <!-- 3. DETAIL CARD: search -->
+      <article id="search" class="detail-card">
+        <div class="detail-header">
+          <div class="detail-title-group">
+            <div class="detail-icon-wrap bg-sky-50 text-sky-600">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8" />
+                <path d="m21 21-4.3-4.3" />
+              </svg>
+            </div>
+            <div>
+              <h2 class="detail-title">search</h2>
+              <p class="detail-tagline">Multi-modal visual, semantic, and OCR search engine</p>
+            </div>
+          </div>
+          <span class="badge-pill font-mono">SearchEngine</span>
+        </div>
+
+        <p class="text-gray-600 leading-relaxed mb-4">
+          Executes sub-5ms queries over the in-memory token index. Combines Level 1/2 VQ Centroid Histogram Intersection
+          (ADC distance) with Level 3 DINOv3 ViT-S/16 cosine similarity, plus full Unicode OCR substring matching.
+        </p>
+
+        <div class="syntax-box">
+          <div class="syntax-code">
+            <span class="syntax-cmd">tinytoken search</span>
+            <span class="syntax-arg">&lt;query&gt;</span>
+            <span class="syntax-opt">[options]</span>
+          </div>
+          <button class="copy-btn" onclick="copySnippet('tinytoken search <query> [options]')">▢ Copy</button>
+        </div>
+
+        <h3 class="text-base font-bold text-gray-900 mt-6 mb-3">Arguments & Options</h3>
+        <table class="specs-table">
+          <thead>
+            <tr>
+              <th style="width: 200px;">Parameter</th>
+              <th>Type</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>
+                <span class="param-name">&lt;query&gt;</span>
+                <span class="param-required">REQUIRED</span>
+              </td>
+              <td>String</td>
+              <td>OCR text query, token ID, or abstract recipe label to match against.</td>
+            </tr>
+            <tr>
+              <td><span class="param-name">-m, --mode &lt;type&gt;</span></td>
+              <td>Enum</td>
+              <td>Search modality: <kbd class="px-1 py-0.5 bg-gray-100 rounded text-xs">hybrid</kbd> (default), <kbd
+                  class="px-1 py-0.5 bg-gray-100 rounded text-xs">semantic</kbd>, <kbd
+                  class="px-1 py-0.5 bg-gray-100 rounded text-xs">color</kbd>, or <kbd
+                  class="px-1 py-0.5 bg-gray-100 rounded text-xs">ocr</kbd>.</td>
+            </tr>
+            <tr>
+              <td><span class="param-name">-k, --top-k &lt;count&gt;</span></td>
+              <td>Integer</td>
+              <td>Maximum candidate results returned. Defaults to <kbd
+                  class="px-1 py-0.5 bg-gray-100 rounded text-xs">10</kbd>.</td>
+            </tr>
+            <tr>
+              <td><span class="param-name">--image &lt;path&gt;</span></td>
+              <td>Path</td>
+              <td>Query by visual example using a reference image or existing token.</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Tip Callout -->
+        <div class="callout callout-tip">
+          <div class="callout-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path
+                d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .6 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5" />
+              <path d="M9 18h6" />
+              <path d="M10 22h4" />
+            </svg>
+          </div>
+          <div>
+            <strong class="font-semibold text-emerald-900">Fused Metric:</strong> Hybrid search scores candidate tokens
+            using
+            <code
+              class="font-mono text-xs bg-emerald-100/60 px-1 py-0.5 rounded">Score = α · DINO_sim + (1 - α) · VQ_overlap</code>,
+            where <code class="font-mono text-xs bg-emerald-100/60 px-1 py-0.5 rounded">α = 0.60</code> balances
+            semantic invariance with material color fidelity.
+          </div>
+        </div>
+
+        <div class="example-block">
+          <div class="example-bar">
+            <span>Search tokens by text</span>
+            <button class="copy-btn" onclick="copyExample(this)">▢ Copy</button>
+          </div>
+          <pre><span class="code-comment"># Hybrid search for charred bark with top 5 hits</span>
+<span class="code-cmd">tinytoken search</span> "charred tree bark" <span class="code-flag">-m</span> hybrid <span class="code-flag">-k</span> 5</pre>
+        </div>
+      </article>
+
+      <!-- 4. DETAIL CARD: struct -->
+      <article id="struct" class="detail-card">
+        <div class="detail-header">
+          <div class="detail-title-group">
+            <div class="detail-icon-wrap bg-amber-50 text-amber-600">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect width="18" height="18" x="3" y="3" rx="2" />
+                <path d="M3 9h18" />
+                <path d="M3 15h18" />
+                <path d="M9 3v18" />
+              </svg>
+            </div>
+            <div>
+              <h2 class="detail-title">struct</h2>
+              <p class="detail-tagline">Zero-copy binary field extractor & fast slice iterator</p>
+            </div>
+          </div>
+          <span class="badge-pill font-mono">Zero-Copy Mmap</span>
+        </div>
+
+        <p class="text-gray-600 leading-relaxed mb-4">
+          Inspects specific fields directly from raw binary slices without decoding or decompressing the entire token.
+          Enables ultra-fast looping through millions of tokens at memory-bus speeds (&gt;1.2 GB/s).
+        </p>
+
+        <div class="syntax-box">
+          <div class="syntax-code">
+            <span class="syntax-cmd">tinytoken struct</span>
+            <span class="syntax-arg">&lt;file|archive&gt;</span>
+            <span class="syntax-opt">[options]</span>
+          </div>
+          <button class="copy-btn" onclick="copySnippet('tinytoken struct <file|archive> [options]')">▢ Copy</button>
+        </div>
+
+        <h3 class="text-base font-bold text-gray-900 mt-6 mb-3">Arguments & Options</h3>
+        <table class="specs-table">
+          <thead>
+            <tr>
+              <th style="width: 200px;">Parameter</th>
+              <th>Type</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>
+                <span class="param-name">&lt;file|archive&gt;</span>
+                <span class="param-required">REQUIRED</span>
+              </td>
+              <td>Path</td>
+              <td>Single <kbd class="px-1 py-0.5 bg-gray-100 rounded text-xs">.token</kbd> file or <kbd
+                  class="px-1 py-0.5 bg-gray-100 rounded text-xs">tokens.zip</kbd> archive.</td>
+            </tr>
+            <tr>
+              <td><span class="param-name">-f, --field &lt;name&gt;</span></td>
+              <td>Enum</td>
+              <td>Target field: <kbd class="px-1 py-0.5 bg-gray-100 rounded text-xs">uuid</kbd>, <kbd
+                  class="px-1 py-0.5 bg-gray-100 rounded text-xs">merkle</kbd>, <kbd
+                  class="px-1 py-0.5 bg-gray-100 rounded text-xs">vq</kbd>, <kbd
+                  class="px-1 py-0.5 bg-gray-100 rounded text-xs">flags</kbd>, <kbd
+                  class="px-1 py-0.5 bg-gray-100 rounded text-xs">dims</kbd>, or <kbd
+                  class="px-1 py-0.5 bg-gray-100 rounded text-xs">all</kbd>.</td>
+            </tr>
+            <tr>
+              <td><span class="param-name">--format &lt;fmt&gt;</span></td>
+              <td>Enum</td>
+              <td>Output format: <kbd class="px-1 py-0.5 bg-gray-100 rounded text-xs">table</kbd>, <kbd
+                  class="px-1 py-0.5 bg-gray-100 rounded text-xs">csv</kbd>, <kbd
+                  class="px-1 py-0.5 bg-gray-100 rounded text-xs">json</kbd>, or <kbd
+                  class="px-1 py-0.5 bg-gray-100 rounded text-xs">raw-hex</kbd>.</td>
+            </tr>
+            <tr>
+              <td><span class="param-name">--filter &lt;expr&gt;</span></td>
+              <td>Filter</td>
+              <td>Filter expression (e.g. <kbd class="px-1 py-0.5 bg-gray-100 rounded text-xs">flags.hasDino==true</kbd>
+                or <kbd class="px-1 py-0.5 bg-gray-100 rounded text-xs">width&gt;500</kbd>).</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="callout callout-note">
+          <div class="callout-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10" />
+              <path d="M12 16v-4" />
+              <path d="M12 8h.01" />
+            </svg>
+          </div>
+          <div>
+            <strong class="font-semibold text-blue-900">Zero Allocation:</strong> Section I fields are extracted via
+            typed <code class="font-mono text-xs bg-blue-100/60 px-1 py-0.5 rounded">DataView</code> offsets without
+            allocating new heap buffers.
+          </div>
+        </div>
+
+        <div class="example-block">
+          <div class="example-bar">
+            <span>Extract fields in table format</span>
+            <button class="copy-btn" onclick="copyExample(this)">▢ Copy</button>
+          </div>
+          <pre><span class="code-comment"># Extract UUID and Merkle roots across archive</span>
+<span class="code-cmd">tinytoken struct</span> ./data/tokens.zip <span class="code-flag">--field</span> uuid,merkle <span class="code-flag">--format</span> table</pre>
+        </div>
+      </article>
+
+      <!-- 5. DETAIL CARD: stream -->
+      <article id="stream" class="detail-card">
+        <div class="detail-header">
+          <div class="detail-title-group">
+            <div class="detail-icon-wrap bg-rose-50 text-rose-600">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+              </svg>
+            </div>
+            <div>
+              <h2 class="detail-title">stream</h2>
+              <p class="detail-tagline">Real-time binary streaming pipe and live edge feed</p>
+            </div>
+          </div>
+          <span class="badge-pill font-mono">Binary IPC Pipe</span>
+        </div>
+
+        <p class="text-gray-600 leading-relaxed mb-4">
+          Streams raw binary tokens or uncompressed preview frames continuously over standard output, FIFO sockets, or
+          chunked HTTP responses for live client image renderers and distributed edge nodes.
+        </p>
+
+        <div class="syntax-box">
+          <div class="syntax-code">
+            <span class="syntax-cmd">tinytoken stream</span>
+            <span class="syntax-arg">&lt;archive&gt;</span>
+            <span class="syntax-opt">[options]</span>
+          </div>
+          <button class="copy-btn" onclick="copySnippet('tinytoken stream <archive> [options]')">▢ Copy</button>
+        </div>
+
+        <h3 class="text-base font-bold text-gray-900 mt-6 mb-3">Arguments & Options</h3>
+        <table class="specs-table">
+          <thead>
+            <tr>
+              <th style="width: 200px;">Parameter</th>
+              <th>Type</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>
+                <span class="param-name">&lt;archive&gt;</span>
+                <span class="param-required">REQUIRED</span>
+              </td>
+              <td>Path</td>
+              <td>Path to source <kbd class="px-1 py-0.5 bg-gray-100 rounded text-xs">tokens.zip</kbd> archive to
+                stream.</td>
+            </tr>
+            <tr>
+              <td><span class="param-name">-p, --port &lt;port&gt;</span></td>
+              <td>Integer</td>
+              <td>Serve WebSocket or chunked HTTP stream on specified port.</td>
+            </tr>
+            <tr>
+              <td><span class="param-name">--fps &lt;rate&gt;</span></td>
+              <td>Float</td>
+              <td>Stream rate throttle in tokens/sec. Defaults to <kbd
+                  class="px-1 py-0.5 bg-gray-100 rounded text-xs">unthrottled</kbd>.</td>
+            </tr>
+            <tr>
+              <td><span class="param-name">--preview-only</span></td>
+              <td>Flag</td>
+              <td>Streams only the WebP preview image slices instead of the complete 25 KB envelopes.</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Warning Callout -->
+        <div class="callout callout-warning">
+          <div class="callout-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
+              <line x1="12" y1="9" x2="12" y2="13" />
+              <line x1="12" y1="17" x2="12.01" y2="17" />
+            </svg>
+          </div>
+          <div>
+            <strong class="font-semibold text-amber-900">Raw Terminal Stream:</strong> Streaming binary tokens directly
+            to a terminal output will emit raw bytes. Always redirect to a file or pipe into an image consumer.
+          </div>
+        </div>
+
+        <div class="example-block">
+          <div class="example-bar">
+            <span>Stream tokens to pipe</span>
+            <button class="copy-btn" onclick="copyExample(this)">▢ Copy</button>
+          </div>
+          <pre><span class="code-comment"># Stream previews at 30 fps to external viewer</span>
+<span class="code-cmd">tinytoken stream</span> ./data/tokens.zip <span class="code-flag">--preview-only</span> <span class="code-flag">--fps</span> 30 | ffplay -</pre>
+        </div>
+      </article>
+
+      <footer class="mt-20 pt-6 border-t border-gray-200 text-xs text-gray-400 flex items-center justify-between">
+
+        <span>&copyRisto Ikonen 2026. All Rights Reserved. TinyToken is part of Risukko Project.</span>
+      </footer>
+    </main>
+
+    <!-- ========================================================= -->
+    <!-- RIGHT TABLE OF CONTENTS (Aampe / Mintlify TOC Layout)     -->
+    <!-- ========================================================= -->
+    <aside class="right-toc" aria-label="Table of contents">
+      <div class="toc-sticky">
+        <div class="toc-header">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="21" y1="6" x2="3" y2="6"></line>
+            <line x1="15" y1="12" x2="3" y2="12"></line>
+            <line x1="17" y1="18" x2="3" y2="18"></line>
+          </svg>
+          <span>TinyToken Commands</span>
+        </div>
+        <ul class="toc-list" id="right-toc-list">
+          <li class="toc-item">
+            <a href="#tinytoken" class="toc-link" data-section="tinytoken">tinytoken</a>
+          </li>
+          <li class="toc-item">
+            <a href="#tokenize" class="toc-link" data-section="tokenize">tokenize</a>
+          </li>
+          <li class="toc-item">
+            <a href="#generate" class="toc-link" data-section="generate">generate</a>
+          </li>
+          <li class="toc-item">
+            <a href="#search" class="toc-link" data-section="search">search</a>
+          </li>
+          <li class="toc-item">
+            <a href="#struct" class="toc-link" data-section="struct">struct</a>
+          </li>
+          <li class="toc-item">
+            <a href="#stream" class="toc-link" data-section="stream">stream</a>
+          </li>
+        </ul>
+      </div>
+    </aside>
+  </div>
+
+  <script>
+    // Copy snippet button handler
+    async function copySnippet(text) {
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch {
+        const ta = document.createElement("textarea");
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        ta.remove();
+      }
+    }
+
+    // Copy example button handler
+    async function copyExample(button) {
+      const pre = button.closest(".example-block").querySelector("pre");
+      const command = pre.innerText
+        .split("\n")
+        .filter(line => !line.trim().startsWith("#"))
+        .join("\n")
+        .trim();
+
+      try {
+        await navigator.clipboard.writeText(command);
+        button.textContent = "✓ Copied";
+        button.classList.add("copied");
+        setTimeout(() => {
+          button.textContent = "▢ Copy";
+          button.classList.remove("copied");
+        }, 1600);
+      } catch {
+        const textarea = document.createElement("textarea");
+        textarea.value = command;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand("copy");
+        textarea.remove();
+
+        button.textContent = "✓ Copied";
+        setTimeout(() => button.textContent = "▢ Copy", 1600);
+      }
+    }
+
+    // Synchronized ScrollSpy for both Left Sidebar and Right Table of Contents
+    const trackedSections = document.querySelectorAll("article[id], section[id]");
+    const leftNavLinks = document.querySelectorAll(".sidebar .nav-link");
+    const rightTocLinks = document.querySelectorAll(".right-toc .toc-link");
+
+    function updateActiveTOC() {
+      let current = "";
+      const scrollPos = window.scrollY + 140;
+
+      trackedSections.forEach(section => {
+        if (section.offsetTop <= scrollPos) {
+          current = section.getAttribute("id");
+        }
+      });
+
+      if (!current && trackedSections.length > 0) {
+        current = trackedSections[0].getAttribute("id");
+      }
+
+      // Update Left Sidebar
+      leftNavLinks.forEach(link => {
+        link.classList.remove("active");
+        if (link.getAttribute("href") === `#${current}`) {
+          link.classList.add("active");
+        }
+      });
+
+      // Update Right Table of Contents
+      rightTocLinks.forEach(link => {
+        link.classList.remove("active");
+        if (link.getAttribute("href") === `#${current}`) {
+          link.classList.add("active");
+        }
+      });
+    }
+
+    window.addEventListener("scroll", updateActiveTOC, { passive: true });
+    window.addEventListener("DOMContentLoaded", updateActiveTOC);
+    updateActiveTOC();
+  </script>
+
+</body>
+
+</html>

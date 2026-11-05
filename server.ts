@@ -12,6 +12,8 @@ import {
 import { visualTraitRegistry } from "./utils/visualTraitRegistry";
 import { VqInvertedIndexEngine } from "./utils/vqInvertedIndex";
 import { CompressedTokenSearchEngine } from "./utils/zipEngine";
+import helpPage from "./pages/help.html" with { type: "text" };
+import helpCardsPage from "./pages/help-cards.html" with { type: "text" };
 
 // Configuration
 const isVercel = Bun.env.APP_VERCEL;
@@ -288,6 +290,18 @@ const server = serve({
       new Response(await getIndexHtml(), {
         headers: { "Content-Type": "text/html; charset=utf-8" },
       }),
+
+    "/help": {
+      GET: () => new Response(String(helpPage), { headers: { "Content-Type": "text/html" } })
+    },
+    "/help-cards": {
+      GET: () => new Response(String(helpCardsPage), { headers: { "Content-Type": "text/html" } })
+    },
+    "/guide": {
+      GET: () => new Response(String(helpCardsPage), { headers: { "Content-Type": "text/html" } })
+    },
+
+
   },
   fetch(req: BunRequest) {
     return fetchHandler(req);

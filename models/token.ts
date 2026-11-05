@@ -141,6 +141,43 @@ export interface DecodedToken {
   };
 }
 
+export interface TokenHeaderInspection {
+  magic: string;
+  version: number;
+  flags: number;
+  flagNames: string[];
+  uuidBytes: Uint8Array;
+  uuidHex: string;
+  originalFileSize: number;
+  metaLength: number;
+  previewLength: number;
+  width: number;
+  height: number;
+  page: number;
+  previewFormat: PreviewFormat;
+  previewFormatLabel: string;
+  merkleRoot: Uint8Array;
+  merkleRootHex: string;
+  shardBlockId: number;
+  shardIndex: number;
+  timestampMs: number;
+  timestampUtc: string;
+  homomorphicTag: number;
+  embeddingModelId: EmbeddingModelId;
+  totalTokenBytes: number;
+  expectedTotalBytes: number;
+  envelopeBoundsValid: boolean;
+  snarkStubOffset: number;
+  snarkStubLength: number;
+  vqGridOffset: number;
+  vqGridLength: number;
+  rsParityOffset: number;
+  rsParityLength: number;
+  metaOffset: number;
+  previewOffset: number;
+  vqIndices: Uint8Array;
+}
+
 export interface ZipTokenIndexEntry {
   id: string;
   entryName: string;

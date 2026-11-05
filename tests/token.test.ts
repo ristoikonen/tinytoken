@@ -41,7 +41,10 @@ import {
 import {
   decodeBinaryToken,
   encodeBinaryToken,
+  extractTokenMetadata,
+  extractTokenPreviewBytes,
   generateMockTinyTokenBuffer,
+  inspectBinaryTokenHeader,
   uuidStringToBytes,
   validateBinaryToken,
 } from "../utils/tokenCodec";
@@ -1404,6 +1407,94 @@ describe("TinyToken GF(2^8) + VQ + SHARK/SNARK Pipeline", () => {
     const prevProc = Bun.spawnSync([process.execPath, "cli.ts", "tok_00004_Henri.jpg.token", "--preview"]);
     expect(prevProc.exitCode).toBe(0);
     expect(prevProc.stdout.length).toBe(8656);
+  });
+
+  test("inspectBinaryTokenHeader & extractTokenPreviewBytes: zero-copy fast inspection without decompression or crypto", async () => {
+    const file = Bun.file("data/tok_00004_Henri.jpg.token");
+    const rawBytes = new Uint8Array(await file.arrayBuffer());
+
+    // 1. Zero-copy header inspection executes in sub-millisecond (< 500 us)
+    const t0 = Bun.nanoseconds();
+    const insp = inspectBinaryTokenHeader(rawBytes);
+    const elapsedUs = (Bun.nanoseconds() - t0) / 1000;
+
+    expect(elapsedUs).toBeLessThan(500);
+    expect(insp.magic).toBe("GF28");
+    expect(insp.version).toBe(2);
+    expect(insp.previewFormat).toBe(PreviewFormat.WEBP);
+    expect(insp.previewFormatLabel).toBe("WEBP");
+    expect(insp.width).toBe(520);
+    expect(insp.height).toBe(200);
+    expect(insp.page).toBe(1);
+    expect(insp.metaLength).toBe(1229);
+    expect(insp.previewLength).toBe(8656);
+    expect(insp.totalTokenBytes).toBe(10589);
+    expect(insp.envelopeBoundsValid).toBe(true);
+    expect(insp.uuidHex).toBe("3bbdc2ec4fa644ddac0445ec1ff2c601");
+    expect(insp.merkleRootHex).toBe("c5f22f2ab4735d185130605f9e01297f40317300b29ac99a31c3bff668342ba9");
+    expect(insp.vqIndices.length).toBe(256);
+
+    // 2. Extract preview bytes zero-copy slice matches decoded preview
+    const previewBytes = extractTokenPreviewBytes(rawBytes);
+    expect(previewBytes.length).toBe(8656);
+    // WebP magic header: RIFF .... WEBP
+    expect(String.fromCharCode(...previewBytes.subarray(0, 4))).toBe("RIFF");
+    expect(String.fromCharCode(...previewBytes.subarray(8, 12))).toBe("WEBP");
+
+    // 3. Extract metadata on-demand matches decoded metadata
+    const meta = extractTokenMetadata(rawBytes);
+    expect(meta.id).toBe("tok_00004_Henri.jpg");
+    expect(meta.filename).toBe("Henri.jpg");
+    expect(meta.mimeType).toBe("image/jpeg");
+
+    // 4. Comparison with full decodeBinaryToken
+    const fullDecoded = await decodeBinaryToken(rawBytes);
+    expect(fullDecoded.previewBytes).toEqual(previewBytes);
+    expect(fullDecoded.merkleRootHex).toBe(insp.merkleRootHex);
+  });
+
+  test("cli.ts: struct command, single field extraction (-f), and archive scanning", async () => {
+    // 1. struct command on single token
+    const structProc = Bun.spawnSync([process.execPath, "cli.ts", "struct", "tok_00004_Henri.jpg.token"]);
+    expect(structProc.exitCode).toBe(0);
+    const structOut = structProc.stdout.toString();
+    expect(structOut).toContain("[STRUCT] Zero-Copy Header Inspection");
+    expect(structOut).toContain("3bbdc2ec4fa644ddac0445ec1ff2c601");
+    expect(structOut).toContain("520 x 200 px");
+    expect(structOut).toContain("BOUNDS VALID");
+
+    // 2. Single field extractions: -f uuid, -f merkle, -f dims, -f sizes
+    const uuidProc = Bun.spawnSync([process.execPath, "cli.ts", "tok_00004_Henri.jpg.token", "-f", "uuid"]);
+    expect(uuidProc.exitCode).toBe(0);
+    expect(uuidProc.stdout.toString().trim()).toBe("3bbdc2ec4fa644ddac0445ec1ff2c601");
+
+    const merkleProc = Bun.spawnSync([process.execPath, "cli.ts", "tok_00004_Henri.jpg.token", "-f", "merkle"]);
+    expect(merkleProc.exitCode).toBe(0);
+    expect(merkleProc.stdout.toString().trim()).toBe("c5f22f2ab4735d185130605f9e01297f40317300b29ac99a31c3bff668342ba9");
+
+    const dimsProc = Bun.spawnSync([process.execPath, "cli.ts", "tok_00004_Henri.jpg.token", "-f", "dims"]);
+    expect(dimsProc.exitCode).toBe(0);
+    expect(dimsProc.stdout.toString().trim()).toBe("520x200");
+
+    const sizesProc = Bun.spawnSync([process.execPath, "cli.ts", "tok_00004_Henri.jpg.token", "-f", "sizes"]);
+    expect(sizesProc.exitCode).toBe(0);
+    expect(sizesProc.stdout.toString().trim()).toBe("Header: 704B | Meta: 1229B | Preview: 8656B | Total: 10589B");
+
+    // 3. struct JSON format
+    const jsonProc = Bun.spawnSync([process.execPath, "cli.ts", "struct", "tok_00004_Henri.jpg.token", "--format", "json"]);
+    expect(jsonProc.exitCode).toBe(0);
+    const jsonParsed = JSON.parse(jsonProc.stdout.toString());
+    expect(jsonParsed.magic).toBe("GF28");
+    expect(jsonParsed.width).toBe(520);
+    expect(jsonParsed.height).toBe(200);
+    expect(jsonParsed.envelopeBoundsValid).toBe(true);
+
+    // 4. struct on tokens.zip archive
+    const zipProc = Bun.spawnSync([process.execPath, "cli.ts", "struct", "./data/tokens.zip", "--limit", "3"]);
+    expect(zipProc.exitCode).toBe(0);
+    const zipOut = zipProc.stdout.toString();
+    expect(zipOut).toContain("[STRUCT ARCHIVE]");
+    expect(zipOut).toContain("tokens inspected");
   });
 });
 
