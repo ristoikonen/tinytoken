@@ -189,6 +189,7 @@ export interface ZipTokenIndexEntry {
   width: number;
   height: number;
   originalFileSize: number;
+  sourceHash?: string;
   previewFormat: PreviewFormat;
   flags: number;
   ocrText: string;
@@ -228,4 +229,3 @@ export interface SearchHitDTO {
   dinoSimilarity?: number | null; // 0..100% DINOv3 ViT-S/16 semantic cosine score (null if un-evaluated or incompatible)
   adcDistance?: number;
 }
-

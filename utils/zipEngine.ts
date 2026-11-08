@@ -51,6 +51,7 @@ export interface SerializedManifestEntry {
   width: number;
   height: number;
   originalFileSize: number;
+  sourceHash?: string;
   previewFormat: PreviewFormat;
   flags: number;
   ocrText: string;
@@ -179,6 +180,7 @@ export async function writeNativeTokenZipArchive(
       width: item.meta.width,
       height: item.meta.height,
       originalFileSize: item.meta.originalFileSize,
+      ...(item.meta.sourceHash ? { sourceHash: item.meta.sourceHash } : {}),
       previewFormat: item.meta.previewFormat,
       flags: item.meta.flags,
       ocrText: item.meta.ocrText,
@@ -425,6 +427,7 @@ export class CompressedTokenSearchEngine {
           width: item.width,
           height: item.height,
           originalFileSize: item.originalFileSize,
+          ...(item.sourceHash ? { sourceHash: item.sourceHash } : {}),
           previewFormat: item.previewFormat,
           flags: item.flags,
           ocrText: item.ocrText,
@@ -524,6 +527,7 @@ export class CompressedTokenSearchEngine {
             width: item.width,
             height: item.height,
             originalFileSize: item.originalFileSize,
+            ...(item.sourceHash ? { sourceHash: item.sourceHash } : {}),
             previewFormat: item.previewFormat,
             flags: item.flags,
             ocrText: item.ocrText,
@@ -882,4 +886,3 @@ export class CompressedTokenSearchEngine {
     return true;
   }
 }
-

@@ -94,6 +94,47 @@ describe("TinyToken GF(2^8) + VQ + SHARK/SNARK Pipeline", () => {
     expect(() => QuickLZ.decompress(new Uint8Array([3, 10, 0]))).toThrow("expected at least 9 header bytes");
   });
 
+  test("Archive reuse detects source content changes using SHA-256 manifest hashes", async () => {
+    const sourcePath = "./data/test_source_hash_reuse.txt";
+    const archivePath = "./data/test_source_hash_reuse.zip";
+    const pipeline = new Win11TokenPipeline({
+      sourceDirectory: "./data",
+      documentDirectory: "./data",
+      outputZipPath: archivePath,
+      allowedExtensions: [".txt"],
+      maxTokenSizeKb: 25,
+    });
+
+    try {
+      await Bun.write(sourcePath, "alpha");
+      const firstBuild = await pipeline.buildTokenArchive();
+      expect(firstBuild.totalTokens).toBe(1);
+      expect(firstBuild.reusedTokens).toBe(0);
+
+      const firstEngine = new CompressedTokenSearchEngine(archivePath);
+      await firstEngine.buildIndex();
+      const firstHash = firstEngine.getAllEntries()[0]?.sourceHash;
+      expect(firstHash).toMatch(/^[a-f0-9]{64}$/);
+
+      await Bun.write(sourcePath, "bravo");
+      const changedBuild = await pipeline.buildTokenArchive();
+      expect(changedBuild.totalTokens).toBe(1);
+      expect(changedBuild.reusedTokens).toBe(0);
+
+      const changedEngine = new CompressedTokenSearchEngine(archivePath);
+      await changedEngine.buildIndex();
+      expect(changedEngine.getAllEntries()[0]?.sourceHash).not.toBe(firstHash);
+
+      const unchangedBuild = await pipeline.buildTokenArchive();
+      expect(unchangedBuild.reusedTokens).toBe(1);
+    } finally {
+      for (const path of [sourcePath, archivePath]) {
+        const file = Bun.file(path);
+        if (await file.exists()) await file.delete();
+      }
+    }
+  });
+
   test("25 KB Binary Token encodes, verifies Ed25519+Merkle attestation across all sections, and heals GF(2^8) byte corruption", async () => {
     const dummyImg = new Uint8Array(2048);
     for (let i = 0; i < dummyImg.length; i++) dummyImg[i] = (i * 7) & 0xff;
@@ -277,10 +318,17 @@ describe("TinyToken GF(2^8) + VQ + SHARK/SNARK Pipeline", () => {
     expect(buildRes.documentTokens).toBeGreaterThanOrEqual(5);
     expect(buildRes.totalTokens).toBe(buildRes.imageTokens + buildRes.documentTokens);
 
+    const rebuildRes = await pipeline.buildTokenArchive();
+    expect(rebuildRes.totalTokens).toBe(buildRes.totalTokens);
+    expect(rebuildRes.reusedTokens).toBe(buildRes.totalTokens);
+
     const engine = new CompressedTokenSearchEngine(testZipPath);
     await engine.buildIndex();
 
     expect(engine.getCount()).toBe(buildRes.totalTokens);
+    expect(
+      engine.getAllEntries().every((entry) => /^[a-f0-9]{64}$/.test(entry.sourceHash ?? "")),
+    ).toBe(true);
     expect(engine.lastBootIndexMs).toBeLessThan(500);
 
     const docHits = engine.searchOCR("PDF Page", 20);
@@ -1497,4 +1545,3 @@ describe("TinyToken GF(2^8) + VQ + SHARK/SNARK Pipeline", () => {
     expect(zipOut).toContain("tokens inspected");
   });
 });
-

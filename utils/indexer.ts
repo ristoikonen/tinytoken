@@ -36,6 +36,7 @@ import { decodeBinaryToken, encodeBinaryToken } from "./tokenCodec";
 import { vqGridToHex } from "./vqCodebook";
 import {
   type SerializedManifestEntry,
+  CompressedTokenSearchEngine,
   writeNativeTokenZipArchive,
 } from "./zipEngine";
 
@@ -126,6 +127,26 @@ export class Win11TokenPipeline {
         );
       }
     }
+  }
+
+  private async hashSourceFile(
+    fullPath: string,
+    benchmark?: PipelineBenchmark,
+  ): Promise<string> {
+    const file = Bun.file(fullPath);
+    if (!(await file.exists())) {
+      throw new Error(`Source file not found while hashing: ${fullPath}`);
+    }
+
+    const hasher = new Bun.CryptoHasher("sha256");
+    const startNs = Bun.nanoseconds();
+    let bytesRead = 0;
+    for await (const chunk of file.stream()) {
+      hasher.update(chunk);
+      bytesRead += chunk.byteLength;
+    }
+    benchmark?.recordFileRead(bytesRead, Bun.nanoseconds() - startNs);
+    return hasher.digest("hex");
   }
 
   /**
@@ -760,6 +781,11 @@ export class Win11TokenPipeline {
     ];
   }
 
+
+
+
+  
+
   /**
    * Tokenizes all real files in `sourceDirectory` (`./images`) and `documentDirectory` (`./documents`)
    * and writes the packed ZIP container to `outputZipPath`.
@@ -768,6 +794,7 @@ export class Win11TokenPipeline {
     totalTokens: number;
     imageTokens: number;
     documentTokens: number;
+    reusedTokens: number;
     archiveBytes: number;
     elapsedMs: number;
     benchmarkReport?: PipelineBenchmarkReport;
@@ -789,8 +816,100 @@ export class Win11TokenPipeline {
     );
     const documentPaths = await this.scanDocumentDirectory();
 
+    const existingTokens = new Map<string, ZipTokenIndexEntry[]>();
+    let existingEngine: CompressedTokenSearchEngine | null = null;
+    let nextTokenCounter = 1;
+    try {
+      if (!this.isZipMode() || (await Bun.file(this.config.outputZipPath).exists())) {
+        existingEngine = new CompressedTokenSearchEngine(this.config.outputZipPath, {
+          useZip: this.isZipMode(),
+          dataDirPath: this.config.dataDirectory,
+        });
+        await existingEngine.buildIndex();
+        for (const entry of existingEngine.getAllEntries()) {
+          const key = JSON.stringify([
+            entry.filename,
+            entry.originalFileSize,
+            entry.sourcePath.startsWith("/api/document/"),
+          ]);
+          const matches = existingTokens.get(key) ?? [];
+          matches.push(entry);
+          existingTokens.set(key, matches);
+
+          const sequence = /^tok_(\d+)_/.exec(entry.id);
+          if (sequence) {
+            nextTokenCounter = Math.max(nextTokenCounter, Number(sequence[1]) + 1);
+          }
+        }
+      }
+    } catch (err) {
+      console.warn("Could not read existing token archive for reuse; rebuilding all tokens:", err);
+      existingTokens.clear();
+      existingEngine = null;
+    }
+
+    const scannedSourceCounts = new Map<string, number>();
+    for (const [paths, isDocument] of [[imagePaths, false], [documentPaths, true]] as const) {
+      for (const fullPath of paths) {
+        const file = Bun.file(fullPath);
+        if (!(await file.exists())) continue;
+        const filename = fullPath.split("/").pop() ?? "asset.bin";
+        const key = JSON.stringify([filename, file.size, isDocument]);
+        scannedSourceCounts.set(key, (scannedSourceCounts.get(key) ?? 0) + 1);
+      }
+    }
+
+    let reusedTokens = 0;
+    const tryReuse = async (
+      fullPath: string,
+      isDocument: boolean,
+      sourceHash: string,
+    ): Promise<ArchiveTokenItem[] | null> => {
+      const file = Bun.file(fullPath);
+      if (!(await file.exists())) return null;
+      const filename = fullPath.split("/").pop() ?? "asset.bin";
+      const key = JSON.stringify([filename, file.size, isDocument]);
+      const matches = existingTokens
+        .get(key)
+        ?.filter((entry) => entry.sourceHash === sourceHash);
+      if (!existingEngine || scannedSourceCounts.get(key) !== 1 || !matches?.length) return null;
+      const orderedMatches = [...matches].sort((a, b) => a.page - b.page);
+
+      if (!isDocument && orderedMatches.length !== 1) return null;
+      if (isDocument) {
+        const expectedPages = Math.min(
+          orderedMatches[0]!.totalPages,
+          this.config.maxPagesPerDocument ?? 3,
+        );
+        if (
+          orderedMatches.length !== expectedPages ||
+          orderedMatches.some((entry, index) => entry.page !== index + 1)
+        ) {
+          return null;
+        }
+      }
+
+      const items: ArchiveTokenItem[] = [];
+      for (const entry of orderedMatches) {
+        const tokenBytes = await existingEngine.extractToken(entry.id);
+        if (!tokenBytes) return null;
+        const {
+          localHeaderOffset: _localHeaderOffset,
+          dataOffset: _dataOffset,
+          compressedSize: _compressedSize,
+          uncompressedSize: _uncompressedSize,
+          compressionMethod: _compressionMethod,
+          crc32: _crc32,
+          ...meta
+        } = entry;
+        items.push({ entryName: entry.entryName, tokenBytes, meta });
+      }
+      reusedTokens += items.length;
+      existingTokens.delete(key);
+      return items;
+    };
+
     const archiveItems: ArchiveTokenItem[] = [];
-    let tokenCounter = 0;
     let imageTokens = 0;
     let documentTokens = 0;
 
@@ -804,8 +923,19 @@ export class Win11TokenPipeline {
         const idx = pathIndex++;
         const fullPath = imagePaths[idx]!;
         try {
-          const item = await this.tokenizeImageFile(fullPath, idx + 1, benchmark);
-          imageItemsByIndex[idx] = item;
+          const sourceHash = await this.hashSourceFile(fullPath, benchmark);
+          const cachedItems = await tryReuse(fullPath, false, sourceHash);
+          if (cachedItems) {
+            imageItemsByIndex[idx] = cachedItems[0] ?? null;
+          } else {
+            const item = await this.tokenizeImageFile(
+              fullPath,
+              nextTokenCounter++,
+              benchmark,
+            );
+            if (item) item.meta.sourceHash = sourceHash;
+            imageItemsByIndex[idx] = item;
+          }
         } catch (err) {
           console.error(`Skipping image file "${fullPath}" due to processing error:`, err);
         }
@@ -819,16 +949,19 @@ export class Win11TokenPipeline {
         imageTokens++;
       }
     }
-    tokenCounter = imageTokens;
 
     for (const fullPath of documentPaths) {
       try {
-        const items = await this.tokenizeDocumentFile(fullPath, tokenCounter + 1, benchmark);
+        const sourceHash = await this.hashSourceFile(fullPath, benchmark);
+        const cachedItems = await tryReuse(fullPath, true, sourceHash);
+        const items =
+          cachedItems ?? (await this.tokenizeDocumentFile(fullPath, nextTokenCounter, benchmark));
         for (const item of items) {
+          if (!cachedItems) item.meta.sourceHash = sourceHash;
           archiveItems.push(item);
-          tokenCounter++;
           documentTokens++;
         }
+        if (!cachedItems) nextTokenCounter += items.length;
       } catch (err) {
         console.error(`Skipping document file "${fullPath}" due to processing error:`, err);
       }
@@ -855,6 +988,7 @@ export class Win11TokenPipeline {
           width: item.meta.width,
           height: item.meta.height,
           originalFileSize: item.meta.originalFileSize,
+          ...(item.meta.sourceHash ? { sourceHash: item.meta.sourceHash } : {}),
           previewFormat: item.meta.previewFormat,
           flags: item.meta.flags,
           ocrText: item.meta.ocrText,
@@ -887,6 +1021,7 @@ export class Win11TokenPipeline {
         totalTokens: archiveItems.length,
         imageTokens,
         documentTokens,
+        reusedTokens,
         archiveBytes: totalBytes,
         elapsedMs: Math.round((performance.now() - t0) * 100) / 100,
         benchmarkReport: benchmark.getReport(),
@@ -905,11 +1040,17 @@ export class Win11TokenPipeline {
       totalTokens: tokenCount,
       imageTokens,
       documentTokens,
+      reusedTokens,
       archiveBytes: totalBytes,
       elapsedMs: Math.round((performance.now() - t0) * 100) / 100,
       benchmarkReport: benchmark.getReport(),
     };
   }
+
+
+
+
+
 
   /**
    * Runs an isolated benchmark pass over source and document directories and returns the detailed report.
