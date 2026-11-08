@@ -100,11 +100,20 @@ export function ensureInitialized(): Promise<void> {
   return initPromise;
 }
 
-async function directoryExists(dir: string): Promise<boolean> {
+/* async function directoryExists(dir: string): Promise<boolean> {
   try {
     const glob = new Bun.Glob("*");
     for await (const _ of glob.scan({ cwd: dir })) break;
     return true;
+  } catch {
+    return false;
+  }
+}
+ */
+async function directoryExists(dir: string): Promise<boolean> {
+  try {
+    const stats = await Bun.file(dir).stat();
+    return stats.isDirectory();
   } catch {
     return false;
   }

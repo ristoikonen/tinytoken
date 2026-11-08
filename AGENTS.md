@@ -1,7 +1,7 @@
 # AGENTS.md — TinyToken Architecture & AI Agent Directives
 
 > **System Overview**: TinyToken is an ultra-dense, self-attesting 25 KB binary token format ($GF(2^8)$ + VQ-VAE + DINOv3 + Ed25519) combined with a high-performance in-memory search engine and a **Persistent Knowledge Layer**.
-> 
+> Note that as the project is 'in dev', not every filetype's implementation and operational defaults are enforced consistently.
 > This document provides autonomous AI agents with the foundational invariants, architectural contracts, and operational guidelines required to read, modify, and extend TinyToken without corrupting state or conflating conceptual abstractions.
 
 ---
