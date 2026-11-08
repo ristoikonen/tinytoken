@@ -1,0 +1,1979 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TinyToken · Binary Field Structure Specification</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap"
+    rel="stylesheet">
+  <style>
+    /* ==========================================================================
+       TINYTOKEN TECH-CHIC DESIGN SYSTEM (Glow2 Colors + Crisp White Background)
+       Guidance: Knapsack Showcase · Sparse Negative Space · Monolithic Geometry
+       ========================================================================== */
+    :root {
+      /* Glow2 Core Accents */
+      --glow-cyan: #0284c7;
+      --glow-cyan-light: #e0f2fe;
+      --glow-cyan-glow: rgba(2, 132, 199, 0.18);
+
+      --glow-coral: #e11d48;
+      --glow-coral-light: #ffe4e6;
+      --glow-coral-glow: rgba(225, 29, 72, 0.18);
+
+      --glow-emerald: #059669;
+      --glow-emerald-light: #d1fae5;
+      --glow-emerald-glow: rgba(5, 150, 105, 0.18);
+
+      --glow-purple: #9333ea;
+      --glow-purple-light: #f3e8ff;
+      --glow-purple-glow: rgba(147, 51, 234, 0.18);
+
+      --glow-amber: #d97706;
+      --glow-amber-light: #fef3c7;
+      --glow-amber-glow: rgba(217, 119, 6, 0.18);
+
+      /* Knapsack Monochrome Palette */
+      --bg-canvas: #ffffff;
+      --bg-surface: #fafafa;
+      --bg-subtle: #f4f4f5;
+      --border-subtle: #e4e4e7;
+      --border-chic: #d4d4d8;
+
+      --text-headline: #09090b;
+      --text-body: #3f3f46;
+      --text-muted: #71717a;
+      --text-faint: #a1a1aa;
+
+      /* Typefaces */
+      --font-display: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --font-mono: "Geist Mono", "SF Mono", Menlo, Monaco, Consolas, monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      background-color: var(--bg-canvas);
+      color: var(--text-headline);
+      font-family: var(--font-display);
+      line-height: 1.5;
+      overflow-x: hidden;
+      min-height: 100vh;
+      -selection-background-color: var(--glow-cyan-light);
+    }
+
+    ::selection {
+      background: var(--glow-cyan-light);
+      color: var(--glow-cyan);
+    }
+
+    /* Sparse Header */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: rgba(255, 255, 255, 0.88);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 18px 48px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+    }
+
+    .brand-cluster {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .brand-mark {
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      background: #09090b;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-family: var(--font-mono);
+      font-weight: 700;
+      font-size: 13px;
+      letter-spacing: -0.5px;
+      position: relative;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+    }
+
+    .brand-mark::after {
+      content: "";
+      position: absolute;
+      inset: -1px;
+      border-radius: 9px;
+      padding: 1px;
+      background: linear-gradient(135deg, var(--glow-cyan), var(--glow-purple));
+      mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      pointer-events: none;
+    }
+
+    .brand-text h1 {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+      color: var(--text-headline);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .brand-text p {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* Chic Mode Switcher Pills */
+    .controls-shelf {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .pill-group {
+      display: inline-flex;
+      align-items: center;
+      background: var(--bg-subtle);
+      padding: 3px;
+      border-radius: 9999px;
+      border: 1px solid var(--border-subtle);
+    }
+
+    .pill-btn {
+      appearance: none;
+      border: none;
+      background: transparent;
+      padding: 6px 14px;
+      border-radius: 9999px;
+      font-family: var(--font-display);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+
+    .pill-btn:hover {
+      color: var(--text-headline);
+    }
+
+    .pill-btn.active {
+      background: #ffffff;
+      color: var(--text-headline);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+    }
+
+    .pill-btn .indicator-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+    }
+
+    .pill-btn.active .indicator-dot.cyan {
+      background: var(--glow-cyan);
+    }
+
+    .pill-btn.active .indicator-dot.purple {
+      background: var(--glow-purple);
+    }
+
+    .tag-stat {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--border-subtle);
+      background: #ffffff;
+      color: var(--text-body);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .tag-stat strong {
+      color: var(--text-headline);
+      font-weight: 600;
+    }
+
+    /* Main Container (Sparse & Airy) */
+    main {
+      max-width: 1380px;
+      margin: 0 auto;
+      padding: 48px 48px 120px 48px;
+    }
+
+    /* Hero Headline & Token Architecture Intro */
+    .hero-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      margin-bottom: 40px;
+      border-bottom: 1px solid var(--border-subtle);
+      padding-bottom: 32px;
+    }
+
+    .hero-headline {
+      max-width: 680px;
+    }
+
+    .hero-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--glow-cyan);
+      margin-bottom: 12px;
+    }
+
+    .hero-headline h2 {
+      font-size: 32px;
+      font-weight: 700;
+      letter-spacing: -1px;
+      line-height: 1.15;
+      color: var(--text-headline);
+      margin-bottom: 12px;
+    }
+
+    .hero-headline p {
+      font-size: 15px;
+      color: var(--text-muted);
+      line-height: 1.6;
+      font-weight: 400;
+    }
+
+    .hero-spec-strip {
+      display: flex;
+      gap: 20px;
+    }
+
+    .spec-item {
+      text-align: right;
+    }
+
+    .spec-item .num {
+      font-family: var(--font-mono);
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--text-headline);
+      letter-spacing: -0.5px;
+    }
+
+    .spec-item .lbl {
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* Tab View Switcher */
+    .view-deck-nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 36px;
+    }
+
+    .view-title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .view-tag {
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-subtle);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 4px;
+      color: var(--text-body);
+    }
+
+    .view-deck-title {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.4px;
+      color: var(--text-headline);
+    }
+
+    /* Presentation View Containers */
+    .presentation-view {
+      display: none;
+      animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    .presentation-view.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(6px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* ==========================================================================
+       VERSION 1: THE STRATA CARD DECK (Physical Piled Stack)
+       ========================================================================== */
+    .strata-deck-layout {
+      display: grid;
+      grid-template-columns: 1fr 380px;
+      gap: 56px;
+      align-items: start;
+    }
+
+    .deck-stage {
+      position: relative;
+      perspective: 1200px;
+      min-height: 600px;
+      padding: 20px 0;
+    }
+
+
+
+    .strata-stack {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      transition: gap 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .strata-stack.fanned {
+      gap: 24px;
+    }
+
+    .strata-stack.piled {
+      gap: 0;
+      padding-top: 10px;
+    }
+
+    .strata-stack.piled .strata-card {
+      margin-top: -38px;
+      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.08), 0 2px 6px rgba(0, 0, 0, 0.04);
+      transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .strata-stack.piled .strata-card:first-child {
+      margin-top: 0;
+    }
+
+    .strata-stack.piled .strata-card:hover {
+      transform: translateY(-16px) scale(1.01);
+      z-index: 20 !important;
+      box-shadow: 0 24px 48px rgba(0, 0, 0, 0.12), 0 4px 10px rgba(0, 0, 0, 0.06);
+    }
+
+    .strata-card {
+      background: #ffffff;
+      border: 1px solid var(--border-subtle);
+      border-radius: 14px;
+      padding: 24px 28px;
+      cursor: pointer;
+      position: relative;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
+    }
+
+    .strata-card.selected {
+      border-color: var(--card-accent, var(--glow-cyan));
+      box-shadow: 0 0 0 2px var(--card-accent, var(--glow-cyan)), 0 12px 32px rgba(0, 0, 0, 0.06);
+    }
+
+    .strata-card::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 16px;
+      bottom: 16px;
+      width: 4px;
+      border-radius: 0 4px 4px 0;
+      background: var(--card-accent, var(--glow-cyan));
+    }
+
+    .strata-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .strata-title-cluster {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .strata-badge {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 8px;
+      border-radius: 6px;
+      background: var(--card-accent-light, var(--glow-cyan-light));
+      color: var(--card-accent, var(--glow-cyan));
+      letter-spacing: 0.3px;
+    }
+
+    .strata-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-headline);
+    }
+
+    .strata-offset {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-muted);
+      background: var(--bg-subtle);
+      padding: 4px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--border-subtle);
+    }
+
+    .strata-grid-preview {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-top: 12px;
+    }
+
+    .strata-cell {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      padding: 10px 12px;
+    }
+
+    .strata-cell .cell-label {
+      font-size: 10px;
+      font-family: var(--font-mono);
+      color: var(--text-faint);
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+
+    .strata-cell .cell-val {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-headline);
+      word-break: break-all;
+    }
+
+    /* Strata Inspect Sidebar */
+    .deck-inspector {
+      background: #ffffff;
+      border: 1px solid var(--border-subtle);
+      border-radius: 14px;
+      padding: 28px;
+      position: sticky;
+      top: 100px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04);
+    }
+
+    .inspector-headline {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--text-faint);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .inspector-target-name {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text-headline);
+      margin-bottom: 6px;
+    }
+
+    .inspector-target-desc {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.5;
+      margin-bottom: 24px;
+    }
+
+    .inspector-spec-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      border-top: 1px solid var(--border-subtle);
+      padding-top: 18px;
+    }
+
+    .spec-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      font-size: 12px;
+    }
+
+    .spec-row .k {
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .spec-row .v {
+      font-family: var(--font-mono);
+      font-weight: 600;
+      color: var(--text-headline);
+      text-align: right;
+    }
+
+    .visual-thumbnail-box {
+      margin-top: 20px;
+      border-radius: 10px;
+      border: 1px solid var(--border-subtle);
+      overflow: hidden;
+      background: var(--bg-surface);
+      text-align: center;
+      padding: 12px;
+    }
+
+    .visual-thumbnail-box img {
+      max-width: 100%;
+      height: 140px;
+      object-fit: contain;
+      border-radius: 6px;
+    }
+
+    .vq-palette-grid {
+      display: grid;
+      grid-template-columns: repeat(16, 1fr);
+      gap: 2px;
+      margin-top: 12px;
+      padding: 6px;
+      background: #09090b;
+      border-radius: 6px;
+    }
+
+    .vq-cell {
+      aspect-ratio: 1;
+      border-radius: 1px;
+    }
+
+    /* ==========================================================================
+       VERSION 2: THE KNAPSACK TOKEN BENTO (Modular Sparse Token System)
+       ========================================================================== */
+    .knapsack-bento-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+    }
+
+    .bento-card {
+      background: #ffffff;
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      padding: 24px;
+      transition: all 0.2s ease;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+    }
+
+    .bento-card:hover {
+      border-color: var(--border-chic);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
+      transform: translateY(-2px);
+    }
+
+    .bento-card.span-2 {
+      grid-column: span 2;
+    }
+
+    .bento-card.span-3 {
+      grid-column: span 3;
+    }
+
+    .token-chip-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+
+    .token-chip-name {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-headline);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .token-chip-name .badge-indicator {
+      width: 8px;
+      height: 8px;
+      border-radius: 2px;
+    }
+
+    .token-chip-type {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-faint);
+    }
+
+    .token-value-display {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      padding: 14px 16px;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: var(--text-headline);
+      font-weight: 500;
+      word-break: break-all;
+      margin: 12px 0;
+      position: relative;
+    }
+
+    .token-meta-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11px;
+      color: var(--text-muted);
+      border-top: 1px solid var(--border-subtle);
+      padding-top: 12px;
+      margin-top: 8px;
+    }
+
+    .token-meta-bar .offset-tag {
+      font-family: var(--font-mono);
+      color: var(--text-body);
+      font-weight: 600;
+    }
+
+    .copy-pill {
+      border: none;
+      background: transparent;
+      color: var(--glow-cyan);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .copy-pill:hover {
+      text-decoration: underline;
+    }
+
+    /* ==========================================================================
+       VERSION 3: THE MONOLITHIC BYTE TAPE (Memory Strip with Scrubber)
+       ========================================================================== */
+    .byte-tape-container {
+      background: #ffffff;
+      border: 1px solid var(--border-subtle);
+      border-radius: 14px;
+      padding: 36px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+    }
+
+    .tape-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      margin-bottom: 24px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-body);
+    }
+
+    .legend-box {
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+    }
+
+    .memory-ribbon {
+      height: 38px;
+      width: 100%;
+      border-radius: 8px;
+      display: flex;
+      overflow: hidden;
+      border: 1px solid var(--border-subtle);
+      margin-bottom: 28px;
+      background: var(--bg-subtle);
+      position: relative;
+    }
+
+    .ribbon-segment {
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      color: #ffffff;
+      cursor: pointer;
+      transition: opacity 0.15s ease, transform 0.15s ease;
+      position: relative;
+    }
+
+    .ribbon-segment:hover {
+      opacity: 0.9;
+      transform: scaleY(1.06);
+      z-index: 5;
+    }
+
+    .ribbon-segment.cyan {
+      background: var(--glow-cyan);
+    }
+
+    .ribbon-segment.rose {
+      background: var(--glow-coral);
+    }
+
+    .ribbon-segment.purple {
+      background: var(--glow-purple);
+    }
+
+    .ribbon-segment.emerald {
+      background: var(--glow-emerald);
+    }
+
+    .ribbon-segment.amber {
+      background: var(--glow-amber);
+    }
+
+    .ribbon-segment.dark {
+      background: #334155;
+    }
+
+    .tape-detail-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      margin-top: 12px;
+    }
+
+    .tape-detail-table th {
+      text-align: left;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--text-faint);
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 12px 16px;
+    }
+
+    .tape-detail-table td {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border-subtle);
+      color: var(--text-body);
+      vertical-align: middle;
+    }
+
+    .tape-detail-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .tape-detail-table tr:hover td {
+      background: var(--bg-surface);
+    }
+
+    .mono-cell {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    /* ==========================================================================
+       VERSION 4: THE COMPARATIVE LENS (Image vs PDF Side-by-Side Stack)
+       ========================================================================== */
+    .comparative-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 32px;
+    }
+
+    .compare-column {
+      background: #ffffff;
+      border: 1px solid var(--border-subtle);
+      border-radius: 14px;
+      padding: 32px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.02);
+    }
+
+    .compare-column-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+      padding-bottom: 18px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .compare-title {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--text-headline);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .compare-type-badge {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 4px;
+    }
+
+    .compare-type-badge.img {
+      background: var(--glow-cyan-light);
+      color: var(--glow-cyan);
+    }
+
+    .compare-type-badge.pdf {
+      background: var(--glow-coral-light);
+      color: var(--glow-coral);
+    }
+
+    .compare-field-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .compare-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 14px;
+      border-radius: 8px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+    }
+
+    .compare-row .lbl {
+      font-size: 12px;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .compare-row .val {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-headline);
+    }
+
+    .diff-highlight {
+      background: #fef08a !important;
+      color: #854d0e !important;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 700;
+    }
+
+    /* Footer */
+    footer {
+      margin-top: 80px;
+      border-top: 1px solid var(--border-subtle);
+      padding-top: 32px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 20px;
+    }
+
+    .footer-links a {
+      color: var(--text-muted);
+      text-decoration: none;
+    }
+
+    .footer-links a:hover {
+      color: var(--text-headline);
+    }
+
+    /* Toast notification */
+    #chic-toast {
+      position: fixed;
+      bottom: 32px;
+      right: 32px;
+      background: #09090b;
+      color: #ffffff;
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 500;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+      opacity: 0;
+      transform: translateY(10px);
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      pointer-events: none;
+      z-index: 100;
+    }
+
+    #chic-toast.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    @media (max-width: 960px) {
+      header {
+        padding: 16px 24px;
+        flex-wrap: wrap;
+      }
+
+      main {
+        padding: 32px 24px 80px 24px;
+      }
+
+      .strata-deck-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .knapsack-bento-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .comparative-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .hero-meta {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 20px;
+      }
+
+      .hero-spec-strip {
+        text-align: left;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Sparse Chic Sticky Header -->
+  <header>
+    <div class="brand-cluster">
+      <div class="brand-mark">
+
+        <svg version="1.0" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%"
+          viewBox="0 0 128.000000 128.000000" preserveAspectRatio="xMidYMid meet"
+          style="filter:drop-shadow(0 0 6px rgba(56,189,248,0.5));">
+          <g transform="translate(0.000000,128.000000) scale(0.100000,-0.100000)" fill="#38bdf8" stroke="none">
+            <path
+              d="M1130 1261 c-5 -11 -10 -25 -10 -31 0 -19 -50 -113 -73 -138 -25 -27 -155 -109 -272 -172 -44 -23 -93 -52 -109 -63 -70 -49 -301 -185 -308 -181 -4 3 23 51 60 108 l66 104 65 7 c85 9 155 53 204 127 20 29 52 68 72 85 37 33 44 65 15 71 -13 2 -64 -44 -197 -180 -55 -56 -158 -66 -165 -15 -2 12 -11 23 -20 25 -15 3 -18 -4 -18 -35 0 -30 -13 -57 -64 -133 -84 -124 -154 -210 -192 -235 -17 -11 -65 -29 -107 -39 l-77 -18 0 -55 c0 -51 1 -54 22 -48 11 4 54 8 93 8 56 0 82 -5 114 -21 23 -12 49 -22 58 -22 20 0 348 -169 407 -209 23 -16 48 -36 55 -45 8 -9 21 -16 30 -16 33 0 61 -43 61 -93 0 -40 3 -47 19 -47 16 0 20 8 23 38 4 51 26 52 125 2 65 -32 91 -40 137 -40 48 0 56 3 56 18 0 14 -24 30 -88 60 -48 23 -95 42 -105 42 -23 0 -243 114 -287 149 -19 16 -46 32 -60 36 -37 11 -300 147 -300 155 0 8 450 33 550 30 41 -1 139 -2 218 -1 140 1 142 1 142 24 0 46 -7 47 -181 48 -90 0 -295 -3 -455 -7 -198 -5 -293 -4 -297 3 -9 14 28 41 213 154 85 53 218 134 295 181 77 48 166 98 197 111 31 14 74 37 95 51 20 14 48 26 61 26 30 0 82 39 82 62 0 24 -29 23 -91 -3 -27 -12 -52 -19 -56 -16 -3 3 6 36 21 72 14 36 26 70 26 75 0 18 -39 10 -50 -9z">
+            </path>
+          </g>
+        </svg>
+
+      </div>
+      <div class="brand-text">
+        <h1>TinyToken <span>· Schema Specification</span></h1>
+        <p>25 KB GF(2⁸) · VQ-16×16 · DINOv3 · ED25519 ATTESTATION</p>
+      </div>
+    </div>
+
+    <!-- Active Asset Sample Toggle (Image vs PDF) -->
+    <div class="controls-shelf">
+      <div class="pill-group" title="Switch active sample token dataset">
+        <button class="pill-btn active" id="btn-sample-image" onclick="setSampleAsset('image')">
+          <span class="indicator-dot cyan"></span>
+          <span>Sample: Henri.jpg (Image)</span>
+        </button>
+        <button class="pill-btn" id="btn-sample-pdf" onclick="setSampleAsset('pdf')">
+          <span class="indicator-dot purple"></span>
+          <span>Sample: BeyondDeficit.pdf (12p)</span>
+        </button>
+      </div>
+
+      <div class="tag-stat">
+        <span>ENVELOPE</span>
+        <strong id="badge-total-size">10,589 B / 25.6 KB</strong>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- Hero Headline & Token Architecture Intro -->
+    <section class="hero-meta">
+      <div class="hero-headline">
+        <div class="hero-eyebrow">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polygon points="12 2 2 7 12 12 22 7 12 2" />
+            <polyline points="2 17 12 22 22 17" />
+            <polyline points="2 12 12 17 22 12" />
+          </svg>
+          Architectural Specification
+        </div>
+        <h2>TinyToken Envelope</h2>
+        <p>TinyToken compresses image and multi-page document assets into a self-contained, tamper-proof 25 KB envelope.
+          It couples a sub-microsecond zero-copy fixed header with neural VQ lattice centroids and an on-demand QuickLZ
+          metadata core.</p>
+      </div>
+
+      <div class="hero-spec-strip">
+        <div class="spec-item">
+          <div class="num" id="hero-num-header">704 B</div>
+          <div class="lbl">Section I Header</div>
+        </div>
+        <div class="spec-item">
+          <div class="num" id="hero-num-meta">1,229 B</div>
+          <div class="lbl">Section II Meta</div>
+        </div>
+        <div class="spec-item">
+          <div class="num" id="hero-num-preview">8,656 B</div>
+          <div class="lbl">Section III Preview</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Version Deck Switcher Tabs -->
+    <div class="view-deck-nav">
+      <div class="view-title-wrap">
+        <span class="view-tag">SPEC PRESENTATION</span>
+        <div class="view-deck-title" id="active-view-name">The Strata Card Deck (Layered Physical Stack)</div>
+      </div>
+
+      <div class="pill-group">
+        <button class="pill-btn active"
+          onclick="switchView('view-strata', this, 'The Strata Card Deck (Layered Physical Stack)')">
+          1. Strata Stack
+        </button>
+        <button class="pill-btn"
+          onclick="switchView('view-knapsack', this, 'Knapsack Token Bento (Modular Sparse Tokens)')">
+          2. Knapsack Bento
+        </button>
+        <button class="pill-btn"
+          onclick="switchView('view-tape', this, 'Monolithic Byte Tape (Proportional Memory Map)')">
+          3. Byte Tape
+        </button>
+        <button class="pill-btn"
+          onclick="switchView('view-comparative', this, 'Comparative Lens (Image vs 12-Page PDF Document)')">
+          4. Comparative Lens
+        </button>
+      </div>
+    </div>
+
+    <!-- ====================================================================
+         VERSION 1: THE STRATA CARD DECK (PHYSICAL PILED STACK)
+         ==================================================================== -->
+    <section id="view-strata" class="presentation-view active">
+      <div class="strata-deck-layout">
+        <div class="deck-stage">
+          <div class="strata-stack fanned" id="strata-stack-root">
+
+            <!-- Layer 1: Section I Header Primary Identity -->
+            <div class="strata-card selected"
+              style="--card-accent: var(--glow-cyan); --card-accent-light: var(--glow-cyan-light); z-index: 4;"
+              onclick="selectCard(0)">
+              <div class="strata-card-header">
+                <div class="strata-title-cluster">
+                  <span class="strata-badge">SECTION I · OFFSET 0..87</span>
+                  <div class="strata-title">Fixed Binary Header & Hardware Geometry</div>
+                </div>
+                <div class="strata-offset">88 Bytes · Zero-Copy</div>
+              </div>
+              <div class="strata-grid-preview">
+                <div class="strata-cell">
+                  <div class="cell-label">Magic Bytes</div>
+                  <div class="cell-val" id="card-magic">0x47 0x46 0x32 0x38 ("GF28")</div>
+                </div>
+                <div class="strata-cell">
+                  <div class="cell-label">Format Version</div>
+                  <div class="cell-val" id="card-version">v2 (uint16)</div>
+                </div>
+                <div class="strata-cell">
+                  <div class="cell-label">Bitmask Flags</div>
+                  <div class="cell-val" id="card-flags">0x0027 [VQ, SNARK, QLZ, DINO]</div>
+                </div>
+                <div class="strata-cell">
+                  <div class="cell-label">Source Resolution</div>
+                  <div class="cell-val" id="card-dims">520 × 200 px (Page 1)</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Layer 2: SNARK Stub & Galois Error Correction -->
+            <div class="strata-card"
+              style="--card-accent: var(--glow-coral); --card-accent-light: var(--glow-coral-light); z-index: 3;"
+              onclick="selectCard(1)">
+              <div class="strata-card-header">
+                <div class="strata-title-cluster">
+                  <span class="strata-badge"
+                    style="background: var(--glow-coral-light); color: var(--glow-coral);">SECTION I · OFFSET
+                    88..703</span>
+                  <div class="strata-title">Cryptographic Attestation, VQ-16×16 & GF(2⁸) Parity</div>
+                </div>
+                <div class="strata-offset">616 Bytes · RS Lanes</div>
+              </div>
+              <div class="strata-grid-preview">
+                <div class="strata-cell">
+                  <div class="cell-label">SHA-256 Merkle Root</div>
+                  <div class="cell-val" id="card-merkle">c5f22f2ab4735d18...</div>
+                </div>
+                <div class="strata-cell">
+                  <div class="cell-label">Ed25519 Stub</div>
+                  <div class="cell-val">256B Detached Signature</div>
+                </div>
+                <div class="strata-cell">
+                  <div class="cell-label">VQ Lattice (16×16)</div>
+                  <div class="cell-val">256 Centroids ($GF(2^8)$)</div>
+                </div>
+                <div class="strata-cell">
+                  <div class="cell-label">GF(2⁸) RS Parity</div>
+                  <div class="cell-val" style="color: var(--glow-emerald);">64B (3 Lanes Healed)</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Layer 3: Section II Metadata Core -->
+            <div class="strata-card"
+              style="--card-accent: var(--glow-amber); --card-accent-light: var(--glow-amber-light); z-index: 2;"
+              onclick="selectCard(2)">
+              <div class="strata-card-header">
+                <div class="strata-title-cluster">
+                  <span class="strata-badge"
+                    style="background: var(--glow-amber-light); color: var(--glow-amber);">SECTION II · OFFSET
+                    704..VAR</span>
+                  <div class="strata-title">QuickLZ Compressed JSON Metadata & Semantic Vector</div>
+                </div>
+                <div class="strata-offset" id="card-meta-len">1,229 Bytes</div>
+              </div>
+              <div class="strata-grid-preview">
+                <div class="strata-cell">
+                  <div class="cell-label">Asset Identifier</div>
+                  <div class="cell-val" id="card-asset-id">tok_00004_Henri.jpg</div>
+                </div>
+                <div class="strata-cell">
+                  <div class="cell-label">DINOv3 Embedding</div>
+                  <div class="cell-val">384-Dim Int8 CLS Vector</div>
+                </div>
+                <div class="strata-cell">
+                  <div class="cell-label">OCR Text Snippet</div>
+                  <div class="cell-val" id="card-ocr-snippet">"Image Asset: Henri.jpg..."</div>
+                </div>
+                <div class="strata-cell">
+                  <div class="cell-label">Taxonomy Tags</div>
+                  <div class="cell-val" id="card-tags">dinov3, webp, verified</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Layer 4: Section III Visual Preview -->
+            <div class="strata-card"
+              style="--card-accent: var(--glow-purple); --card-accent-light: var(--glow-purple-light); z-index: 1;"
+              onclick="selectCard(3)">
+              <div class="strata-card-header">
+                <div class="strata-title-cluster">
+                  <span class="strata-badge"
+                    style="background: var(--glow-purple-light); color: var(--glow-purple);">SECTION III · OFFSET
+                    END</span>
+                  <div class="strata-title">Embedded Visual Preview Image</div>
+                </div>
+                <div class="strata-offset" id="card-preview-len">8,656 Bytes · 320×320</div>
+              </div>
+              <div class="strata-grid-preview">
+                <div class="strata-cell">
+                  <div class="cell-label">Preview Format</div>
+                  <div class="cell-val" id="card-preview-fmt">WEBP (0x02)</div>
+                </div>
+                <div class="strata-cell">
+                  <div class="cell-label">Dimensions</div>
+                  <div class="cell-val">320 × 320 Standard</div>
+                </div>
+                <div class="strata-cell">
+                  <div class="cell-label">Extract Latency</div>
+                  <div class="cell-val" style="color: var(--glow-emerald);">&lt; 0.005 ms (0 Crypto)</div>
+                </div>
+                <div class="strata-cell">
+                  <div class="cell-label">Envelope Space Remaining</div>
+                  <div class="cell-val" id="card-free-bytes">15,011 B Free</div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Sidebar Inspector -->
+        <aside class="deck-inspector">
+          <div class="inspector-headline">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="16" x2="12" y2="12" />
+              <line x1="12" y1="8" x2="12.01" y2="8" />
+            </svg>
+            Active Field Inspector
+          </div>
+          <div class="inspector-target-name" id="insp-title">Section I: Fixed Binary Header</div>
+          <div class="inspector-target-desc" id="insp-desc">704-byte static slice. Directly accessible via zero-copy
+            DataView in &lt;1 µs without decompressing QuickLZ metadata or performing WebCrypto Ed25519 verification.
+          </div>
+
+          <div class="inspector-spec-list">
+            <div class="spec-row">
+              <span class="k">Byte Range:</span>
+              <span class="v" id="insp-range">0 .. 703 (704 Bytes)</span>
+            </div>
+            <div class="spec-row">
+              <span class="k">Data Alignment:</span>
+              <span class="v">64-bit Hardware Aligned</span>
+            </div>
+            <div class="spec-row">
+              <span class="k">Cryptographic State:</span>
+              <span class="v" style="color: var(--glow-emerald);">Attested &amp; Parity Verified</span>
+            </div>
+            <div class="spec-row">
+              <span class="k">UUID (128-bit):</span>
+              <span class="v" id="insp-uuid">3bbdc2ec4fa644dd...</span>
+            </div>
+          </div>
+
+          <div class="visual-thumbnail-box">
+            <div
+              style="font-family: var(--font-mono); font-size: 10px; color: var(--text-faint); margin-bottom: 6px; text-transform: uppercase;">
+              Embedded Section III Preview / VQ
+            </div>
+            <div id="inspector-image-container">
+              <img id="insp-preview-img" src="/api/token/tok_00004_Henri.jpg/preview" alt="Token Preview"
+                onerror="this.onerror=null; this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'320\' height=\'200\' fill=\'%23f4f4f5\'><text x=\'50%25\' y=\'50%25\' font-family=\'monospace\' font-size=\'14\' fill=\'%2371717a\' text-anchor=\'middle\'>Henri.jpg Preview (WebP)</text></svg>';">
+            </div>
+            <div class="vq-palette-grid" id="insp-vq-grid">
+              <!-- Dynamically populated 16x16 sample cells -->
+            </div>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         VERSION 2: THE KNAPSACK TOKEN BENTO (SPARSE MODULAR SYSTEM)
+         ==================================================================== -->
+    <section id="view-knapsack" class="presentation-view">
+      <div class="knapsack-bento-grid">
+
+        <!-- Token 1: Magic -->
+        <div class="bento-card">
+          <div>
+            <div class="token-chip-header">
+              <div class="token-chip-name">
+                <span class="badge-indicator" style="background: var(--glow-cyan);"></span>
+                token.header.magic
+              </div>
+              <span class="token-chip-type">char[4]</span>
+            </div>
+            <p style="font-size: 12px; color: var(--text-muted);">Binary envelope identifier confirming $GF(2^8)$ Galois
+              Field token standard.</p>
+            <div class="token-value-display">"GF28" &middot; 0x47 0x46 0x32 0x38</div>
+          </div>
+          <div class="token-meta-bar">
+            <span class="offset-tag">OFFSET 0 &middot; 4 BYTES</span>
+            <button class="copy-pill" onclick="copyTokenValue('0x47463238')">Copy Hex</button>
+          </div>
+        </div>
+
+        <!-- Token 2: Version -->
+        <div class="bento-card">
+          <div>
+            <div class="token-chip-header">
+              <div class="token-chip-name">
+                <span class="badge-indicator" style="background: var(--glow-cyan);"></span>
+                token.header.version
+              </div>
+              <span class="token-chip-type">uint16_le</span>
+            </div>
+            <p style="font-size: 12px; color: var(--text-muted);">Specification model generation. Enforces structural
+              compatibility.</p>
+            <div class="token-value-display">2 (Current Production Spec)</div>
+          </div>
+          <div class="token-meta-bar">
+            <span class="offset-tag">OFFSET 4 &middot; 2 BYTES</span>
+            <button class="copy-pill" onclick="copyTokenValue('2')">Copy Val</button>
+          </div>
+        </div>
+
+        <!-- Token 3: Flags Bitmask -->
+        <div class="bento-card">
+          <div>
+            <div class="token-chip-header">
+              <div class="token-chip-name">
+                <span class="badge-indicator" style="background: var(--glow-coral);"></span>
+                token.header.flags
+              </div>
+              <span class="token-chip-type">uint16_le bitmask</span>
+            </div>
+            <p style="font-size: 12px; color: var(--text-muted);">Cryptographic capabilities and multi-page document
+              payload markers.</p>
+            <div class="token-value-display" id="bento-flags-val">0x0027 [VQ | SNARK | QLZ | DINO]</div>
+          </div>
+          <div class="token-meta-bar">
+            <span class="offset-tag">OFFSET 6 &middot; 2 BYTES</span>
+            <button class="copy-pill" onclick="copyTokenValue('0x0027')">Copy Bitmask</button>
+          </div>
+        </div>
+
+        <!-- Token 4: UUID (128-bit) -->
+        <div class="bento-card span-2">
+          <div>
+            <div class="token-chip-header">
+              <div class="token-chip-name">
+                <span class="badge-indicator" style="background: var(--glow-cyan);"></span>
+                token.header.uuid
+              </div>
+              <span class="token-chip-type">uint8[16] &middot; UUIDv4</span>
+            </div>
+            <p style="font-size: 12px; color: var(--text-muted);">Globally unique 128-bit content identifier for
+              zero-collision indexing.</p>
+            <div class="token-value-display" id="bento-uuid-val">3bbdc2ec-4fa6-44dd-ac04-45ec1ff2c601</div>
+          </div>
+          <div class="token-meta-bar">
+            <span class="offset-tag">OFFSET 8 &middot; 16 BYTES</span>
+            <button class="copy-pill" onclick="copyTokenValue('3bbdc2ec4fa644ddac0445ec1ff2c601')">Copy Hex</button>
+          </div>
+        </div>
+
+        <!-- Token 5: Dimensions -->
+        <div class="bento-card">
+          <div>
+            <div class="token-chip-header">
+              <div class="token-chip-name">
+                <span class="badge-indicator" style="background: var(--glow-emerald);"></span>
+                token.header.resolution
+              </div>
+              <span class="token-chip-type">uint16_le[2]</span>
+            </div>
+            <p style="font-size: 12px; color: var(--text-muted);">Width &times; Height in original pixel coordinate
+              space.</p>
+            <div class="token-value-display" id="bento-dims-val">520 &times; 200 px (Page 1)</div>
+          </div>
+          <div class="token-meta-bar">
+            <span class="offset-tag">OFFSET 28 &middot; 4 BYTES</span>
+            <button class="copy-pill" onclick="copyTokenValue('520x200')">Copy Dims</button>
+          </div>
+        </div>
+
+        <!-- Token 6: Merkle Root -->
+        <div class="bento-card span-2">
+          <div>
+            <div class="token-chip-header">
+              <div class="token-chip-name">
+                <span class="badge-indicator" style="background: var(--glow-coral);"></span>
+                token.header.merkle_root
+              </div>
+              <span class="token-chip-type">uint8[32] &middot; SHA-256</span>
+            </div>
+            <p style="font-size: 12px; color: var(--text-muted);">Root digest sealing Section I header, metadata,
+              preview, and VQ lattice.</p>
+            <div class="token-value-display" id="bento-merkle-val">
+              c5f22f2ab4735d185130605f9e01297f40317300b29ac99a31c3bff668342ba9</div>
+          </div>
+          <div class="token-meta-bar">
+            <span class="offset-tag">OFFSET 44 &middot; 32 BYTES</span>
+            <button class="copy-pill"
+              onclick="copyTokenValue('c5f22f2ab4735d185130605f9e01297f40317300b29ac99a31c3bff668342ba9')">Copy
+              Hash</button>
+          </div>
+        </div>
+
+        <!-- Token 7: Embedding Model ID -->
+        <div class="bento-card">
+          <div>
+            <div class="token-chip-header">
+              <div class="token-chip-name">
+                <span class="badge-indicator" style="background: var(--glow-purple);"></span>
+                token.header.embedding_model
+              </div>
+              <span class="token-chip-type">uint8 enum</span>
+            </div>
+            <p style="font-size: 12px; color: var(--text-muted);">Neural representation standard.</p>
+            <div class="token-value-display">0x02 (Meta DINOv3 ViT-S/16 ONNX q8)</div>
+          </div>
+          <div class="token-meta-bar">
+            <span class="offset-tag">OFFSET 79 &middot; 1 BYTE</span>
+            <button class="copy-pill" onclick="copyTokenValue('0x02')">Copy ID</button>
+          </div>
+        </div>
+
+        <!-- Token 8: Section II Metadata Payload -->
+        <div class="bento-card span-3">
+          <div>
+            <div class="token-chip-header">
+              <div class="token-chip-name">
+                <span class="badge-indicator" style="background: var(--glow-amber);"></span>
+                token.payload.section2_metadata
+              </div>
+              <span class="token-chip-type">QuickLZ Compressed JSON</span>
+            </div>
+            <p style="font-size: 12px; color: var(--text-muted);">Decompressed on demand. Contains asset taxonomy, OCR
+              transcripts, DINOv3 384-dim Int8 vectors, and GPS coords.</p>
+            <div class="token-value-display" id="bento-meta-snippet"
+              style="white-space: pre-wrap; font-size: 12px; line-height: 1.6;">{
+              "id": "tok_00004_Henri.jpg",
+              "filename": "Henri.jpg",
+              "mimeType": "image/jpeg",
+              "tags": ["local-image", "jpg", "dinov3-vit-s16", "webp-preview"],
+              "ocrText": "Image Asset: Henri.jpg | Dimensions: 520x200 | DINOv3-ViT-S16-384B"
+              }</div>
+          </div>
+          <div class="token-meta-bar">
+            <span class="offset-tag" id="bento-meta-offset">OFFSET 704 &middot; 1,229 BYTES</span>
+            <button class="copy-pill" onclick="copyTokenValue('tok_00004_Henri.jpg')">Copy JSON Snippet</button>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         VERSION 3: THE MONOLITHIC BYTE TAPE (MEMORY MAP & SCRUBBER)
+         ==================================================================== -->
+    <section id="view-tape" class="presentation-view">
+      <div class="byte-tape-container">
+        <div class="tape-legend">
+          <div class="legend-item"><span class="legend-box" style="background: var(--glow-cyan);"></span> Section I
+            Header (704 B)</div>
+          <div class="legend-item"><span class="legend-box" style="background: var(--glow-coral);"></span> SNARK Stub
+            (256 B)</div>
+          <div class="legend-item"><span class="legend-box" style="background: var(--glow-purple);"></span> VQ-16×16
+            Lattice (256 B)</div>
+          <div class="legend-item"><span class="legend-box" style="background: var(--glow-emerald);"></span> GF(2⁸) RS
+            Parity (64 B)</div>
+          <div class="legend-item"><span class="legend-box" style="background: var(--glow-amber);"></span> Section II
+            Metadata</div>
+          <div class="legend-item"><span class="legend-box" style="background: #334155;"></span> Section III Preview
+            WebP</div>
+          <div class="legend-item"><span class="legend-box" style="background: var(--border-subtle);"></span> Free
+            Buffer (to 25.6 KB)</div>
+        </div>
+
+        <!-- Proportional Memory Ribbon -->
+        <div class="memory-ribbon" id="memory-ribbon-bar">
+          <div class="ribbon-segment cyan" style="width: 2.75%;" title="Section I Header (Bytes 0..703)"
+            onclick="highlightTapeRow('row-header')">HDR</div>
+          <div class="ribbon-segment amber" id="ribbon-meta" style="width: 4.8%;" title="Section II Metadata"
+            onclick="highlightTapeRow('row-meta')">META</div>
+          <div class="ribbon-segment dark" id="ribbon-prev" style="width: 33.8%;" title="Section III Preview"
+            onclick="highlightTapeRow('row-preview')">PREVIEW (WEBP)</div>
+          <div class="ribbon-segment" id="ribbon-free"
+            style="width: 58.65%; background: var(--bg-subtle); color: var(--text-faint);" title="Free Envelope Buffer">
+            FREE CAPACITY</div>
+        </div>
+
+        <!-- Structured Field Table -->
+        <table class="tape-detail-table">
+          <thead>
+            <tr>
+              <th>Offset Range</th>
+              <th>Field Identifier</th>
+              <th>Encoding Type</th>
+              <th>Byte Length</th>
+              <th>Runtime Sample Value</th>
+              <th>Inspection Overhead</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr id="row-header">
+              <td class="mono-cell" style="color: var(--glow-cyan);">0 .. 3</td>
+              <td><strong>magic</strong></td>
+              <td class="mono-cell">ASCII char[4]</td>
+              <td class="mono-cell">4 B</td>
+              <td class="mono-cell">"GF28" (0x47 0x46 0x32 0x38)</td>
+              <td><span style="color: var(--glow-emerald); font-weight: 600;">0 µs (zero-copy)</span></td>
+            </tr>
+            <tr>
+              <td class="mono-cell" style="color: var(--glow-cyan);">4 .. 5</td>
+              <td><strong>version</strong></td>
+              <td class="mono-cell">uint16_le</td>
+              <td class="mono-cell">2 B</td>
+              <td class="mono-cell">2</td>
+              <td><span style="color: var(--glow-emerald); font-weight: 600;">0 µs</span></td>
+            </tr>
+            <tr>
+              <td class="mono-cell" style="color: var(--glow-coral);">6 .. 7</td>
+              <td><strong>flags</strong></td>
+              <td class="mono-cell">uint16_le</td>
+              <td class="mono-cell">2 B</td>
+              <td class="mono-cell" id="tape-flags-val">0x0027 [HAS_VQ, SNARK, QLZ, DINO]</td>
+              <td><span style="color: var(--glow-emerald); font-weight: 600;">0 µs</span></td>
+            </tr>
+            <tr>
+              <td class="mono-cell" style="color: var(--glow-cyan);">8 .. 23</td>
+              <td><strong>uuid</strong></td>
+              <td class="mono-cell">uint8[16]</td>
+              <td class="mono-cell">16 B</td>
+              <td class="mono-cell" id="tape-uuid-val">3bbdc2ec4fa644ddac0445ec1ff2c601</td>
+              <td><span style="color: var(--glow-emerald); font-weight: 600;">0 µs</span></td>
+            </tr>
+            <tr>
+              <td class="mono-cell" style="color: var(--glow-cyan);">24 .. 27</td>
+              <td><strong>originalFileSize</strong></td>
+              <td class="mono-cell">uint32_le</td>
+              <td class="mono-cell">4 B</td>
+              <td class="mono-cell" id="tape-filesize-val">23,599 bytes</td>
+              <td><span style="color: var(--glow-emerald); font-weight: 600;">0 µs</span></td>
+            </tr>
+            <tr>
+              <td class="mono-cell" style="color: var(--glow-cyan);">28 .. 31</td>
+              <td><strong>width &times; height</strong></td>
+              <td class="mono-cell">uint16_le[2]</td>
+              <td class="mono-cell">4 B</td>
+              <td class="mono-cell" id="tape-dims-val">520 &times; 200 px</td>
+              <td><span style="color: var(--glow-emerald); font-weight: 600;">0 µs</span></td>
+            </tr>
+            <tr>
+              <td class="mono-cell" style="color: var(--glow-coral);">44 .. 75</td>
+              <td><strong>merkleRoot</strong></td>
+              <td class="mono-cell">uint8[32]</td>
+              <td class="mono-cell">32 B</td>
+              <td class="mono-cell" id="tape-merkle-val">c5f22f2ab4735d185130605f9e01297f...</td>
+              <td><span style="color: var(--glow-emerald); font-weight: 600;">0 µs</span></td>
+            </tr>
+            <tr>
+              <td class="mono-cell" style="color: var(--glow-coral);">88 .. 343</td>
+              <td><strong>snarkStub (Ed25519)</strong></td>
+              <td class="mono-cell">uint8[256]</td>
+              <td class="mono-cell">256 B</td>
+              <td class="mono-cell">Detached signature + issuer key hash</td>
+              <td><span style="color: var(--text-faint);">Audit on -v</span></td>
+            </tr>
+            <tr>
+              <td class="mono-cell" style="color: var(--glow-purple);">344 .. 599</td>
+              <td><strong>vqIndices (16&times;16)</strong></td>
+              <td class="mono-cell">uint8[256]</td>
+              <td class="mono-cell">256 B</td>
+              <td class="mono-cell">256 Centroid Color Indices ($GF(2^8)$)</td>
+              <td><span style="color: var(--glow-emerald); font-weight: 600;">0 µs</span></td>
+            </tr>
+            <tr>
+              <td class="mono-cell" style="color: var(--glow-emerald);">600 .. 663</td>
+              <td><strong>rsParity (3 Lanes)</strong></td>
+              <td class="mono-cell">uint8[64]</td>
+              <td class="mono-cell">64 B</td>
+              <td class="mono-cell">Reed-Solomon Galois error-healing</td>
+              <td><span style="color: var(--glow-emerald); font-weight: 600;">Heals 4 corrupted bytes</span></td>
+            </tr>
+            <tr id="row-meta">
+              <td class="mono-cell" style="color: var(--glow-amber);" id="tape-meta-range">704 .. 1932</td>
+              <td><strong>Section II: Metadata</strong></td>
+              <td class="mono-cell">QuickLZ JSON</td>
+              <td class="mono-cell" id="tape-meta-size">1,229 B</td>
+              <td class="mono-cell" id="tape-meta-desc">ID, MIME, OCR transcript, DINOv3</td>
+              <td><span style="color: var(--glow-amber); font-weight: 600;">~0.08 ms on-demand</span></td>
+            </tr>
+            <tr id="row-preview">
+              <td class="mono-cell" style="color: #334155;" id="tape-preview-range">1933 .. 10588</td>
+              <td><strong>Section III: Preview</strong></td>
+              <td class="mono-cell">WebP / SVG</td>
+              <td class="mono-cell" id="tape-preview-size">8,656 B</td>
+              <td class="mono-cell" id="tape-preview-fmt-desc">320&times;320 Lossy WebP Payload</td>
+              <td><span style="color: var(--glow-emerald); font-weight: 600;">&lt; 0.005 ms slice</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         VERSION 4: THE COMPARATIVE LENS (IMAGE VS PDF SIDE-BY-SIDE)
+         ==================================================================== -->
+    <section id="view-comparative" class="presentation-view">
+      <div class="comparative-grid">
+
+        <!-- Image Asset Card -->
+        <div class="compare-column">
+          <div class="compare-column-header">
+            <div class="compare-title">
+              <span>Henri.jpg</span>
+              <span class="compare-type-badge img">IMAGE ASSET</span>
+            </div>
+            <div class="mono-cell" style="font-size: 12px; color: var(--text-muted);">tok_00004_Henri.jpg</div>
+          </div>
+
+          <div class="compare-field-stack">
+            <div class="compare-row">
+              <span class="lbl">Asset MIME Type:</span>
+              <span class="val">image/jpeg</span>
+            </div>
+            <div class="compare-row">
+              <span class="lbl">Source Resolution:</span>
+              <span class="val">520 &times; 200 px (Page 1)</span>
+            </div>
+            <div class="compare-row">
+              <span class="lbl">Bitmask Flags:</span>
+              <span class="val">0x0027 (VQ, SNARK, QLZ, DINO)</span>
+            </div>
+            <div class="compare-row">
+              <span class="lbl">Section I Header:</span>
+              <span class="val">704 Bytes (Identical)</span>
+            </div>
+            <div class="compare-row">
+              <span class="lbl">Section II Metadata:</span>
+              <span class="val">1,229 Bytes (QuickLZ)</span>
+            </div>
+            <div class="compare-row">
+              <span class="lbl">Section III Preview:</span>
+              <span class="val">8,656 Bytes (WebP 320&times;320)</span>
+            </div>
+            <div class="compare-row">
+              <span class="lbl">Total Envelope Size:</span>
+              <span class="val" style="color: var(--glow-emerald);">10,589 B (41.4% of 25KB cap)</span>
+            </div>
+            <div class="compare-row">
+              <span class="lbl">Multi-Page Flag:</span>
+              <span class="val">false</span>
+            </div>
+            <div class="compare-row">
+              <span class="lbl">OCR Payload Size:</span>
+              <span class="val">198 Chars (Image Dimensions/Path)</span>
+            </div>
+            <div class="compare-row">
+              <span class="lbl">Neural Embedding:</span>
+              <span class="val">DINOv3 ViT-S/16 384B [CLS]</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- PDF Document Card -->
+        <div class="compare-column">
+          <div class="compare-column-header">
+            <div class="compare-title">
+              <span>Beyond Deviation.pdf</span>
+              <span class="compare-type-badge pdf">12-PAGE PDF</span>
+            </div>
+            <div class="mono-cell" style="font-size: 12px; color: var(--text-muted);">tok_00028_p1_Beyond...</div>
+          </div>
+
+          <div class="compare-field-stack">
+            <div class="compare-row">
+              <span class="lbl">Asset MIME Type:</span>
+              <span class="val diff-highlight">application/pdf</span>
+            </div>
+            <div class="compare-row">
+              <span class="lbl">Source Resolution:</span>
+              <span class="val diff-highlight">892 &times; 1261 px (Page 1 of 12)</span>
+            </div>
+            <div class="compare-row">
+              <span class="lbl">Bitmask Flags:</span>
+              <span class="val diff-highlight">0x0037 (+MULTI_PAGE_DOC)</span>
+            </div>
+            <div class="compare-row">
+              <span class="lbl">Section I Header:</span>
+              <span class="val">704 Bytes (Identical)</span>
+            </div>
+            <div class="compare-row">
+              <span class="lbl">Section II Metadata:</span>
+              <span class="val diff-highlight">2,857 Bytes (+Full Text OCR)</span>
+            </div>
+            <div class="compare-row">
+              <span class="lbl">Section III Preview:</span>
+              <span class="val diff-highlight">11,266 Bytes (PDFium WebP)</span>
+            </div>
+            <div class="compare-row">
+              <span class="lbl">Total Envelope Size:</span>
+              <span class="val diff-highlight" style="color: var(--glow-emerald);">14,827 B (57.9% of 25KB cap)</span>
+            </div>
+            <div class="compare-row">
+              <span class="lbl">Multi-Page Flag:</span>
+              <span class="val diff-highlight">true (Total Pages: 12)</span>
+            </div>
+            <div class="compare-row">
+              <span class="lbl">OCR Payload Size:</span>
+              <span class="val diff-highlight">1,480 Chars (Full Page Extract)</span>
+            </div>
+            <div class="compare-row">
+              <span class="lbl">Neural Embedding:</span>
+              <span class="val">DINOv3 ViT-S/16 384B [CLS]</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- Tech Chic Footer -->
+    <footer>
+      <div>TINYTOKEN ARCHITECTURE SPECIFICATION &middot; BUN NATIVE &middot; 25 KB HARD CEILING</div>
+      <div class="footer-links">
+        <a href="/how-it-works">How It Works</a>\n <a href="/guide">Documentation</a>
+        <a href="/api/stats">Telemetry API</a>
+        <a href="/api/codebook">VQ Codebook</a>
+      </div>
+    </footer>
+  </main>
+
+  <div id="chic-toast">Copied to clipboard</div>
+
+  <!-- Interactive Data Models & Reactive State -->
+  <script>
+    // Sample Data Sets (Directly extracted from real project tokens)
+    const CODEBOOK_RGB = [[12, 10, 16], [12, 10, 64], [12, 10, 112], [12, 10, 160], [12, 10, 208], [12, 10, 250], [12, 48, 16], [12, 48, 64], [12, 48, 112], [12, 48, 160], [12, 48, 208], [12, 48, 250], [12, 88, 16], [12, 88, 64], [12, 88, 112], [12, 88, 160], [12, 88, 208], [12, 88, 250], [12, 128, 16], [12, 128, 64], [12, 128, 112], [12, 128, 160], [12, 128, 208], [12, 128, 250], [12, 168, 16], [12, 168, 64], [12, 168, 112], [12, 168, 160], [12, 168, 208], [12, 168, 250], [12, 208, 16], [12, 208, 64], [12, 208, 112], [12, 208, 160], [12, 208, 208], [12, 208, 250], [12, 248, 16], [12, 248, 64], [12, 248, 112], [12, 248, 160], [12, 248, 208], [12, 248, 250], [60, 10, 16], [60, 10, 64], [60, 10, 112], [60, 10, 160], [60, 10, 208], [60, 10, 250], [60, 48, 16], [60, 48, 64], [60, 48, 112], [60, 48, 160], [60, 48, 208], [60, 48, 250], [60, 88, 16], [60, 88, 64], [60, 88, 112], [60, 88, 160], [60, 88, 208], [60, 88, 250], [60, 128, 16], [60, 128, 64], [60, 128, 112], [60, 128, 160], [60, 128, 208], [60, 128, 250], [60, 168, 16], [60, 168, 64], [60, 168, 112], [60, 168, 160], [60, 168, 208], [60, 168, 250], [60, 208, 16], [60, 208, 64], [60, 208, 112], [60, 208, 160], [60, 208, 208], [60, 208, 250], [60, 248, 16], [60, 248, 64], [60, 248, 112], [60, 248, 160], [60, 248, 208], [60, 248, 250], [108, 10, 16], [108, 10, 64], [108, 10, 112], [108, 10, 160], [108, 10, 208], [108, 10, 250], [108, 48, 16], [108, 48, 64], [108, 48, 112], [108, 48, 160], [108, 48, 208], [108, 48, 250], [108, 88, 16], [108, 88, 64], [108, 88, 112], [108, 88, 160], [108, 88, 208], [108, 88, 250], [108, 128, 16], [108, 128, 64], [108, 128, 112], [108, 128, 160], [108, 128, 208], [108, 128, 250], [108, 168, 16], [108, 168, 64], [108, 168, 112], [108, 168, 160], [108, 168, 208], [108, 168, 250], [108, 208, 16], [108, 208, 64], [108, 208, 112], [108, 208, 160], [108, 208, 208], [108, 208, 250], [108, 248, 16], [108, 248, 64], [108, 248, 112], [108, 248, 160], [108, 248, 208], [108, 248, 250], [156, 10, 16], [156, 10, 64], [156, 10, 112], [156, 10, 160], [156, 10, 208], [156, 10, 250], [156, 48, 16], [156, 48, 64], [156, 48, 112], [156, 48, 160], [156, 48, 208], [156, 48, 250], [156, 88, 16], [156, 88, 64], [156, 88, 112], [156, 88, 160], [156, 88, 208], [156, 88, 250], [156, 128, 16], [156, 128, 64], [156, 128, 112], [156, 128, 160], [156, 128, 208], [156, 128, 250], [156, 168, 16], [156, 168, 64], [156, 168, 112], [156, 168, 160], [156, 168, 208], [156, 168, 250], [156, 208, 16], [156, 208, 64], [156, 208, 112], [156, 208, 160], [156, 208, 208], [156, 208, 250], [156, 248, 16], [156, 248, 64], [156, 248, 112], [156, 248, 160], [156, 248, 208], [156, 248, 250], [204, 10, 16], [204, 10, 64], [204, 10, 112], [204, 10, 160], [204, 10, 208], [204, 10, 250], [204, 48, 16], [204, 48, 64], [204, 48, 112], [204, 48, 160], [204, 48, 208], [204, 48, 250], [204, 88, 16], [204, 88, 64], [204, 88, 112], [204, 88, 160], [204, 88, 208], [204, 88, 250], [204, 128, 16], [204, 128, 64], [204, 128, 112], [204, 128, 160], [204, 128, 208], [204, 128, 250], [204, 168, 16], [204, 168, 64], [204, 168, 112], [204, 168, 160], [204, 168, 208], [204, 168, 250], [204, 208, 16], [204, 208, 64], [204, 208, 112], [204, 208, 160], [204, 208, 208], [204, 208, 250], [204, 248, 16], [204, 248, 64], [204, 248, 112], [204, 248, 160], [204, 248, 208], [204, 248, 250], [248, 10, 16], [248, 10, 64], [248, 10, 112], [248, 10, 160], [248, 10, 208], [248, 10, 250], [248, 48, 16], [248, 48, 64], [248, 48, 112], [248, 48, 160], [248, 48, 208], [248, 48, 250], [248, 88, 16], [248, 88, 64], [248, 88, 112], [248, 88, 160], [248, 88, 208], [248, 88, 250], [248, 128, 16], [248, 128, 64], [248, 128, 112], [248, 128, 160], [248, 128, 208], [248, 128, 250], [248, 168, 16], [248, 168, 64], [248, 168, 112], [248, 168, 160], [248, 168, 208], [248, 168, 250], [248, 208, 16], [248, 208, 64], [248, 208, 112], [248, 208, 160], [248, 208, 208], [248, 208, 250], [248, 248, 16], [248, 248, 64], [248, 248, 112], [248, 248, 160], [248, 248, 208], [248, 248, 250], [0, 0, 0], [85, 85, 85], [170, 170, 170], [255, 255, 255]];
+    const DATASETS = {
+      image: {
+        name: "Henri.jpg",
+        id: "tok_00004_Henri.jpg",
+        type: "IMAGE ASSET",
+        totalSize: 10589,
+        originalSize: 23599,
+        metaLength: 1229,
+        previewLength: 8656,
+        dims: "520 × 200 px (Page 1)",
+        flags: "0x0027 [HAS_VQ_GRID, SNARK_ATTESTED, QUICKLZ, HAS_DINO]",
+        uuid: "3bbdc2ec4fa644ddac0445ec1ff2c601",
+        merkle: "c5f22f2ab4735d185130605f9e01297f40317300b29ac99a31c3bff668342ba9",
+        ocrSnippet: "Image Asset: Henri.jpg | Dimensions: 520x200 | DINOv3-ViT-S16-384B",
+        tags: "local-image, jpg, dinov3-vit-s16, webp-preview, verified",
+        previewFormat: "WEBP (0x02)",
+        previewUrl: "data:image/webp;base64,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",
+        metaRange: "704 .. 1932",
+        previewRange: "1933 .. 10588",
+        freeBytes: 15011,
+        metaPct: 4.8,
+        previewPct: 33.8,
+        freePct: 58.65,
+        vqCells: [195, 153, 147, 195, 202, 161, 161, 203, 119, 119, 113, 161, 209, 251, 251, 209, 153, 195, 195, 195, 147, 161, 161, 161, 161, 161, 161, 209, 251, 209, 209, 209, 153, 153, 195, 195, 91, 105, 167, 160, 203, 209, 251, 251, 209, 209, 209, 209, 195, 195, 195, 153, 146, 98, 209, 202, 209, 251, 209, 209, 251, 209, 203, 209, 195, 201, 195, 147, 195, 146, 202, 202, 209, 209, 251, 209, 209, 209, 209, 203, 153, 195, 195, 146, 140, 146, 202, 202, 202, 202, 251, 209, 209, 209, 209, 203, 146, 146, 153, 146, 97, 98, 202, 202, 160, 203, 251, 209, 251, 209, 203, 203, 146, 98, 98, 195, 146, 147, 202, 160, 160, 203, 251, 251, 251, 251, 209, 203, 147, 98, 55, 195, 97, 146, 202, 154, 154, 202, 209, 209, 209, 209, 209, 203, 153, 98, 98, 195, 97, 146, 202, 154, 154, 202, 209, 203, 203, 202, 203, 203, 147, 104, 104, 195, 140, 147, 153, 154, 154, 202, 202, 153, 154, 202, 154, 154, 147, 104, 104, 195, 97, 147, 153, 153, 153, 153, 153, 153, 196, 202, 195, 196, 147, 146, 153, 195, 97, 195, 202, 195, 194, 146, 153, 195, 196, 153, 153, 195, 146, 195, 154, 147, 140, 147, 196, 195, 195, 146, 146, 195, 195, 146, 146, 195, 153, 202, 154, 104, 98, 147, 154, 153, 153, 146, 147, 153, 147, 147, 104, 104, 196, 154, 153, 104, 56, 105, 154, 154, 153, 98, 147, 147, 147, 147, 146, 147]
+      },
+      pdf: {
+        name: "Beyond Deviation and Deficit (1).pdf",
+        id: "tok_00028_p1_Beyond_Deviation_and_Deficit__1_.pdf",
+        type: "12-PAGE PDF DOCUMENT",
+        totalSize: 14827,
+        originalSize: 215590,
+        metaLength: 2857,
+        previewLength: 11266,
+        dims: "892 × 1261 px (Page 1 of 12)",
+        flags: "0x0037 [+MULTI_PAGE_DOC, VQ, SNARK, QLZ, DINO]",
+        uuid: "16420037bad84b9fb5303b44acb85794",
+        merkle: "6a1a8ce531202188d4fb034e9e3727ca9c99c69f59c3ad4595bfcb551a6558c0",
+        ocrSnippet: "PDF Page 1/12: Beyond Deviation and Deficit (1).pdf (210.5 KB) | Text: ISDUT...",
+        tags: "local-document, pdf, page-1-of-12, pdfium-rendered, dinov3, verified",
+        previewFormat: "WEBP (PDFium Raster)",
+        previewUrl: "data:image/webp;base64,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",
+        metaRange: "704 .. 3560",
+        previewRange: "3561 .. 14826",
+        freeBytes: 10773,
+        metaPct: 11.16,
+        previewPct: 44.0,
+        freePct: 42.09,
+        vqCells: [255, 255, 251, 251, 251, 251, 251, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 251, 251, 251, 251, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 251, 244, 251, 244, 251, 244, 244, 251, 255, 255, 255, 255, 255, 255, 255, 255, 251, 202, 202, 202, 202, 244, 202, 202, 244, 251, 251, 251, 255, 255, 255, 255, 251, 202, 244, 244, 202, 244, 202, 202, 202, 202, 251, 255, 255, 255, 255, 255, 251, 251, 251, 251, 251, 251, 251, 251, 251, 251, 251, 255, 255, 255, 255, 255, 251, 251, 251, 251, 251, 251, 251, 251, 251, 251, 255, 255, 255, 255, 255, 255, 251, 251, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 244, 202, 202, 202, 202, 202, 202, 202, 202, 202, 202, 251, 255, 255, 255, 255, 251, 244, 244, 244, 244, 244, 244, 244, 244, 244, 244, 251, 255, 255, 255, 255, 251, 202, 202, 244, 202, 244, 202, 244, 244, 202, 202, 244, 255, 255, 255, 255, 251, 202, 202, 202, 202, 202, 202, 202, 202, 244, 244, 251, 255, 255, 255, 255, 251, 244, 244, 244, 244, 244, 244, 251, 244, 251, 244, 251, 255, 255, 255, 255, 244, 202, 202, 202, 202, 202, 202, 202, 202, 202, 202, 244, 255, 255, 255, 255, 251, 251, 251, 251, 251, 251, 251, 251, 251, 251, 251, 251, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255]
+      }
+    };
+
+    let currentAsset = "image";
+    let isPiled = false;
+
+    function setSampleAsset(mode) {
+      currentAsset = mode;
+      document.getElementById("btn-sample-image").classList.toggle("active", mode === "image");
+      document.getElementById("btn-sample-pdf").classList.toggle("active", mode === "pdf");
+
+      const d = DATASETS[mode];
+
+      // Update Header & Hero
+      document.getElementById("badge-total-size").innerText = `${d.totalSize.toLocaleString()} B / 25.6 KB`;
+      document.getElementById("hero-num-meta").innerText = `${d.metaLength.toLocaleString()} B`;
+      document.getElementById("hero-num-preview").innerText = `${d.previewLength.toLocaleString()} B`;
+
+      // Update Strata Deck Cards
+      document.getElementById("card-flags").innerText = d.flags;
+      document.getElementById("card-dims").innerText = d.dims;
+      document.getElementById("card-merkle").innerText = d.merkle.slice(0, 18) + "...";
+      document.getElementById("card-meta-len").innerText = `${d.metaLength.toLocaleString()} Bytes`;
+      document.getElementById("card-asset-id").innerText = d.id;
+      document.getElementById("card-ocr-snippet").innerText = `"${d.ocrSnippet.slice(0, 26)}..."`;
+      document.getElementById("card-tags").innerText = d.tags.slice(0, 30) + "...";
+      document.getElementById("card-preview-len").innerText = `${d.previewLength.toLocaleString()} Bytes`;
+      document.getElementById("card-preview-fmt").innerText = d.previewFormat;
+      document.getElementById("card-free-bytes").innerText = `${d.freeBytes.toLocaleString()} B Free`;
+
+      // Update Bento
+      document.getElementById("bento-flags-val").innerText = d.flags;
+      document.getElementById("bento-uuid-val").innerText = d.uuid;
+      document.getElementById("bento-dims-val").innerText = d.dims;
+      document.getElementById("bento-merkle-val").innerText = d.merkle;
+      document.getElementById("bento-meta-snippet").innerText = JSON.stringify({
+        id: d.id,
+        filename: d.name,
+        dimensions: d.dims,
+        metaLength: d.metaLength,
+        previewLength: d.previewLength,
+        tags: d.tags.split(", ")
+      }, null, 2);
+      document.getElementById("bento-meta-offset").innerText = `OFFSET 704 · ${d.metaLength.toLocaleString()} BYTES`;
+
+      // Update Ribbon & Tape Table
+      document.getElementById("ribbon-meta").style.width = `${d.metaPct}%`;
+      document.getElementById("ribbon-prev").style.width = `${d.previewPct}%`;
+      document.getElementById("ribbon-free").style.width = `${d.freePct}%`;
+
+      document.getElementById("tape-flags-val").innerText = d.flags;
+      document.getElementById("tape-uuid-val").innerText = d.uuid;
+      document.getElementById("tape-filesize-val").innerText = `${d.originalSize.toLocaleString()} bytes`;
+      document.getElementById("tape-dims-val").innerText = d.dims;
+      document.getElementById("tape-merkle-val").innerText = d.merkle.slice(0, 24) + "...";
+      document.getElementById("tape-meta-range").innerText = d.metaRange;
+      document.getElementById("tape-meta-size").innerText = `${d.metaLength.toLocaleString()} B`;
+      document.getElementById("tape-preview-range").innerText = d.previewRange;
+      document.getElementById("tape-preview-size").innerText = `${d.previewLength.toLocaleString()} B`;
+
+      // Update Inspector Sidebar Preview Image
+      const img = document.getElementById("insp-preview-img");
+      img.src = d.previewUrl;
+      document.getElementById("insp-uuid").innerText = d.uuid.slice(0, 16) + "...";
+
+      // Render VQ Palette Sample
+      renderVqPalette(d.vqCells);
+      showToast(`Switched active sample: ${d.name}`);
+    }
+
+    function switchView(viewId, btn, title) {
+      document.querySelectorAll(".presentation-view").forEach(el => el.classList.remove("active"));
+      document.querySelectorAll(".view-deck-nav .pill-btn").forEach(el => el.classList.remove("active"));
+      document.getElementById(viewId).classList.add("active");
+      btn.classList.add("active");
+      document.getElementById("active-view-name").innerText = title;
+    }
+
+
+
+    function selectCard(idx) {
+      const cards = document.querySelectorAll(".strata-card");
+      cards.forEach((c, i) => c.classList.toggle("selected", i === idx));
+
+      const titleEl = document.getElementById("insp-title");
+      const descEl = document.getElementById("insp-desc");
+      const rangeEl = document.getElementById("insp-range");
+
+      const d = DATASETS[currentAsset];
+
+      switch (idx) {
+        case 0:
+          titleEl.innerText = "Section I: Fixed Binary Header (0..87)";
+          descEl.innerText = "Contains magic GF28, uint16 version, bitmask flags, 128-bit UUID, source resolution, and page coordinates. Read in <1 µs via zero-copy DataView without decompression.";
+          rangeEl.innerText = "Bytes 0 .. 87 (88 Bytes)";
+          break;
+        case 1:
+          titleEl.innerText = "Section I: Cryptographic & Neural Lattice";
+          descEl.innerText = "Houses the 32-byte Merkle root, 256-byte Ed25519 signature stub, 256-byte 16x16 VQ lattice centroids, and 64-byte GF(2^8) Reed-Solomon parity lane.";
+          rangeEl.innerText = "Bytes 88 .. 703 (616 Bytes)";
+          break;
+        case 2:
+          titleEl.innerText = "Section II: QuickLZ Compressed Metadata";
+          descEl.innerText = "Variable length JSON payload holding taxonomy tags, full OCR transcript snippet, 384-dimensional DINOv3 Int8 vector, and GPS geo-coordinates. Decompressed on-demand.";
+          rangeEl.innerText = `Bytes ${d.metaRange} (${d.metaLength} Bytes)`;
+          break;
+        case 3:
+          titleEl.innerText = "Section III: Visual Preview Payload";
+          descEl.innerText = "320x320 lossy WebP image or SVG payload. Sliced directly in 0 µs using Section I length pointers without decompressing Section II or checking crypto signatures.";
+          rangeEl.innerText = `Bytes ${d.previewRange} (${d.previewLength} Bytes)`;
+          break;
+      }
+    }
+
+    function highlightTapeRow(rowId) {
+      document.querySelectorAll(".tape-detail-table tr").forEach(tr => tr.style.background = "");
+      const target = document.getElementById(rowId);
+      if (target) {
+        target.style.background = "var(--glow-cyan-light)";
+        target.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }
+
+    function renderVqPalette(cells) {
+      const grid = document.getElementById("insp-vq-grid");
+      if (!grid) return;
+      grid.innerHTML = "";
+      for (let i = 0; i < 256; i++) {
+        const val = cells[i] !== undefined ? cells[i] : 0;
+        const rgb = CODEBOOK_RGB[val] || [128, 128, 128];
+        const cell = document.createElement("div");
+        cell.className = "vq-cell";
+        cell.style.backgroundColor = `rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`;
+        cell.title = `Cell ${i} · Centroid #${val} · rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`;
+        grid.appendChild(cell);
+      }
+    }
+
+    function copyTokenValue(val) {
+      navigator.clipboard.writeText(val).then(() => {
+        showToast(`Copied: ${val.length > 24 ? val.slice(0, 20) + "..." : val}`);
+      });
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById("chic-toast");
+      toast.innerText = msg;
+      toast.classList.add("visible");
+      setTimeout(() => toast.classList.remove("visible"), 2200);
+    }
+
+    // Initial render
+    setSampleAsset("image");
+  </script>
+</body>
+
+</html>

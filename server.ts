@@ -14,6 +14,8 @@ import { VqInvertedIndexEngine } from "./utils/vqInvertedIndex";
 import { CompressedTokenSearchEngine } from "./utils/zipEngine";
 import helpPage from "./pages/help.html" with { type: "text" };
 import helpCardsPage from "./pages/help-cards.html" with { type: "text" };
+import tokenStructurePage from "./pages/token-structure.html" with { type: "text" };
+import howItWorksPage from "./pages/how-it-works.html" with { type: "text" };
 
 // Configuration
 const isVercel = Bun.env.APP_VERCEL;
@@ -277,6 +279,18 @@ export async function fetchHandler(req: Request): Promise<Response> {
         headers: { "Content-Type": "text/html; charset=utf-8" },
       });
     }
+    if (url.pathname === "/help") {
+      return new Response(String(helpPage), { headers: { "Content-Type": "text/html" } });
+    }
+    if (url.pathname === "/help-cards" || url.pathname === "/guide") {
+      return new Response(String(helpCardsPage), { headers: { "Content-Type": "text/html" } });
+    }
+    if (url.pathname === "/structure" || url.pathname === "/token-structure" || url.pathname === "/fields") {
+      return new Response(String(tokenStructurePage), { headers: { "Content-Type": "text/html; charset=utf-8" } });
+    }
+    if (url.pathname === "/how-it-works" || url.pathname === "/works" || url.pathname === "/about") {
+      return new Response(String(howItWorksPage), { headers: { "Content-Type": "text/html; charset=utf-8" } });
+    }
     return await handleApiRoute(url.pathname, req as BunRequest, url);
   } catch (err) {
     if (err instanceof URIError) {
@@ -308,6 +322,21 @@ const server = serve({
     },
     "/guide": {
       GET: () => new Response(String(helpCardsPage), { headers: { "Content-Type": "text/html" } })
+    },
+    "/structure": {
+      GET: () => new Response(String(tokenStructurePage), { headers: { "Content-Type": "text/html; charset=utf-8" } })
+    },
+    "/token-structure": {
+      GET: () => new Response(String(tokenStructurePage), { headers: { "Content-Type": "text/html; charset=utf-8" } })
+    },
+    "/fields": {
+      GET: () => new Response(String(tokenStructurePage), { headers: { "Content-Type": "text/html; charset=utf-8" } })
+    },
+    "/how-it-works": {
+      GET: () => new Response(String(howItWorksPage), { headers: { "Content-Type": "text/html; charset=utf-8" } })
+    },
+    "/works": {
+      GET: () => new Response(String(howItWorksPage), { headers: { "Content-Type": "text/html; charset=utf-8" } })
     },
 
 

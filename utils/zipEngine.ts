@@ -787,7 +787,22 @@ export class CompressedTokenSearchEngine {
    */
   public async extractToken(idOrEntryName: string): Promise<Uint8Array | null> {
     const meta = this.metadataIndex.get(idOrEntryName);
-    if (!meta) return null;
+    if (!meta) {
+      // Fallback: check directly for loose token file in data directory
+      const candidates = [
+        `${this.dataDirPath}/${idOrEntryName}`,
+        `${this.dataDirPath}/${idOrEntryName}.token`,
+        `./data/${idOrEntryName}`,
+        `./data/${idOrEntryName}.token`,
+      ];
+      for (const cand of candidates) {
+        const direct = Bun.file(cand);
+        if (await direct.exists()) {
+          return new Uint8Array(await direct.arrayBuffer());
+        }
+      }
+      return null;
+    }
 
     // 1. Try reading *.token file from data directory
     const individualFile = Bun.file(`${this.dataDirPath}/${meta.entryName}`);
