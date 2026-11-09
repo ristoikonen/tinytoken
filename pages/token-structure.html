@@ -109,7 +109,7 @@
       color: #fff;
       font-family: var(--font-mono);
       font-weight: 700;
-      font-size: 13px;
+      font-size: 16px;
       letter-spacing: -0.5px;
       position: relative;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
@@ -130,17 +130,18 @@
     }
 
     .brand-text h1 {
-      font-size: 15px;
+      font-size: 16px;
       font-weight: 700;
       letter-spacing: -0.3px;
-      color: var(--text-headline);
+      color: #030000;
+
       display: flex;
       align-items: center;
       gap: 8px;
     }
 
     .brand-text p {
-      font-size: 11px;
+      font-size: 14px;
       color: var(--text-muted);
       font-family: var(--font-mono);
       text-transform: uppercase;
@@ -162,7 +163,8 @@
       position: relative;
     }
 
-    nav a:hover, nav a.active {
+    nav a:hover,
+    nav a.active {
       color: var(--text-headline);
     }
 
@@ -1040,33 +1042,60 @@
       .hero-spec-strip {
         text-align: left;
       }
+
+    }
+
+    /* Container for the color rectangles */
+    .palette {
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+      margin-top: 40px;
+    }
+
+    /* Individual color rectangles */
+    .color-rect {
+      width: 100px;
+      height: 60px;
+      border-radius: 6px;
+      cursor: pointer;
+      border: 2px solid #cccccc;
+      transition: transform 0.15s ease;
+    }
+
+    .color-rect:hover {
+      transform: scale(1.08);
+    }
+
+    /* Header strip */
+    header {
+      background-color: #333333;
+
+      padding: 25px;
+      text-align: center;
+      font-size: 28px;
+      font-weight: bold;
+      transition: background-color 0.3s ease;
     }
   </style>
 </head>
 
 <body>
 
-  <!-- Sparse Chic Sticky Header -->
-  <header>
-    <div class="brand-cluster">
-      <div class="brand-mark">
+  <header id="header-strip">
 
-        <svg version="1.0" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%"
-          viewBox="0 0 128.000000 128.000000" preserveAspectRatio="xMidYMid meet"
-          style="filter:drop-shadow(0 0 6px rgba(56,189,248,0.5));">
-          <g transform="translate(0.000000,128.000000) scale(0.100000,-0.100000)" fill="#38bdf8" stroke="none">
-            <path
-              d="M1130 1261 c-5 -11 -10 -25 -10 -31 0 -19 -50 -113 -73 -138 -25 -27 -155 -109 -272 -172 -44 -23 -93 -52 -109 -63 -70 -49 -301 -185 -308 -181 -4 3 23 51 60 108 l66 104 65 7 c85 9 155 53 204 127 20 29 52 68 72 85 37 33 44 65 15 71 -13 2 -64 -44 -197 -180 -55 -56 -158 -66 -165 -15 -2 12 -11 23 -20 25 -15 3 -18 -4 -18 -35 0 -30 -13 -57 -64 -133 -84 -124 -154 -210 -192 -235 -17 -11 -65 -29 -107 -39 l-77 -18 0 -55 c0 -51 1 -54 22 -48 11 4 54 8 93 8 56 0 82 -5 114 -21 23 -12 49 -22 58 -22 20 0 348 -169 407 -209 23 -16 48 -36 55 -45 8 -9 21 -16 30 -16 33 0 61 -43 61 -93 0 -40 3 -47 19 -47 16 0 20 8 23 38 4 51 26 52 125 2 65 -32 91 -40 137 -40 48 0 56 3 56 18 0 14 -24 30 -88 60 -48 23 -95 42 -105 42 -23 0 -243 114 -287 149 -19 16 -46 32 -60 36 -37 11 -300 147 -300 155 0 8 450 33 550 30 41 -1 139 -2 218 -1 140 1 142 1 142 24 0 46 -7 47 -181 48 -90 0 -295 -3 -455 -7 -198 -5 -293 -4 -297 3 -9 14 28 41 213 154 85 53 218 134 295 181 77 48 166 98 197 111 31 14 74 37 95 51 20 14 48 26 61 26 30 0 82 39 82 62 0 24 -29 23 -91 -3 -27 -12 -52 -19 -56 -16 -3 3 6 36 21 72 14 36 26 70 26 75 0 18 -39 10 -50 -9z">
-            </path>
-          </g>
-        </svg>
 
-      </div>
-      <div class="brand-text">
-        <h1>TinyToken <span>· Schema Specification</span></h1>
-        <p>25 KB GF(2⁸) · VQ-16×16 · DINOv3 · ED25519 ATTESTATION</p>
-      </div>
+
+    <h1 class="brand-text">TinyToken</h1>
+
+    <div class="brand-text">
+
+      <p>Schema Specification</p>
     </div>
+    <div class="brand-cluster"></div>
+    </div>
+
+
 
     <!-- Universal Navigation -->
     <nav>
@@ -1075,26 +1104,38 @@
       <a href="/structure" class="active">Binary Spec</a>
       <a href="/guide">CLI Guide</a>
     </nav>
-
-    <!-- Active Asset Sample Toggle (Image vs PDF) -->
-    <div class="controls-shelf">
-      <div class="pill-group" title="Switch active sample token dataset">
-        <button class="pill-btn active" id="btn-sample-image" onclick="setSampleAsset('image')">
-          <span class="indicator-dot cyan"></span>
-          <span>Sample: Henri.jpg (Image)</span>
-        </button>
-        <button class="pill-btn" id="btn-sample-pdf" onclick="setSampleAsset('pdf')">
-          <span class="indicator-dot purple"></span>
-          <span>Sample: BeyondDeficit.pdf (12p)</span>
-        </button>
-      </div>
-
-      <div class="tag-stat">
-        <span>ENVELOPE</span>
-        <strong id="badge-total-size">10,589 B / 25.6 KB</strong>
-      </div>
+    <div class="palette">
+      <div class="color-rect" style="background-color: #E5E5E5;" data-color="#E5E5E5"></div>
+      <div class="color-rect" style="background-color: #F2C1CA;" data-color="#F2C1CA"></div>
+      <div class="color-rect" style="background-color: #38BDF8;" data-color="#38BDF8"></div>
+      <div class="color-rect" style="background-color: #f39c12;" data-color="#f39c12"></div>
+      <div class="color-rect" style="background-color: #FFFAFA;" data-color="#FFFAFA"></div>
+      <div class="color-rect" style="background-color: #A3BBAD;" data-color="#A3BBAD"></div>
+      <div class="color-rect" style="background-color: #65532F;" data-color="#65532F"></div>
+      <div class="color-rect" style="background-color: #EDE7D9;" data-color="#EDE7D9"></div>
+      <div class="color-rect" style="background-color: #A49694;" data-color="#A49694"></div>
     </div>
+
   </header>
+  <!-- Active Asset Sample Toggle (Image vs PDF) -->
+  <div class="controls-shelf">
+    <div class="pill-group" title="Switch active sample token dataset">
+      <button class="pill-btn active" id="btn-sample-image" onclick="setSampleAsset('image')">
+        <span class="indicator-dot cyan"></span>
+        <span>Sample: Henri.jpg (Image)</span>
+      </button>
+      <button class="pill-btn" id="btn-sample-pdf" onclick="setSampleAsset('pdf')">
+        <span class="indicator-dot purple"></span>
+        <span>Sample: BeyondDeficit.pdf (12p)</span>
+      </button>
+    </div>
+
+    <div class="tag-stat">
+      <span>ENVELOPE</span>
+      <strong id="badge-total-size">10,589 B / 25.6 KB</strong>
+    </div>
+  </div>
+
 
   <main>
     <!-- Hero Headline & Token Architecture Intro -->
@@ -1808,6 +1849,23 @@
 
   <!-- Interactive Data Models & Reactive State -->
   <script>
+
+    // Select the header strip and all color rectangles
+    const headerStrip = document.getElementById('header-strip');
+    const colorRects = document.querySelectorAll('.color-rect');
+
+    // Add a click event listener to each rectangle
+    colorRects.forEach(rect => {
+      rect.addEventListener('click', () => {
+        // Read the color from the clicked rectangle's data-color attribute
+        const selectedColor = rect.getAttribute('data-color');
+
+        // Apply it as the header's background color
+        headerStrip.style.backgroundColor = selectedColor;
+      });
+    });
+
+
     // Sample Data Sets (Directly extracted from real project tokens)
     const CODEBOOK_RGB = [[12, 10, 16], [12, 10, 64], [12, 10, 112], [12, 10, 160], [12, 10, 208], [12, 10, 250], [12, 48, 16], [12, 48, 64], [12, 48, 112], [12, 48, 160], [12, 48, 208], [12, 48, 250], [12, 88, 16], [12, 88, 64], [12, 88, 112], [12, 88, 160], [12, 88, 208], [12, 88, 250], [12, 128, 16], [12, 128, 64], [12, 128, 112], [12, 128, 160], [12, 128, 208], [12, 128, 250], [12, 168, 16], [12, 168, 64], [12, 168, 112], [12, 168, 160], [12, 168, 208], [12, 168, 250], [12, 208, 16], [12, 208, 64], [12, 208, 112], [12, 208, 160], [12, 208, 208], [12, 208, 250], [12, 248, 16], [12, 248, 64], [12, 248, 112], [12, 248, 160], [12, 248, 208], [12, 248, 250], [60, 10, 16], [60, 10, 64], [60, 10, 112], [60, 10, 160], [60, 10, 208], [60, 10, 250], [60, 48, 16], [60, 48, 64], [60, 48, 112], [60, 48, 160], [60, 48, 208], [60, 48, 250], [60, 88, 16], [60, 88, 64], [60, 88, 112], [60, 88, 160], [60, 88, 208], [60, 88, 250], [60, 128, 16], [60, 128, 64], [60, 128, 112], [60, 128, 160], [60, 128, 208], [60, 128, 250], [60, 168, 16], [60, 168, 64], [60, 168, 112], [60, 168, 160], [60, 168, 208], [60, 168, 250], [60, 208, 16], [60, 208, 64], [60, 208, 112], [60, 208, 160], [60, 208, 208], [60, 208, 250], [60, 248, 16], [60, 248, 64], [60, 248, 112], [60, 248, 160], [60, 248, 208], [60, 248, 250], [108, 10, 16], [108, 10, 64], [108, 10, 112], [108, 10, 160], [108, 10, 208], [108, 10, 250], [108, 48, 16], [108, 48, 64], [108, 48, 112], [108, 48, 160], [108, 48, 208], [108, 48, 250], [108, 88, 16], [108, 88, 64], [108, 88, 112], [108, 88, 160], [108, 88, 208], [108, 88, 250], [108, 128, 16], [108, 128, 64], [108, 128, 112], [108, 128, 160], [108, 128, 208], [108, 128, 250], [108, 168, 16], [108, 168, 64], [108, 168, 112], [108, 168, 160], [108, 168, 208], [108, 168, 250], [108, 208, 16], [108, 208, 64], [108, 208, 112], [108, 208, 160], [108, 208, 208], [108, 208, 250], [108, 248, 16], [108, 248, 64], [108, 248, 112], [108, 248, 160], [108, 248, 208], [108, 248, 250], [156, 10, 16], [156, 10, 64], [156, 10, 112], [156, 10, 160], [156, 10, 208], [156, 10, 250], [156, 48, 16], [156, 48, 64], [156, 48, 112], [156, 48, 160], [156, 48, 208], [156, 48, 250], [156, 88, 16], [156, 88, 64], [156, 88, 112], [156, 88, 160], [156, 88, 208], [156, 88, 250], [156, 128, 16], [156, 128, 64], [156, 128, 112], [156, 128, 160], [156, 128, 208], [156, 128, 250], [156, 168, 16], [156, 168, 64], [156, 168, 112], [156, 168, 160], [156, 168, 208], [156, 168, 250], [156, 208, 16], [156, 208, 64], [156, 208, 112], [156, 208, 160], [156, 208, 208], [156, 208, 250], [156, 248, 16], [156, 248, 64], [156, 248, 112], [156, 248, 160], [156, 248, 208], [156, 248, 250], [204, 10, 16], [204, 10, 64], [204, 10, 112], [204, 10, 160], [204, 10, 208], [204, 10, 250], [204, 48, 16], [204, 48, 64], [204, 48, 112], [204, 48, 160], [204, 48, 208], [204, 48, 250], [204, 88, 16], [204, 88, 64], [204, 88, 112], [204, 88, 160], [204, 88, 208], [204, 88, 250], [204, 128, 16], [204, 128, 64], [204, 128, 112], [204, 128, 160], [204, 128, 208], [204, 128, 250], [204, 168, 16], [204, 168, 64], [204, 168, 112], [204, 168, 160], [204, 168, 208], [204, 168, 250], [204, 208, 16], [204, 208, 64], [204, 208, 112], [204, 208, 160], [204, 208, 208], [204, 208, 250], [204, 248, 16], [204, 248, 64], [204, 248, 112], [204, 248, 160], [204, 248, 208], [204, 248, 250], [248, 10, 16], [248, 10, 64], [248, 10, 112], [248, 10, 160], [248, 10, 208], [248, 10, 250], [248, 48, 16], [248, 48, 64], [248, 48, 112], [248, 48, 160], [248, 48, 208], [248, 48, 250], [248, 88, 16], [248, 88, 64], [248, 88, 112], [248, 88, 160], [248, 88, 208], [248, 88, 250], [248, 128, 16], [248, 128, 64], [248, 128, 112], [248, 128, 160], [248, 128, 208], [248, 128, 250], [248, 168, 16], [248, 168, 64], [248, 168, 112], [248, 168, 160], [248, 168, 208], [248, 168, 250], [248, 208, 16], [248, 208, 64], [248, 208, 112], [248, 208, 160], [248, 208, 208], [248, 208, 250], [248, 248, 16], [248, 248, 64], [248, 248, 112], [248, 248, 160], [248, 248, 208], [248, 248, 250], [0, 0, 0], [85, 85, 85], [170, 170, 170], [255, 255, 255]];
     const DATASETS = {

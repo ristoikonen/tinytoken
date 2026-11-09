@@ -1,12 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>How TinyToken Works · Tiny is Tiny! (25 KB Multimodal Tokens)</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap"
+    rel="stylesheet">
   <style>
     /* ==========================================================================
        TINYTOKEN "HOW IT WORKS" SHOWCASE AD
@@ -69,12 +72,11 @@
       color: var(--glow-cyan);
     }
 
-    /* Top Sticky Navigation */
     header {
       position: sticky;
       top: 0;
       z-index: 50;
-      background: rgba(255, 255, 255, 0.9);
+      background: rgba(255, 255, 255, 0.94);
       backdrop-filter: blur(16px);
       -webkit-backdrop-filter: blur(16px);
       border-bottom: 1px solid var(--border-subtle);
@@ -82,6 +84,7 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
+      gap: 24px;
     }
 
     .brand-cluster {
@@ -92,37 +95,33 @@
       color: inherit;
     }
 
+    /* Oksa SVG Logo Mark */
     .brand-mark {
-      width: 32px;
-      height: 32px;
-      border-radius: 8px;
-      background: #09090b;
+      width: 46px;
+      height: 46px;
+      border-radius: 4px;
+      background: var(--bg-canvas);
+      border: 0.5px solid #09090b;
       display: flex;
       align-items: center;
       justify-content: center;
-      color: #fff;
-      font-family: var(--font-mono);
-      font-weight: 700;
-      font-size: 13px;
-      position: relative;
+      padding: 4px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+      transition: transform 0.15s ease;
     }
 
-    .brand-mark::after {
-      content: "";
-      position: absolute;
-      inset: -1px;
-      border-radius: 9px;
-      padding: 1px;
-      background: linear-gradient(135deg, var(--glow-cyan), var(--glow-purple));
-      mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-      mask-composite: exclude;
-      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-      -webkit-mask-composite: xor;
-      pointer-events: none;
+    .brand-mark:hover {
+      transform: scale(1.05);
+    }
+
+    .brand-mark svg {
+      width: 100%;
+      height: 100%;
+      display: block;
     }
 
     .brand-title {
-      font-size: 15px;
+      font-size: 18px;
       font-weight: 700;
       letter-spacing: -0.3px;
     }
@@ -141,7 +140,8 @@
       transition: color 0.15s ease;
     }
 
-    nav a:hover, nav a.active {
+    nav a:hover,
+    nav a.active {
       color: var(--text-headline);
     }
 
@@ -464,11 +464,25 @@
       margin-bottom: 14px;
     }
 
-    .eval-big-num.cyan { color: var(--glow-cyan); }
-    .eval-big-num.coral { color: var(--glow-coral); }
-    .eval-big-num.emerald { color: var(--glow-emerald); }
-    .eval-big-num.purple { color: var(--glow-purple); }
-    .eval-big-num.amber { color: var(--glow-amber); }
+    .eval-big-num.cyan {
+      color: var(--glow-cyan);
+    }
+
+    .eval-big-num.coral {
+      color: var(--glow-coral);
+    }
+
+    .eval-big-num.emerald {
+      color: var(--glow-emerald);
+    }
+
+    .eval-big-num.purple {
+      color: var(--glow-purple);
+    }
+
+    .eval-big-num.amber {
+      color: var(--glow-amber);
+    }
 
     .eval-card-title {
       font-size: 16px;
@@ -579,15 +593,34 @@
     }
 
     @media (max-width: 960px) {
-      header { padding: 16px 24px; }
-      .container { padding: 0 24px; }
-      .hero-title { font-size: 42px; }
-      .steps-grid { grid-template-columns: 1fr; }
-      .evals-grid { grid-template-columns: 1fr; }
-      .compare-proof-box { grid-template-columns: 1fr; text-align: center; }
+      header {
+        padding: 16px 24px;
+      }
+
+      .container {
+        padding: 0 24px;
+      }
+
+      .hero-title {
+        font-size: 42px;
+      }
+
+      .steps-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .evals-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .compare-proof-box {
+        grid-template-columns: 1fr;
+        text-align: center;
+      }
     }
   </style>
 </head>
+
 <body>
 
   <!-- Top Sticky Navigation -->
@@ -596,7 +629,8 @@
       <div class="brand-mark" style="background: var(--bg-canvas); border: 1.5px solid #09090b; padding: 4px;">
         <svg version="1.0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" preserveAspectRatio="xMidYMid meet">
           <g transform="translate(0.0,128.0) scale(0.1,-0.1)" fill="#09090b" stroke="#09090b" stroke-width="4">
-            <path d="M1130 1261 c-5 -11 -10 -25 -10 -31 0 -19 -50 -113 -73 -138 -25 -27 -155 -109 -272 -172 -44 -23 -93 -52 -109 -63 -70 -49 -301 -185 -308 -181 -4 3 23 51 60 108 l66 104 65 7 c85 9 155 53 204 127 20 29 52 68 72 85 37 33 44 65 15 71 -13 2 -64 -44 -197 -180 -55 -56 -158 -66 -165 -15 -2 12 -11 23 -20 25 -15 3 -18 -4 -18 -35 0 -30 -13 -57 -64 -133 -84 -124 -154 -210 -192 -235 -17 -11 -65 -29 -107 -39 l-77 -18 0 -55 c0 -51 1 -54 22 -48 11 4 54 8 93 8 56 0 82 -5 114 -21 23 -12 49 -22 58 -22 20 0 348 -169 407 -209 23 -16 48 -36 55 -45 8 -9 21 -16 30 -16 33 0 61 -43 61 -93 0 -40 3 -47 19 -47 16 0 20 8 23 38 4 51 26 52 125 2 65 -32 91 -40 137 -40 48 0 56 3 56 18 0 14 -24 30 -88 60 -48 23 -95 42 -105 42 -23 0 -243 114 -287 149 -19 16 -46 32 -60 36 -37 11 -300 147 -300 155 0 8 450 33 550 30 41 -1 139 -2 218 -1 140 1 142 1 142 24 0 46 -7 47 -181 48 -90 0 -295 -3 -455 -7 -198 -5 -293 -4 -297 3 -9 14 28 41 213 154 85 53 218 134 295 181 77 48 166 98 197 111 31 14 74 37 95 51 20 14 48 26 61 26 30 0 82 39 82 62 0 24 -29 23 -91 -3 -27 -12 -52 -19 -56 -16 -3 3 6 36 21 72 14 36 26 70 26 75 0 18 -39 10 -50 -9z"/>
+            <path
+              d="M1130 1261 c-5 -11 -10 -25 -10 -31 0 -19 -50 -113 -73 -138 -25 -27 -155 -109 -272 -172 -44 -23 -93 -52 -109 -63 -70 -49 -301 -185 -308 -181 -4 3 23 51 60 108 l66 104 65 7 c85 9 155 53 204 127 20 29 52 68 72 85 37 33 44 65 15 71 -13 2 -64 -44 -197 -180 -55 -56 -158 -66 -165 -15 -2 12 -11 23 -20 25 -15 3 -18 -4 -18 -35 0 -30 -13 -57 -64 -133 -84 -124 -154 -210 -192 -235 -17 -11 -65 -29 -107 -39 l-77 -18 0 -55 c0 -51 1 -54 22 -48 11 4 54 8 93 8 56 0 82 -5 114 -21 23 -12 49 -22 58 -22 20 0 348 -169 407 -209 23 -16 48 -36 55 -45 8 -9 21 -16 30 -16 33 0 61 -43 61 -93 0 -40 3 -47 19 -47 16 0 20 8 23 38 4 51 26 52 125 2 65 -32 91 -40 137 -40 48 0 56 3 56 18 0 14 -24 30 -88 60 -48 23 -95 42 -105 42 -23 0 -243 114 -287 149 -19 16 -46 32 -60 36 -37 11 -300 147 -300 155 0 8 450 33 550 30 41 -1 139 -2 218 -1 140 1 142 1 142 24 0 46 -7 47 -181 48 -90 0 -295 -3 -455 -7 -198 -5 -293 -4 -297 3 -9 14 28 41 213 154 85 53 218 134 295 181 77 48 166 98 197 111 31 14 74 37 95 51 20 14 48 26 61 26 30 0 82 39 82 62 0 24 -29 23 -91 -3 -27 -12 -52 -19 -56 -16 -3 3 6 36 21 72 14 36 26 70 26 75 0 18 -39 10 -50 -9z" />
           </g>
         </svg>
       </div>
@@ -624,13 +658,16 @@
       </h1>
 
       <p class="hero-sub">
-        TinyToken compresses multi-megabyte images and multi-page PDFs into ultra-dense, self-attesting 25 KB binary tokens with sub-microsecond zero-copy search and permanent grounded intelligence.
+        TinyToken compresses multi-megabyte images and multi-page PDFs into ultra-dense, self-attesting 25 KB binary
+        tokens with sub-microsecond zero-copy search and permanent grounded intelligence.
       </p>
 
       <div class="hero-actions">
         <a href="/structure" class="btn-large primary">
           <span>Explore Field Structure</span>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="9 18 15 12 9 6" />
+          </svg>
         </a>
         <a href="#how-it-works" class="btn-large secondary">
           <span>How TinyToken Works</span>
@@ -646,11 +683,12 @@
         <div class="section-eyebrow">ARCHITECTURAL TAXONOMY</div>
         <h2 class="section-headline">How TinyToken works</h2>
         <p class="section-intro">
-          TinyToken strictly decouples transient visual pixels from persistent intelligence using three hierarchical levels of visual perception.
+          TinyToken strictly decouples transient visual pixels from persistent intelligence using three hierarchical
+          levels of visual perception.
         </p>
 
         <div class="steps-grid">
-          
+
           <!-- Step 1 / Level 1 -->
           <div class="step-card" style="--card-glow: var(--glow-cyan); --card-glow-bg: var(--glow-cyan-light);">
             <div>
@@ -661,12 +699,14 @@
                 A deterministic 6&times;7&times;6 perceptual RGB lattice in finite field $GF(2^8)$ ($0\dots 255$).
               </p>
               <p class="step-desc-small">
-                A single quantized color cell in $GF(2^8)$ ($0\dots 255$). Represents a color primitive, luminance value, or ink anchor. Centroid #222 is literally Dark Umber RGB with no semantic awareness on its own.
+                A single quantized color cell in $GF(2^8)$ ($0\dots 255$). Represents a color primitive, luminance
+                value, or ink anchor. Centroid #222 is literally Dark Umber RGB with no semantic awareness on its own.
               </p>
             </div>
 
             <div class="step-visual-box">
-              <div style="font-family: var(--font-mono); font-size: 11px; font-weight: 600; color: var(--text-headline);">
+              <div
+                style="font-family: var(--font-mono); font-size: 11px; font-weight: 600; color: var(--text-headline);">
                 252 Discrete Cells + 4 Greyscale Anchors
               </div>
               <div class="palette-strip">
@@ -683,19 +723,23 @@
           <!-- Step 2 / Level 2 -->
           <div class="step-card" style="--card-glow: var(--glow-purple); --card-glow-bg: var(--glow-purple-light);">
             <div>
-              <span class="step-badge" style="background: var(--glow-purple-light); color: var(--glow-purple);">STEP 2 · LEVEL 2</span>
+              <span class="step-badge" style="background: var(--glow-purple-light); color: var(--glow-purple);">STEP 2 ·
+                LEVEL 2</span>
               <h3 class="step-title">Pattern Intelligence</h3>
               <div class="step-subtitle">Spatial Layout &amp; Textures</div>
               <p class="step-desc">
                 Recurring 2D co-occurrences and sub-grid histograms across a 16&times;16 quantized visual lattice.
               </p>
               <p class="step-desc-small">
-                Spatial arrangements, 2D co-occurrences, and local color histograms across a patch (e.g. 4&times;4 cells). Represents a surface texture (bark, fur, water, asphalt, document print) evaluated via Asymmetric Distance Computation (ADC).
+                Spatial arrangements, 2D co-occurrences, and local color histograms across a patch (e.g. 4&times;4
+                cells). Represents a surface texture (bark, fur, water, asphalt, document print) evaluated via
+                Asymmetric Distance Computation (ADC).
               </p>
             </div>
 
             <div class="step-visual-box">
-              <div style="font-family: var(--font-mono); font-size: 11px; font-weight: 600; color: var(--text-headline);">
+              <div
+                style="font-family: var(--font-mono); font-size: 11px; font-weight: 600; color: var(--text-headline);">
                 16&times;16 Lattice &middot; 256 Centroids
               </div>
               <div style="font-family: var(--font-mono); font-size: 10px; color: var(--glow-purple); margin-top: 4px;">
@@ -707,19 +751,24 @@
           <!-- Step 3 / Level 3 -->
           <div class="step-card" style="--card-glow: var(--glow-coral); --card-glow-bg: var(--glow-coral-light);">
             <div>
-              <span class="step-badge" style="background: var(--glow-coral-light); color: var(--glow-coral);">STEP 3 · LEVEL 3</span>
+              <span class="step-badge" style="background: var(--glow-coral-light); color: var(--glow-coral);">STEP 3 ·
+                LEVEL 3</span>
               <h3 class="step-title">Object Intelligence</h3>
               <div class="step-subtitle">Multimodal Fusion &amp; Recipes</div>
               <p class="step-desc">
-                Human bounding boxes fused with local VQ spatial layouts and global 384-byte Meta DINOv3 ViT-S/16 vectors.
+                Human bounding boxes fused with local VQ spatial layouts and global 384-byte Meta DINOv3 ViT-S/16
+                vectors.
               </p>
               <p class="step-desc-small">
-                Multimodal fusion combining bounding boxes, local VQ spatial layouts, and global 384-byte Meta DINOv3 ViT-S/16 embeddings ([CLS] token). Represents an entity (*"Charred Tree Trunk"*) transferable zero-shot across environments.
+                Multimodal fusion combining bounding boxes, local VQ spatial layouts, and global 384-byte Meta DINOv3
+                ViT-S/16 embeddings ([CLS] token). Represents an entity (*"Charred Tree Trunk"*) transferable zero-shot
+                across environments.
               </p>
             </div>
 
             <div class="step-visual-box">
-              <div style="font-family: var(--font-mono); font-size: 11px; font-weight: 600; color: var(--text-headline);">
+              <div
+                style="font-family: var(--font-mono); font-size: 11px; font-weight: 600; color: var(--text-headline);">
                 DINOv3 ViT-S/16 Int8 &middot; 384 Dimensions
               </div>
               <div style="font-family: var(--font-mono); font-size: 10px; color: var(--glow-coral); margin-top: 4px;">
@@ -741,19 +790,21 @@
           <div class="section-eyebrow" style="color: var(--glow-coral);">EVALS OUTCOMES</div>
           <h2 class="evals-title">Tiny is <span class="glow">Tiny!</span></h2>
           <p style="font-size: 17px; color: var(--text-muted); line-height: 1.6;">
-            By ditching bloated runtime containers and fragile metadata schemas, TinyToken packs complete self-attesting multimodal intelligence into sub-millisecond envelopes.
+            By ditching bloated runtime containers and fragile metadata schemas, TinyToken packs complete self-attesting
+            multimodal intelligence into sub-millisecond envelopes.
           </p>
         </div>
 
         <div class="evals-grid">
-          
+
           <!-- Stat 1: 1/200 Ratio -->
           <div class="eval-card">
             <div>
               <div class="eval-big-num coral">1/200</div>
               <div class="eval-card-title">Of original file size</div>
               <p class="eval-card-text">
-                Compresses 5 MB high-resolution camera images and multi-page PDFs into deterministic 10 KB &ndash; 15 KB envelopes with zero visual loss on search.
+                Compresses 5 MB high-resolution camera images and multi-page PDFs into deterministic 10 KB &ndash; 15 KB
+                envelopes with zero visual loss on search.
               </p>
             </div>
           </div>
@@ -764,7 +815,8 @@
               <div class="eval-big-num cyan">&lt; 25 KB</div>
               <div class="eval-card-title">Strict physical envelope ceiling</div>
               <p class="eval-card-text">
-                Hard maximum size bounds ($GF(2^8)$ + VQ-VAE + DINOv3 + Ed25519) strictly guarded at encode time. Guaranteed never to overflow.
+                Hard maximum size bounds ($GF(2^8)$ + VQ-VAE + DINOv3 + Ed25519) strictly guarded at encode time.
+                Guaranteed never to overflow.
               </p>
             </div>
           </div>
@@ -775,7 +827,8 @@
               <div class="eval-big-num emerald">&lt; 0.05 ms</div>
               <div class="eval-card-title">Sub-microsecond zero-copy inspect</div>
               <p class="eval-card-text">
-                Section I binary header reads magic, version, resolution, bitmasks, and UUID in &lt;1 &mu;s at &gt;1.2 GB/s without decompression.
+                Section I binary header reads magic, version, resolution, bitmasks, and UUID in &lt;1 &mu;s at &gt;1.2
+                GB/s without decompression.
               </p>
             </div>
           </div>
@@ -786,7 +839,8 @@
               <div class="eval-big-num purple">256</div>
               <div class="eval-card-title">Discrete GF(2⁸) VQ centroids</div>
               <p class="eval-card-text">
-                16&times;16 neural visual lattice rendered in 0 ms via codebook lookup. Enables instant thumbnail previews and fast ADC visual similarity.
+                16&times;16 neural visual lattice rendered in 0 ms via codebook lookup. Enables instant thumbnail
+                previews and fast ADC visual similarity.
               </p>
             </div>
           </div>
@@ -797,7 +851,8 @@
               <div class="eval-big-num amber">384-Dim</div>
               <div class="eval-card-title">Meta DINOv3 ViT-S/16 Int8 vector</div>
               <p class="eval-card-text">
-                Compact 384-byte normalized semantic vector provides illumination-robust matching invariant to lighting or white-balance shifts.
+                Compact 384-byte normalized semantic vector provides illumination-robust matching invariant to lighting
+                or white-balance shifts.
               </p>
             </div>
           </div>
@@ -808,7 +863,8 @@
               <div class="eval-big-num" style="color: #3b82f6;">100%</div>
               <div class="eval-card-title">Self-attesting cryptographic integrity</div>
               <p class="eval-card-text">
-                256-byte detached Ed25519 signature + 4-leaf SHA-256 Merkle root + 64-byte 3-lane $GF(2^8)$ Reed-Solomon parity that heals up to 4 corrupted bytes.
+                256-byte detached Ed25519 signature + 4-leaf SHA-256 Merkle root + 64-byte 3-lane $GF(2^8)$ Reed-Solomon
+                parity that heals up to 4 corrupted bytes.
               </p>
             </div>
           </div>
@@ -839,7 +895,8 @@
     <section class="cta-banner">
       <h2>Ready to shrink your dataset by 99%?</h2>
       <p>
-        Inspect the binary field specifications, review the 3-level vision directives, or tokenize a local asset in a single Bun command.
+        Inspect the binary field specifications, review the 3-level vision directives, or tokenize a local asset in a
+        single Bun command.
       </p>
       <div style="display: flex; gap: 14px; justify-content: center;">
         <a href="/structure" class="btn-large primary">View Binary Structure</a>
@@ -862,5 +919,5 @@
   </footer>
 
 </body>
-</html>
 
+</html>
