@@ -396,7 +396,10 @@ export async function fetchAndIndexGooglePhotos(
         error: err?.message || String(err),
       };
     }
-  } else {
+  }
+
+  /*
+    else {
     // When accessToken is pending authorization, generate a synthetic 50-photo set
     // so the interface and terminal debug console function out-of-the-box
     for (let i = 1; i <= 50; i++) {
@@ -412,6 +415,7 @@ export async function fetchAndIndexGooglePhotos(
       });
     }
   }
+  */
 
   // Tokenize media items into 25 KB tokens and write to container or data directory
   if (context?.pipeline && context?.searchEngine && context?.zipArchivePath) {
