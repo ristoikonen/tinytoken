@@ -12,10 +12,13 @@ import {
 import { visualTraitRegistry } from "./utils/visualTraitRegistry";
 import { VqInvertedIndexEngine } from "./utils/vqInvertedIndex";
 import { CompressedTokenSearchEngine } from "./utils/zipEngine";
-import helpPage from "./pages/help.html" with { type: "text" };
-import helpCardsPage from "./pages/help-cards.html" with { type: "text" };
-import tokenStructurePage from "./pages/token-structure.html" with { type: "text" };
-import howItWorksPage from "./pages/how-it-works.html" with { type: "text" };
+
+// Static Page File References (Bun Native Zero-Copy Streaming)
+const helpPageFile = Bun.file("./pages/help.html");
+const helpCardsPageFile = Bun.file("./pages/help-cards.html");
+const tokenStructurePageFile = Bun.file("./pages/token-structure.html");
+const howItWorksPageFile = Bun.file("./pages/how-it-works.html");
+const physicalStackPageFile = Bun.file("./pages/physical-stack.html");
 
 // Configuration
 const isVercel = Bun.env.APP_VERCEL;
@@ -280,16 +283,19 @@ export async function fetchHandler(req: Request): Promise<Response> {
       });
     }
     if (url.pathname === "/help") {
-      return new Response(String(helpPage), { headers: { "Content-Type": "text/html" } });
+      return new Response(helpPageFile, { headers: { "Content-Type": "text/html; charset=utf-8" } });
     }
     if (url.pathname === "/help-cards" || url.pathname === "/guide") {
-      return new Response(String(helpCardsPage), { headers: { "Content-Type": "text/html" } });
+      return new Response(helpCardsPageFile, { headers: { "Content-Type": "text/html; charset=utf-8" } });
     }
     if (url.pathname === "/structure" || url.pathname === "/token-structure" || url.pathname === "/fields") {
-      return new Response(String(tokenStructurePage), { headers: { "Content-Type": "text/html; charset=utf-8" } });
+      return new Response(tokenStructurePageFile, { headers: { "Content-Type": "text/html; charset=utf-8" } });
     }
     if (url.pathname === "/how-it-works" || url.pathname === "/works" || url.pathname === "/about") {
-      return new Response(String(howItWorksPage), { headers: { "Content-Type": "text/html; charset=utf-8" } });
+      return new Response(howItWorksPageFile, { headers: { "Content-Type": "text/html; charset=utf-8" } });
+    }
+    if (url.pathname === "/physical-stack" || url.pathname === "/stack" || url.pathname === "/layers") {
+      return new Response(physicalStackPageFile, { headers: { "Content-Type": "text/html; charset=utf-8" } });
     }
     return await handleApiRoute(url.pathname, req as BunRequest, url);
   } catch (err) {
@@ -315,28 +321,37 @@ const server = serve({
       }),
 
     "/help": {
-      GET: () => new Response(String(helpPage), { headers: { "Content-Type": "text/html" } })
+      GET: () => new Response(helpPageFile, { headers: { "Content-Type": "text/html; charset=utf-8" } })
     },
     "/help-cards": {
-      GET: () => new Response(String(helpCardsPage), { headers: { "Content-Type": "text/html" } })
+      GET: () => new Response(helpCardsPageFile, { headers: { "Content-Type": "text/html; charset=utf-8" } })
     },
     "/guide": {
-      GET: () => new Response(String(helpCardsPage), { headers: { "Content-Type": "text/html" } })
+      GET: () => new Response(helpCardsPageFile, { headers: { "Content-Type": "text/html; charset=utf-8" } })
     },
     "/structure": {
-      GET: () => new Response(String(tokenStructurePage), { headers: { "Content-Type": "text/html; charset=utf-8" } })
+      GET: () => new Response(tokenStructurePageFile, { headers: { "Content-Type": "text/html; charset=utf-8" } })
     },
     "/token-structure": {
-      GET: () => new Response(String(tokenStructurePage), { headers: { "Content-Type": "text/html; charset=utf-8" } })
+      GET: () => new Response(tokenStructurePageFile, { headers: { "Content-Type": "text/html; charset=utf-8" } })
     },
     "/fields": {
-      GET: () => new Response(String(tokenStructurePage), { headers: { "Content-Type": "text/html; charset=utf-8" } })
+      GET: () => new Response(tokenStructurePageFile, { headers: { "Content-Type": "text/html; charset=utf-8" } })
     },
     "/how-it-works": {
-      GET: () => new Response(String(howItWorksPage), { headers: { "Content-Type": "text/html; charset=utf-8" } })
+      GET: () => new Response(howItWorksPageFile, { headers: { "Content-Type": "text/html; charset=utf-8" } })
     },
     "/works": {
-      GET: () => new Response(String(howItWorksPage), { headers: { "Content-Type": "text/html; charset=utf-8" } })
+      GET: () => new Response(howItWorksPageFile, { headers: { "Content-Type": "text/html; charset=utf-8" } })
+    },
+    "/physical-stack": {
+      GET: () => new Response(physicalStackPageFile, { headers: { "Content-Type": "text/html; charset=utf-8" } })
+    },
+    "/stack": {
+      GET: () => new Response(physicalStackPageFile, { headers: { "Content-Type": "text/html; charset=utf-8" } })
+    },
+    "/layers": {
+      GET: () => new Response(physicalStackPageFile, { headers: { "Content-Type": "text/html; charset=utf-8" } })
     },
 
 

@@ -1,0 +1,1199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TinyToken · Physical 4-Layer Architecture Stack</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    /* ==========================================================================
+       TINYTOKEN 4-LAYER PHYSICAL ARCHITECTURE STACK
+       Style: Architectural Tech-Stack Diagram · High Contrast & Clean Space
+       Palette: Glow2 Colors on Crisp White Canvas
+       ========================================================================== */
+    :root {
+      /* Glow2 Accents */
+      --glow-blue: #0284c7;
+      --glow-blue-light: #f0f9ff;
+      --glow-blue-border: #bae6fd;
+
+      --glow-coral: #e11d48;
+      --glow-coral-light: #fff1f2;
+      --glow-coral-border: #fecdd3;
+
+      --glow-amber: #d97706;
+      --glow-amber-light: #fffbeb;
+      --glow-amber-border: #fde68a;
+
+      --glow-emerald: #059669;
+      --glow-emerald-light: #f0fdf4;
+      --glow-emerald-border: #bbf7d0;
+
+      --glow-purple: #9333ea;
+      --glow-purple-light: #faf5ff;
+      --glow-purple-border: #e9d5ff;
+
+      /* Canvas & Typography */
+      --bg-canvas: #ffffff;
+      --bg-surface: #fafafa;
+      --bg-subtle: #f4f4f5;
+      --border-subtle: #e4e4e7;
+      --border-chic: #d4d4d8;
+
+      --text-headline: #09090b;
+      --text-body: #3f3f46;
+      --text-muted: #71717a;
+      --text-faint: #a1a1aa;
+
+      --font-display: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --font-mono: "Geist Mono", "SF Mono", Menlo, Monaco, Consolas, monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      background-color: var(--bg-canvas);
+      color: var(--text-headline);
+      font-family: var(--font-display);
+      line-height: 1.5;
+      min-height: 100vh;
+      padding-bottom: 80px;
+    }
+
+    ::selection {
+      background: var(--glow-blue-light);
+      color: var(--glow-blue);
+    }
+
+    /* Top Sticky Header */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: rgba(255, 255, 255, 0.94);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 16px 48px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+    }
+
+    .brand-cluster {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      text-decoration: none;
+      color: inherit;
+    }
+
+    /* Oksa SVG Logo Mark */
+    .brand-mark {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      background: var(--bg-canvas);
+      border: 1.5px solid #09090b;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+      transition: transform 0.15s ease;
+    }
+
+    .brand-mark:hover {
+      transform: scale(1.05);
+    }
+
+    .brand-mark svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .brand-title {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+    }
+
+    nav {
+      display: flex;
+      align-items: center;
+      gap: 28px;
+    }
+
+    nav a {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: color 0.15s ease;
+      position: relative;
+    }
+
+    nav a:hover, nav a.active {
+      color: var(--text-headline);
+    }
+
+    nav a.active::after {
+      content: "";
+      position: absolute;
+      bottom: -18px;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: #09090b;
+      border-radius: 2px;
+    }
+
+    /* Controls & Asset Switcher */
+    .controls-shelf {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .pill-group {
+      display: inline-flex;
+      align-items: center;
+      background: var(--bg-subtle);
+      padding: 3px;
+      border-radius: 9999px;
+      border: 1px solid var(--border-subtle);
+    }
+
+    .pill-btn {
+      appearance: none;
+      border: none;
+      background: transparent;
+      padding: 6px 14px;
+      border-radius: 9999px;
+      font-family: var(--font-display);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .pill-btn.active {
+      background: #ffffff;
+      color: var(--text-headline);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+    }
+
+    .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+    }
+
+    .pill-btn.active .dot.cyan { background: var(--glow-blue); }
+    .pill-btn.active .dot.purple { background: var(--glow-purple); }
+
+    .asset-switcher-wrap {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      margin-bottom: 20px;
+    }
+
+    /* Container */
+    .container {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 0 48px;
+    }
+
+    /* Hero Headline */
+    .stack-hero {
+      padding: 56px 0 40px 0;
+      text-align: center;
+      max-width: 820px;
+      margin: 0 auto;
+    }
+
+    .hero-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      color: var(--glow-blue);
+      margin-bottom: 14px;
+    }
+
+    .stack-hero h1 {
+      font-size: 44px;
+      font-weight: 800;
+      letter-spacing: -1.5px;
+      line-height: 1.1;
+      margin-bottom: 14px;
+      color: var(--text-headline);
+    }
+
+    .stack-hero p {
+      font-size: 16px;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    /* ==========================================================================
+       ACTIVE ENVELOPE MEMORY (Thick Clickable Color Bar)
+       ========================================================================== */
+    .envelope-bar-wrap {
+      margin-bottom: 44px;
+      background: #ffffff;
+      border: 1px solid var(--border-chic);
+      border-radius: 14px;
+      padding: 24px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
+    }
+
+    .bar-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .bar-title-cluster {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .bar-main-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-headline);
+      letter-spacing: -0.2px;
+    }
+
+    .bar-layers-breakdown {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .bar-buffer-tag {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--glow-emerald);
+      background: var(--glow-emerald-light);
+      padding: 4px 12px;
+      border-radius: 6px;
+      border: 1px solid var(--glow-emerald-border);
+    }
+
+    /* Thicker Clickable Progress Bar */
+    .thick-color-bar {
+      height: 44px;
+      background: var(--bg-subtle);
+      border-radius: 10px;
+      overflow: hidden;
+      display: flex;
+      border: 1px solid var(--border-chic);
+      cursor: pointer;
+      user-select: none;
+      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.04);
+    }
+
+    .thick-bar-seg {
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 700;
+      color: #ffffff;
+      padding: 0 8px;
+      white-space: nowrap;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      position: relative;
+    }
+
+    .thick-bar-seg:hover {
+      filter: brightness(1.1);
+      transform: scaleY(1.05);
+      z-index: 5;
+    }
+
+    .thick-bar-seg.active-seg {
+      box-shadow: inset 0 0 0 2px #ffffff, 0 0 12px rgba(0, 0, 0, 0.2);
+      z-index: 6;
+    }
+
+    /* Segment Colors & Explicit Widths */
+    .thick-bar-seg.seg-header {
+      background: var(--glow-blue);
+      min-width: 72px; /* widened so number fits in */
+    }
+
+    .thick-bar-seg.seg-crypto {
+      background: var(--glow-coral);
+      min-width: 82px;
+    }
+
+    .thick-bar-seg.seg-meta {
+      background: var(--glow-amber);
+      min-width: 96px;
+    }
+
+    .thick-bar-seg.seg-preview {
+      background: var(--glow-emerald);
+      min-width: 110px;
+    }
+
+    .thick-bar-seg.seg-buffer {
+      background: #71717a;
+      color: #f4f4f5;
+      flex: 1;
+      min-width: 140px;
+    }
+
+    /* Clickable Readout Banner Below Bar */
+    .bar-info-readout {
+      margin-top: 14px;
+      padding: 8px 18px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-headline);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      animation: fadeIn 0.2s ease;
+    }
+
+    .readout-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: transparent;
+      border: 1px solid transparent;
+      padding: 6px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      font-family: inherit;
+    }
+
+    .readout-pill:hover {
+      outline: 1px solid #4b5563; /* Thin dkgray outline on hover */
+      outline-offset: 1px;
+      border-color: #4b5563;
+      background: rgba(0, 0, 0, 0.03);
+    }
+
+    .readout-label {
+      color: #000000;
+      font-weight: 700;
+      font-size: 15px;
+      font-family: var(--font-display);
+    }
+
+    .readout-hint {
+      font-family: var(--font-display);
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--text-muted);
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ==========================================================================
+       THE 4 PHYSICAL STACK TIERS
+       ========================================================================== */
+    .stack-diagram {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .stack-tier-card {
+      position: relative;
+      background: #ffffff;
+      border: 1px solid var(--border-chic);
+      border-left: 10px solid var(--tier-sidebar); /* Prominent colored sidebar */
+      border-radius: 16px;
+      padding: 32px 36px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .stack-tier-card:hover {
+      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.07);
+      transform: translateY(-2px);
+    }
+
+    .stack-tier-card.highlight-card {
+      box-shadow: 0 0 0 2px var(--tier-sidebar), 0 16px 36px rgba(0, 0, 0, 0.08);
+    }
+
+    /* Top Tier Header */
+    .tier-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .tier-left-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .tier-ball {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      font-weight: 800;
+      color: #ffffff;
+      flex-shrink: 0;
+    }
+
+    .readout-ball {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 800;
+      color: #ffffff;
+      flex-shrink: 0;
+    }
+
+    .ball-blue { background: var(--glow-blue); box-shadow: 0 2px 6px rgba(2, 132, 199, 0.35); }
+    .ball-coral { background: var(--glow-coral); box-shadow: 0 2px 6px rgba(225, 29, 72, 0.35); }
+    .ball-amber { background: var(--glow-amber); box-shadow: 0 2px 6px rgba(217, 119, 6, 0.35); }
+    .ball-purple { background: var(--glow-purple); box-shadow: 0 2px 6px rgba(147, 51, 234, 0.35); }
+    .ball-slate { background: #71717a; box-shadow: 0 2px 6px rgba(113, 113, 122, 0.35); }
+
+    .tier-num-badge {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--tier-sidebar);
+    }
+
+    /* Large Simplified Caption as '1/200' */
+    .tier-large-caption {
+      font-size: 48px;
+      font-weight: 800;
+      letter-spacing: -1.5px;
+      line-height: 1.05;
+      color: var(--text-headline);
+      margin-top: 2px;
+    }
+
+    .tier-meta-strip {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .tier-offset-tag {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 700;
+      padding: 6px 12px;
+      border-radius: 6px;
+      background: var(--tier-light, var(--bg-subtle));
+      color: var(--tier-sidebar, var(--text-headline));
+      border: 1px solid var(--tier-border, var(--border-subtle));
+    }
+
+    .tier-desc {
+      font-size: 14.5px;
+      color: var(--text-body);
+      line-height: 1.6;
+      margin-bottom: 24px;
+      max-width: 960px;
+    }
+
+    /* Inner Component Boxes */
+    .tier-components-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 14px;
+    }
+
+    .component-brick {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 10px;
+      padding: 14px 16px;
+      transition: all 0.15s ease;
+      cursor: pointer;
+    }
+
+    .component-brick:hover {
+      background: #ffffff;
+      border-color: var(--tier-sidebar, var(--border-chic));
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+      transform: translateY(-1px);
+    }
+
+    .brick-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+
+    .brick-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+
+    .brick-size {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--tier-sidebar, var(--text-faint));
+      font-weight: 700;
+    }
+
+    .brick-val {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-headline);
+      word-break: break-all;
+    }
+
+    /* Live Preview Thumbnail Component (3x larger: 240x240, non-clickable) */
+    .preview-brick-wide {
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: center;
+      gap: 28px;
+      background: #ffffff;
+      border: 1px solid var(--tier-border, var(--border-subtle));
+      border-radius: 12px;
+      padding: 24px 28px;
+      cursor: default;
+    }
+
+    .preview-thumb-img {
+      width: 240px;
+      height: 240px;
+      object-fit: contain;
+      border-radius: 10px;
+      border: 1px solid var(--border-subtle);
+      background: #09090b;
+      flex-shrink: 0;
+      pointer-events: none;
+      user-select: none;
+    }
+
+    /* Footer */
+    footer {
+      margin-top: 80px;
+      border-top: 1px solid var(--border-subtle);
+      padding-top: 32px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 20px;
+    }
+
+    .footer-links a {
+      color: var(--text-muted);
+      text-decoration: none;
+    }
+
+    .footer-links a:hover {
+      color: var(--text-headline);
+    }
+
+    @media (max-width: 860px) {
+      header { padding: 16px 24px; flex-wrap: wrap; }
+      .container { padding: 0 24px; }
+      .tier-large-caption { font-size: 36px; }
+      .stack-tier-card { padding: 24px; }
+      .preview-brick-wide { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Sticky Navigation (Physical Stack, How It Works, Binary Spec, CLI Guide) -->
+  <header>
+    <a href="/physical-stack" class="brand-cluster">
+      <div class="brand-mark">
+        <!-- Oksa SVG Logo (Twig/Branch with Black Outline on Canvas Background) -->
+        <svg version="1.0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" preserveAspectRatio="xMidYMid meet">
+          <g transform="translate(0.0,128.0) scale(0.1,-0.1)" fill="#09090b" stroke="#09090b" stroke-width="4">
+            <path d="M1130 1261 c-5 -11 -10 -25 -10 -31 0 -19 -50 -113 -73 -138 -25 -27 -155 -109 -272 -172 -44 -23 -93 -52 -109 -63 -70 -49 -301 -185 -308 -181 -4 3 23 51 60 108 l66 104 65 7 c85 9 155 53 204 127 20 29 52 68 72 85 37 33 44 65 15 71 -13 2 -64 -44 -197 -180 -55 -56 -158 -66 -165 -15 -2 12 -11 23 -20 25 -15 3 -18 -4 -18 -35 0 -30 -13 -57 -64 -133 -84 -124 -154 -210 -192 -235 -17 -11 -65 -29 -107 -39 l-77 -18 0 -55 c0 -51 1 -54 22 -48 11 4 54 8 93 8 56 0 82 -5 114 -21 23 -12 49 -22 58 -22 20 0 348 -169 407 -209 23 -16 48 -36 55 -45 8 -9 21 -16 30 -16 33 0 61 -43 61 -93 0 -40 3 -47 19 -47 16 0 20 8 23 38 4 51 26 52 125 2 65 -32 91 -40 137 -40 48 0 56 3 56 18 0 14 -24 30 -88 60 -48 23 -95 42 -105 42 -23 0 -243 114 -287 149 -19 16 -46 32 -60 36 -37 11 -300 147 -300 155 0 8 450 33 550 30 41 -1 139 -2 218 -1 140 1 142 1 142 24 0 46 -7 47 -181 48 -90 0 -295 -3 -455 -7 -198 -5 -293 -4 -297 3 -9 14 28 41 213 154 85 53 218 134 295 181 77 48 166 98 197 111 31 14 74 37 95 51 20 14 48 26 61 26 30 0 82 39 82 62 0 24 -29 23 -91 -3 -27 -12 -52 -19 -56 -16 -3 3 6 36 21 72 14 36 26 70 26 75 0 18 -39 10 -50 -9z"/>
+          </g>
+        </svg>
+      </div>
+      <div class="brand-title">TinyToken</div>
+    </a>
+
+    <!-- Universal Navigation -->
+    <nav>
+      <a href="/physical-stack" class="active">Physical Stack</a>
+      <a href="/how-it-works">How It Works</a>
+      <a href="/structure">Binary Spec</a>
+      <a href="/guide">CLI Guide</a>
+    </nav>
+  </header>
+
+  <main class="container">
+    
+    <!-- Hero / Blueprint Headline -->
+    <section class="stack-hero">
+      <h1>The 4-Layer Physical Stack</h1>
+      <p>
+        Every image, photo, or document encoded into TinyToken maps into four layers.
+      </p>
+    </section>
+
+    <!-- Asset Switcher Above TinyToken Structure -->
+    <div class="asset-switcher-wrap">
+      <div class="pill-group" title="Switch sample asset">
+        <button class="pill-btn active" id="btn-asset-img" onclick="setAsset('image')">
+          <span class="dot cyan"></span>
+          <span>Image: Henri.jpg</span>
+        </button>
+        <button class="pill-btn" id="btn-asset-pdf" onclick="setAsset('pdf')">
+          <span class="dot purple"></span>
+          <span>PDF: Beyond Deviation (12p)</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- TinyToken Structure (Thick Clickable Progress Bar) -->
+    <div class="envelope-bar-wrap">
+      <div class="bar-header">
+        <div class="bar-title-cluster">
+          <span class="bar-main-title">TinyToken Structure:</span>
+          <!-- Dynamic Colored Breakdown (88 B is blue) -->
+          <div class="bar-layers-breakdown" id="bar-breakdown-readout">
+            <span style="color: var(--glow-blue);">88 B</span> / 
+            <span style="color: var(--glow-coral);">616 B</span> / 
+            <span style="color: var(--glow-amber);">1,229 B</span> / 
+            <span style="color: var(--glow-emerald);">8,656 B</span>
+          </div>
+        </div>
+        <!-- 10,589 B Data / 15,011 B Buffer Remaining -->
+        <div class="bar-buffer-tag" id="bar-buffer-display">
+          10,589 B Data / 15,011 B Buffer Remaining
+        </div>
+      </div>
+
+      <!-- Thicker Clickable Progress Bar -->
+      <div class="thick-color-bar" id="thick-color-bar">
+        <div class="thick-bar-seg seg-header" id="bar-seg-1" onclick="onBarClick(1)" title="Layer 1: Header (88 B)">
+          1. 88 B
+        </div>
+        <div class="thick-bar-seg seg-crypto" id="bar-seg-2" onclick="onBarClick(2)" title="Layer 2: Cryptographic (616 B)">
+          2. 616 B
+        </div>
+        <div class="thick-bar-seg seg-meta" id="bar-seg-3" onclick="onBarClick(3)" title="Layer 3: Embedding & Text (1,229 B)">
+          3. 1,229 B
+        </div>
+        <div class="thick-bar-seg seg-preview" id="bar-seg-4" onclick="onBarClick(4)" title="Layer 4: Preview (8,656 B)">
+          4. 8,656 B
+        </div>
+        <div class="thick-bar-seg seg-buffer" id="bar-seg-buf" onclick="onBarClick(5)" title="Buffer Remaining">
+          Buffer (15,011 B Free)
+        </div>
+      </div>
+
+      <!-- Live Readout Printed Below Bar On Click (Hover: thin dkgray outline; Click: jumps to section) -->
+      <div class="bar-info-readout" id="bar-info-readout">
+        <button class="readout-pill" onclick="jumpToLayerSection(1)" title="Jump to Header section">
+          <span class="readout-ball ball-blue">1</span>
+          <span class="readout-label">Header 88 B</span>
+        </button>
+        <span class="readout-hint">Click any segment number to inspect section data.</span>
+      </div>
+    </div>
+
+    <!-- The 4 Physical Stack Tiers -->
+    <div class="stack-diagram">
+
+      <!-- ==================================================================
+           LAYER 1: HEADER (Green Sidebar as requested)
+           ================================================================== -->
+      <section class="stack-tier-card" id="card-layer-1" style="--tier-sidebar: var(--glow-emerald); --tier-light: var(--glow-emerald-light); --tier-border: var(--glow-emerald-border);">
+        <div class="tier-header">
+          <div class="tier-left-wrap">
+            <span class="tier-ball ball-blue">1</span>
+            <h2 class="tier-large-caption">Header</h2>
+          </div>
+          <div class="tier-meta-strip">
+            <span class="tier-offset-tag">OFFSET 0 .. 87</span>
+            <span class="tier-offset-tag" style="background: #ffffff; color: var(--text-headline);">88 Bytes</span>
+          </div>
+        </div>
+
+        <p class="tier-desc">
+          Hardware-aligned 64-bit binary header slice. Inspected in sub-microsecond time via zero-copy DataView pointers without decompressing QuickLZ metadata or performing WebCrypto signature verification.
+        </p>
+
+        <div class="tier-components-grid">
+          <div class="component-brick" onclick="onBarClick(1)">
+            <div class="brick-top">
+              <span class="brick-label">Magic Identifier</span>
+              <span class="brick-size">4 B</span>
+            </div>
+            <div class="brick-val">"GF28" (0x47463238)</div>
+          </div>
+
+          <div class="component-brick" onclick="onBarClick(1)">
+            <div class="brick-top">
+              <span class="brick-label">Version</span>
+              <span class="brick-size">2 B</span>
+            </div>
+            <div class="brick-val">v2 (uint16_le)</div>
+          </div>
+
+          <div class="component-brick" onclick="onBarClick(1)">
+            <div class="brick-top">
+              <span class="brick-label">Flags Bitmask</span>
+              <span class="brick-size">2 B</span>
+            </div>
+            <div class="brick-val" id="val-l1-flags">0x0027 [VQ, SNARK, QLZ, DINO]</div>
+          </div>
+
+          <div class="component-brick" onclick="onBarClick(1)">
+            <div class="brick-top">
+              <span class="brick-label">UUID (128-bit)</span>
+              <span class="brick-size">16 B</span>
+            </div>
+            <div class="brick-val" id="val-l1-uuid">3bbdc2ec4fa644dd...</div>
+          </div>
+
+          <div class="component-brick" onclick="onBarClick(1)">
+            <div class="brick-top">
+              <span class="brick-label">Resolution &amp; Page</span>
+              <span class="brick-size">8 B</span>
+            </div>
+            <div class="brick-val" id="val-l1-dims">520 &times; 200 px (Page 1/1)</div>
+          </div>
+
+          <div class="component-brick" onclick="onBarClick(1)">
+            <div class="brick-top">
+              <span class="brick-label">Length Pointers</span>
+              <span class="brick-size">8 B</span>
+            </div>
+            <div class="brick-val" id="val-l1-pointers">Meta: 1,229B &middot; Prev: 8,656B</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================================================================
+           LAYER 2: CRYPTOGRAPHIC
+           ================================================================== -->
+      <section class="stack-tier-card" id="card-layer-2" style="--tier-sidebar: var(--glow-coral); --tier-light: var(--glow-coral-light); --tier-border: var(--glow-coral-border);">
+        <div class="tier-header">
+          <div class="tier-left-wrap">
+            <span class="tier-ball ball-coral">2</span>
+            <h2 class="tier-large-caption">Cryptographic</h2>
+          </div>
+          <div class="tier-meta-strip">
+            <span class="tier-offset-tag">OFFSET 88 .. 703</span>
+            <span class="tier-offset-tag" style="background: #ffffff; color: var(--text-headline);">616 Bytes</span>
+          </div>
+        </div>
+
+        <p class="tier-desc">
+          Guarantees tamper-evident cryptographic provenance, offline perceptual thumbnail recovery, and mathematical error correction. Contains detached Ed25519 signatures, Merkle root digests, the 16&times;16 discrete color lattice, and 3-lane Galois error healing.
+        </p>
+
+        <div class="tier-components-grid">
+          <div class="component-brick" onclick="onBarClick(2)">
+            <div class="brick-top">
+              <span class="brick-label">Merkle Root</span>
+              <span class="brick-size">32 B</span>
+            </div>
+            <div class="brick-val" id="val-l2-merkle">c5f22f2ab4735d18...</div>
+          </div>
+
+          <div class="component-brick" onclick="onBarClick(2)">
+            <div class="brick-top">
+              <span class="brick-label">Ed25519 Signature Stub</span>
+              <span class="brick-size">256 B</span>
+            </div>
+            <div class="brick-val">Detached Signature + Key Hash</div>
+          </div>
+
+          <div class="component-brick" onclick="onBarClick(2)">
+            <div class="brick-top">
+              <span class="brick-label">16&times;16 VQ Codebook Grid</span>
+              <span class="brick-size">256 B</span>
+            </div>
+            <div class="brick-val">256 Centroid Color Indices</div>
+          </div>
+
+          <div class="component-brick" onclick="onBarClick(2)">
+            <div class="brick-top">
+              <span class="brick-label">Galois RS Parity (3 Lanes)</span>
+              <span class="brick-size">64 B</span>
+            </div>
+            <div class="brick-val" style="color: var(--glow-emerald);">Heals 4 Corrupted Bytes</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================================================================
+           LAYER 3: EMBEDDING & TEXT
+           ================================================================== -->
+      <section class="stack-tier-card" id="card-layer-3" style="--tier-sidebar: var(--glow-amber); --tier-light: var(--glow-amber-light); --tier-border: var(--glow-amber-border);">
+        <div class="tier-header">
+          <div class="tier-left-wrap">
+            <span class="tier-ball ball-amber">3</span>
+            <h2 class="tier-large-caption">Embedding &amp; Text</h2>
+          </div>
+          <div class="tier-meta-strip">
+            <span class="tier-offset-tag" id="val-l3-range">OFFSET 704 .. 1932</span>
+            <span class="tier-offset-tag" style="background: #ffffff; color: var(--text-headline);" id="val-l3-size">1,229 Bytes</span>
+          </div>
+        </div>
+
+        <p class="tier-desc">
+          QuickLZ Level-1 compressed semantic core. Holds asset taxonomy, full OCR text transcripts, illumination-invariant Meta DINOv3 ViT-S/16 vectors, and geographic coordinates. Decompressed strictly on demand.
+        </p>
+
+        <div class="tier-components-grid">
+          <div class="component-brick" onclick="onBarClick(3)">
+            <div class="brick-top">
+              <span class="brick-label">Meta DINOv3 Embedding</span>
+              <span class="brick-size">384 D</span>
+            </div>
+            <div class="brick-val">ViT-S/16 Int8 (768 Hex Chars)</div>
+          </div>
+
+          <div class="component-brick" onclick="onBarClick(3)">
+            <div class="brick-top">
+              <span class="brick-label">Asset Identity</span>
+              <span class="brick-size">Variable</span>
+            </div>
+            <div class="brick-val" id="val-l3-id">tok_00004_Henri.jpg</div>
+          </div>
+
+          <div class="component-brick" onclick="onBarClick(3)">
+            <div class="brick-top">
+              <span class="brick-label">OCR Text Transcript</span>
+              <span class="brick-size" id="val-l3-ocr-len">198 Chars</span>
+            </div>
+            <div class="brick-val" id="val-l3-ocr-snippet">"Image Asset: Henri.jpg..."</div>
+          </div>
+
+          <div class="component-brick" onclick="onBarClick(3)">
+            <div class="brick-top">
+              <span class="brick-label">Geo &amp; Taxonomy Tags</span>
+              <span class="brick-size">Taxonomy</span>
+            </div>
+            <div class="brick-val" id="val-l3-tags">dinov3, webp, verified</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================================================================
+           LAYER 4: PREVIEW
+           ================================================================== -->
+      <section class="stack-tier-card" id="card-layer-4" style="--tier-sidebar: var(--glow-purple); --tier-light: var(--glow-purple-light); --tier-border: var(--glow-purple-border);">
+        <div class="tier-header">
+          <div class="tier-left-wrap">
+            <span class="tier-ball ball-purple">4</span>
+            <h2 class="tier-large-caption">Preview</h2>
+          </div>
+          <div class="tier-meta-strip">
+            <span class="tier-offset-tag" id="val-l4-range">OFFSET 1933 .. 10588</span>
+            <span class="tier-offset-tag" style="background: #ffffff; color: var(--text-headline);" id="val-l4-size">8,656 Bytes</span>
+          </div>
+        </div>
+
+        <p class="tier-desc">
+          Direct 320&times;320 visual preview payload. Sliced directly using Section I length pointers with zero cryptographic validation and zero QuickLZ decompression overhead for instant web delivery.
+        </p>
+
+        <div class="tier-components-grid">
+          <div class="preview-brick-wide">
+            <img id="val-l4-img" class="preview-thumb-img" src="" alt="Thumbnail Preview">
+            <div>
+              <div style="font-size: 14px; font-weight: 700; color: var(--text-headline); margin-bottom: 4px;" id="val-l4-fmt-title">
+                320 &times; 320 px Lossy WebP Thumbnail
+              </div>
+              <div style="font-size: 12.5px; color: var(--text-muted); line-height: 1.5;">
+                Extracted via zero-copy binary slicing directly into HTTP responses. Bounded by the 25,600-byte hard container ceiling.
+              </div>
+            </div>
+            <div style="margin-left: auto; text-align: right;">
+              <div style="font-family: var(--font-mono); font-size: 18px; font-weight: 800; color: var(--glow-purple);" id="val-l4-byte-readout">
+                8,656 B
+              </div>
+              <div style="font-size: 11px; color: var(--text-faint); text-transform: uppercase;">
+                Binary Payload
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- Tech Chic Footer with Copyright -->
+    <footer>
+      <div>copyright Risto Ikonen 2026. All Rights Reserved.</div>
+      <div class="footer-links">
+        <a href="/physical-stack">Physical Stack</a>
+        <a href="/how-it-works">How It Works</a>
+        <a href="/structure">Binary Spec</a>
+        <a href="/guide">CLI Guide</a>
+      </div>
+    </footer>
+
+  </main>
+
+  <!-- Interactive Data Models & Scripts -->
+  <script>
+    const STACK_DATASETS = {
+      image: {
+        name: "Henri.jpg",
+        id: "tok_00004_Henri.jpg",
+        totalSize: 10589,
+        flags: "0x0027 [HAS_VQ, SNARK, QLZ, DINO]",
+        uuid: "3bbdc2ec4fa644ddac0445ec1ff2c601",
+        dims: "520 × 200 px (Page 1/1)",
+        merkle: "c5f22f2ab4735d185130605f9e01297f40317300b29ac99a31c3bff668342ba9",
+        metaSize: 1229,
+        metaRange: "OFFSET 704 .. 1932",
+        previewSize: 8656,
+        previewRange: "OFFSET 1933 .. 10588",
+        freeBytes: 15011,
+        ocrChars: "198 Chars",
+        ocrSnippet: "\"Image Asset: Henri.jpg | 520x200 | DINOv3...\"",
+        tags: "local-image, jpg, dinov3, webp, verified",
+        previewFormat: "320 × 320 px Lossy WebP Thumbnail",
+        // Proportions
+        pL1: Math.max(3.5, (88 / 25600) * 100),
+        pL2: Math.max(4.0, (616 / 25600) * 100),
+        pL3: Math.max(5.5, (1229 / 25600) * 100),
+        pL4: (8656 / 25600) * 100,
+        previewUrl: "/api/token/tok_00004_Henri.jpg/preview"
+      },
+      pdf: {
+        name: "Beyond Deviation and Deficit (1).pdf",
+        id: "tok_00028_p1_Beyond_Deviation_and_Deficit__1_.pdf",
+        totalSize: 14827,
+        flags: "0x0037 [+MULTI_PAGE_DOC, VQ, SNARK, QLZ, DINO]",
+        uuid: "16420037bad84b9fb5303b44acb85794",
+        dims: "892 × 1261 px (Page 1 of 12)",
+        merkle: "6a1a8ce531202188d4fb034e9e3727ca9c99c69f59c3ad4595bfcb551a6558c0",
+        metaSize: 2857,
+        metaRange: "OFFSET 704 .. 3560",
+        previewSize: 11266,
+        previewRange: "OFFSET 3561 .. 14826",
+        freeBytes: 10773,
+        ocrChars: "1,480 Chars",
+        ocrSnippet: "\"PDF Page 1/12: Beyond Deviation (210.5 KB) | Text: ISDUT...\"",
+        tags: "local-document, pdf, page-1-of-12, pdfium, verified",
+        previewFormat: "320 × 320 px PDFium Raster WebP Preview",
+        pL1: Math.max(3.5, (88 / 25600) * 100),
+        pL2: Math.max(4.0, (616 / 25600) * 100),
+        pL3: Math.max(8.0, (2857 / 25600) * 100),
+        pL4: (11266 / 25600) * 100,
+        previewUrl: "/api/token/tok_00028_p1_Beyond_Deviation_and_Deficit__1_.pdf/preview"
+      }
+    };
+
+    let activeData = STACK_DATASETS.image;
+    let currentSegIndex = 1;
+
+    function setAsset(mode) {
+      document.getElementById("btn-asset-img").classList.toggle("active", mode === "image");
+      document.getElementById("btn-asset-pdf").classList.toggle("active", mode === "pdf");
+
+      activeData = STACK_DATASETS[mode];
+      const d = activeData;
+
+      // Update TinyToken Structure Display
+      document.getElementById("bar-buffer-display").innerText = `${d.totalSize.toLocaleString()} B Data / ${d.freeBytes.toLocaleString()} B Buffer Remaining`;
+
+      // Colored Layers Breakdown in title: 88 B is blue
+      document.getElementById("bar-breakdown-readout").innerHTML = `
+        <span style="color: var(--glow-blue);">88 B</span> / 
+        <span style="color: var(--glow-coral);">616 B</span> / 
+        <span style="color: var(--glow-amber);">${d.metaSize.toLocaleString()} B</span> / 
+        <span style="color: var(--glow-emerald);">${d.previewSize.toLocaleString()} B</span>
+      `;
+
+      // Update Segments
+      document.getElementById("bar-seg-1").style.width = `${d.pL1}%`;
+      document.getElementById("bar-seg-2").style.width = `${d.pL2}%`;
+      document.getElementById("bar-seg-3").style.width = `${d.pL3}%`;
+      document.getElementById("bar-seg-4").style.width = `${d.pL4}%`;
+
+      document.getElementById("bar-seg-3").innerText = `3. ${d.metaSize.toLocaleString()} B`;
+      document.getElementById("bar-seg-4").innerText = `4. ${d.previewSize.toLocaleString()} B`;
+      document.getElementById("bar-seg-buf").innerText = `Buffer (${d.freeBytes.toLocaleString()} B Free)`;
+
+      // Layer 1
+      document.getElementById("val-l1-flags").innerText = d.flags;
+      document.getElementById("val-l1-uuid").innerText = d.uuid.slice(0, 16) + "...";
+      document.getElementById("val-l1-dims").innerText = d.dims;
+      document.getElementById("val-l1-pointers").innerText = `Meta: ${d.metaSize.toLocaleString()}B · Prev: ${d.previewSize.toLocaleString()}B`;
+
+      // Layer 2
+      document.getElementById("val-l2-merkle").innerText = d.merkle.slice(0, 18) + "...";
+
+      // Layer 3
+      document.getElementById("val-l3-range").innerText = d.metaRange;
+      document.getElementById("val-l3-size").innerText = `${d.metaSize.toLocaleString()} Bytes`;
+      document.getElementById("val-l3-id").innerText = d.id;
+      document.getElementById("val-l3-ocr-len").innerText = d.ocrChars;
+      document.getElementById("val-l3-ocr-snippet").innerText = d.ocrSnippet;
+      document.getElementById("val-l3-tags").innerText = d.tags;
+
+      // Layer 4
+      document.getElementById("val-l4-range").innerText = d.previewRange;
+      document.getElementById("val-l4-size").innerText = `${d.previewSize.toLocaleString()} Bytes`;
+      document.getElementById("val-l4-fmt-title").innerText = d.previewFormat;
+      document.getElementById("val-l4-byte-readout").innerText = `${d.previewSize.toLocaleString()} B`;
+
+      const img = document.getElementById("val-l4-img");
+      img.src = d.previewUrl;
+      img.onerror = function() {
+        this.src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='80' height='80' fill='%2327272a'><text x='50%' y='55%' font-family='monospace' font-size='11' fill='%23a1a1aa' text-anchor='middle'>Preview</text></svg>";
+      };
+
+      onBarClick(currentSegIndex);
+    }
+
+    // Clickable Bar Segments: do not jump to section, put round color ball around number and text in always black
+    function onBarClick(segIndex) {
+      currentSegIndex = segIndex;
+      document.querySelectorAll(".thick-bar-seg").forEach(s => s.classList.remove("active-seg"));
+
+      const d = activeData;
+      let num = segIndex;
+      let ballClass = "";
+      let label = "";
+
+      switch(segIndex) {
+        case 1:
+          document.getElementById("bar-seg-1").classList.add("active-seg");
+          ballClass = "ball-blue";
+          label = "Header 88 B";
+          break;
+        case 2:
+          document.getElementById("bar-seg-2").classList.add("active-seg");
+          ballClass = "ball-coral";
+          label = "Cryptographic 616 B";
+          break;
+        case 3:
+          document.getElementById("bar-seg-3").classList.add("active-seg");
+          ballClass = "ball-amber";
+          label = `Metadata ${d.metaSize.toLocaleString()} B`;
+          break;
+        case 4:
+          document.getElementById("bar-seg-4").classList.add("active-seg");
+          ballClass = "ball-purple";
+          label = `Preview ${d.previewSize.toLocaleString()} B`;
+          break;
+        case 5:
+          document.getElementById("bar-seg-buf").classList.add("active-seg");
+          ballClass = "ball-slate";
+          label = `Buffer ${d.freeBytes.toLocaleString()} B Free`;
+          break;
+      }
+
+      printLayerInfo(num, ballClass, label);
+    }
+
+    // Live Readout: Hover shows thin dkgray outline, click jumps to corresponding section
+    function printLayerInfo(num, ballClass, label) {
+      const readout = document.getElementById("bar-info-readout");
+      readout.innerHTML = `
+        <button class="readout-pill" onclick="jumpToLayerSection(${num})" title="Jump to Layer ${num} section">
+          <span class="readout-ball ${ballClass}">${num}</span>
+          <span class="readout-label">${label}</span>
+        </button>
+        <span class="readout-hint">Click any segment number to inspect section data.</span>
+      `;
+    }
+
+    function jumpToLayerSection(num) {
+      const cardMap = {
+        1: "card-layer-1",
+        2: "card-layer-2",
+        3: "card-layer-3",
+        4: "card-layer-4"
+      };
+      const targetId = cardMap[num];
+      if (targetId) {
+        const card = document.getElementById(targetId);
+        if (card) {
+          card.scrollIntoView({ behavior: "smooth", block: "center" });
+          document.querySelectorAll(".stack-tier-card").forEach(c => c.classList.remove("highlight-card"));
+          card.classList.add("highlight-card");
+          setTimeout(() => card.classList.remove("highlight-card"), 1800);
+        }
+      }
+    }
+
+    // Initialize
+    setAsset("image");
+  </script>
+</body>
+</html>

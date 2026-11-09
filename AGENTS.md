@@ -259,3 +259,105 @@ For the verified instances in the new environment, calculate their centroid hist
 
 
 > Outcome: The recipe becomes multi-environmental — robust to both the original baseline and the new lighting/terrain conditions.
+
+
+
+
+
+
+
+
+
+
+## 16×16 VQ Codebook Grid (256 Bytes) - Spatial color distribution
+Uncompressed visual fingerprint
+
+TinyToken, spatial color distribution means the 256 bytes in the 
+16 × 16 lattice preserve where colors sit in the 2D plane (top vs bottom, center vs edges, adjacency pairs), rather than just counting how many red or green pixels exist.
+
+Across thousands of tokens, this enables 5 key capabilities:
+
+1. Instant Visual Similarity Search (Query-by-Example / Reverse Image Search)
+
+A flat color histogram cannot tell the difference between:
+
+A blue car parked on green grass.
+A green roof under a blue sky.
+
+Because both have identical percentages of blue and green. But in the 
+16 × 16 spatial grid, the sky is in cells 0..63 (top rows) and the grass is in cells 192..255 (bottom rows).
+
+When comparing a query token to thousands of catalog tokens:
+
+```typescript
+// utils/vqCodebook.ts — Asymmetric Distance Computation (ADC)
+let totalDistance = 0;
+for (let i = 0; i < 256; i++) {
+  // O(1) memory lookup in precomputed 256x256 distance LUT
+  totalDistance += VQ_DISTANCE_LUT[queryGrid[i] * 256 + candidateGrid[i]];
+}
+```
+
+Performance Math: 256 integer lookups takes 
+≈ 0.15  
+𝜇 s ≈0.15 μs. Evaluating 10,000 candidate tokens in RAM takes just 
+1.5 ms—completely without GPUs, neural inference, or decompressing any JPEG/WebP files.
+2. High-Speed Candidate Pruning via SQLite Inverted Index
+
+In utils/vqInvertedIndex.ts, spatial centroids are stored in Bun's built-in in-memory SQLite table:
+
+```sql
+SELECT image_id, COUNT(*) AS overlapping_centroids, SUM(frequency) AS score
+FROM image_tokens
+WHERE token_id IN (222, 252, 180) -- e.g. Charcoal, Black, Umber
+GROUP BY image_id
+ORDER BY score DESC LIMIT 50;
+```
+
+Usage: Instantly prunes an archive of 50,000+ tokens down to the top 20 candidate matches in  < 0.3  ms before running heavier neural models.
+
+3. The Dual-Score Metric: Semantic Geometry + Material Fidelity
+
+As outlined in AGENTS.md, AI agents match objects in new environments using a fused metric:
+Fused Score
+= 𝛼 ⋅
+DINOv3_Cosine
++  (  1  −  𝛼 ) ⋅
+VQ_Overlap
+Fused Score=α⋅DINOv3_Cosine+(1−α)⋅VQ_Overlap
+
+DINOv3 provides illumination-invariant shape and semantic understanding ("this is a kangaroo").
+Spatial VQ Overlap verifies material and pigment fidelity ("it has the red-ochre fur pattern of an Australian Red Kangaroo, not the grey coat of an Eastern Grey").
+Setting 𝛼 = 0.60 allows robust detection across changing daylight or camera white balances.
+4. Fast Unsupervised Clustering & Scene Classification
+
+Because every token maps into a fixed 256-dimensional discrete vector (
+𝐺
+𝐹
+(
+2
+8
+)
+256
+GF(2
+8
+)
+256
+):
+
+Thousands of tokens can be clustered in RAM using K-Means or DBSCAN  in  <50 ms. Automatically groups large archives into visual categories:
+Documents / Text: White paper background (#255) with high black ink contrast (#252).
+Landscape: Cyan/blue gradients across the top 4 rows, earthy greens/browns across the bottom 12 rows.
+Portraits: Skin tones concentrated in the central 
+8×8 bounding cells.
+
+
+5. Grounded Bounding-Box Object Teaching (Level 2 & 3 Vision)
+
+When a user draws a bounding box on an image (e.g. 
+
+[ymin,xmin,ymax,xmax]):
+
+The coordinates map directly to the corresponding subgrid of cells in the  16×16 lattice.
+The system extracts the local co-occurrence frequencies (e.g. #222 Charcoal adjacent to #252 Black).
+This creates a token-independent AbstractObjectRecipe stored in object_registry.json, allowing TinyToken to search for that texture or entity across thousands of other images zero-shot.

@@ -147,6 +147,36 @@
       letter-spacing: 0.5px;
     }
 
+    nav {
+      display: flex;
+      align-items: center;
+      gap: 28px;
+    }
+
+    nav a {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: color 0.15s ease;
+      position: relative;
+    }
+
+    nav a:hover, nav a.active {
+      color: var(--text-headline);
+    }
+
+    nav a.active::after {
+      content: "";
+      position: absolute;
+      bottom: -18px;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: #09090b;
+      border-radius: 2px;
+    }
+
     /* Chic Mode Switcher Pills */
     .controls-shelf {
       display: flex;
@@ -1037,6 +1067,14 @@
         <p>25 KB GF(2⁸) · VQ-16×16 · DINOv3 · ED25519 ATTESTATION</p>
       </div>
     </div>
+
+    <!-- Universal Navigation -->
+    <nav>
+      <a href="/physical-stack">Physical Stack</a>
+      <a href="/how-it-works">How It Works</a>
+      <a href="/structure" class="active">Binary Spec</a>
+      <a href="/guide">CLI Guide</a>
+    </nav>
 
     <!-- Active Asset Sample Toggle (Image vs PDF) -->
     <div class="controls-shelf">
