@@ -1,83 +1,57 @@
-//import { join } from "node:path";
-
-const EMBEDDING_DIM = 1536;
-const BYTES_PER_FLOAT = 4;
-const RECORD_SIZE = (EMBEDDING_DIM * BYTES_PER_FLOAT) + 4; // 4-byte cluster header + float vector
+import { EmbeddingModelId } from "../models/token";
+import { extractTokenMetadata, inspectBinaryTokenHeader } from "../utils/tokenCodec";
+import type { TokenMetadataPayload } from "../models/token";
 
 // tok_00001_HectorDoor.png.token
 // tok_00002_HectorWelcome.png.token
 // tok_00007_TonkaFam.png
 // tok_00008_TonkaSparta.png
 // tok_00009_TonkasFamPOWER_Ad_MID.png
-const v1 = await readVector("tok_00007_TonkaFam.png.token", 0);
-const v2 = await readVector("tok_00009_TonkasFamPOWER_Ad_MID.png.token", 0);
-const v3 = await readVector("tok_00008_TonkaSparta.png.token", 0);
-const sim1 = cosineSimilaritySafe(v1, v2);
-const sim2 = cosineSimilaritySafe(v1, v3);
-console.log(`Cosine Similarity 1: ${sim1}`);
-console.log(`Cosine Similarity 2: ${sim2}`);
-
-
-const [v1x, v2x, v3x] = await Promise.all([
-    readVector("tok_00007_TonkaFam.png.token"),
-    readVector("tok_00009_TonkasFamPOWER_Ad_MID.png.token"),
-    readVector("tok_00008_TonkaSparta.png.token")
+const [v1, v2, v3] = await Promise.all([
+    readEmbedding("tok_00007_TonkaFam.png.token"),
+    readEmbedding("tok_00009_TonkasFamPOWER_Ad_MID.png.token"),
+    readEmbedding("tok_00008_TonkaSparta.png.token")
 ]);
 
-const sim1x = cosineSimilaritySafe(v1x, v2x);
-const sim2x = cosineSimilaritySafe(v1x, v3x);
-
-console.log(sim1x, sim2x);
-
-/**
- * Reads a VQ embedding vector from a binary token file.
- * @param filePath Absolute or relative path to the token file
- * @param recordIndex The index of the record to read (defaults to 0)
- */
-async function readVector(
-    filePath: string,
-    recordIndex = 0
-): Promise<Float32Array> {
-
-    if (!Number.isSafeInteger(recordIndex) || recordIndex < 0) {
-        throw new RangeError("Invalid record index");
-    }
-
-    const file = Bun.file(filePath);
-
-    const start = recordIndex * RECORD_SIZE;
-    const end = start + RECORD_SIZE;
-
-    if (!Number.isSafeInteger(end) || end > file.size) {
-        throw new RangeError(
-            `Record ${recordIndex} exceeds file size (${file.size} bytes)`
-        );
-    }
-
-    const buffer = await file.slice(start, end).arrayBuffer();
-
-    if (buffer.byteLength !== RECORD_SIZE) {
-        throw new Error("Incomplete vector record");
-    }
-
-    const view = new DataView(buffer);
-
-    // Assuming unsigned 32-bit cluster IDs.
-    const clusterId = view.getUint32(0, true);
-
-    // Zero-copy view into the same ArrayBuffer.
-    const vector = new Float32Array(
-        buffer,
-        4,
-        EMBEDDING_DIM
-    );
-
-    console.log(`Cluster ID: ${clusterId}`);
-
-    return vector;
+if (
+    v1.modelId !== v2.modelId ||
+    v1.modelId !== v3.modelId ||
+    v1.modelId === EmbeddingModelId.NONE
+) {
+    throw new Error("Tokens must contain embeddings from the same known model");
 }
 
-function cosineSimilaritySafe(a: Float32Array, b: Float32Array): number {
+console.log(`Cosine Similarity 1: ${cosineSimilaritySafe(v1.embedding, v2.embedding).toFixed(4)}`);
+console.log(`Cosine Similarity 2: ${cosineSimilaritySafe(v1.embedding, v3.embedding).toFixed(4)}`);
+
+
+/**
+ * Reads the signed-int8 semantic embedding stored in a token's metadata.
+ */
+async function readEmbedding(
+    filePath: string,
+): Promise<{ embedding: Int8Array; modelId: EmbeddingModelId }> {
+    const bytes = new Uint8Array(await Bun.file(filePath).arrayBuffer());
+    const header = inspectBinaryTokenHeader(bytes);
+    const metadata: TokenMetadataPayload = extractTokenMetadata(bytes);
+    const hex = metadata.dinoEmbeddingHex;
+
+    if (!hex || !/^[\da-f]{768}$/i.test(hex)) {
+        throw new Error(`${filePath} does not contain a valid 384-byte embedding`);
+    }
+
+    const embeddingBytes = Uint8Array.fromHex(hex);
+    return {
+        embedding: new Int8Array(
+            embeddingBytes.buffer,
+            embeddingBytes.byteOffset,
+            embeddingBytes.byteLength
+        ),
+        modelId: header.embeddingModelId,
+    };
+}
+
+function cosineSimilaritySafe(a: Int8Array, b: Int8Array): number {
     if (a.length !== b.length) {
         throw new Error("Vectors must have identical dimensions");
     }
@@ -90,9 +64,6 @@ function cosineSimilaritySafe(a: Float32Array, b: Float32Array): number {
         const valA = a[i]!;
         const valB = b[i]!;
 
-        // Skip if either value is NaN or invalid
-        if (Number.isNaN(valA) || Number.isNaN(valB)) continue;
-
         dotProduct += valA * valB;
         normA += valA * valA;
         normB += valB * valB;
@@ -104,42 +75,4 @@ function cosineSimilaritySafe(a: Float32Array, b: Float32Array): number {
     }
 
     return dotProduct / denominator;
-}
-
-// Example usage with your VQ embedding vectors:
-// const sim = cosineSimilarity(vectorA, vectorB);
-// console.log(`Cosine Similarity: ${sim.toFixed(4)}`);
-
-function l2NormalizeInPlace(vector: Float32Array): Float32Array {
-    let sumSquares = 0;
-
-    // 1. Calculate sum of squared elements
-    for (const val of vector) {
-        sumSquares += val * val;
-    }
-
-    const norm = Math.sqrt(sumSquares);
-
-    // Prevent division by zero for zero-vectors
-    if (norm === 0) return vector;
-
-    // 2. Divide each element by the L2 norm
-    for (let i = 0; i < vector.length; i++) {
-        vector[i] = (vector[i]!) / norm;
-    }
-
-    return vector;
-}
-
-function dotProductSimilarity(normA: Float32Array, normB: Float32Array): number {
-    if (normA.length !== normB.length) {
-        throw new Error("Vectors must have identical dimensions");
-    }
-
-    let dot = 0;
-    for (let i = 0; i < normA.length; i++) {
-        dot += (normA[i]!) * (normB[i]!);
-    }
-
-    return dot; // This equals the cosine similarity!
 }
