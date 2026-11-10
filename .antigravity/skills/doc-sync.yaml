@@ -1,0 +1,8 @@
+name: "TypeScript-to-Markdown Sync"
+description: "Scans local TypeScript interfaces and updates API.md automatically."
+trigger: "on_feature_complete"
+steps:
+  - agent: local-ast-analyzer
+    prompt: "Scan all exported TypeScript interfaces and types in src/ and update API.md to match the current signatures accurately."
+  - shell: "bun run docs:gen"
+  - shell: "bun test"
