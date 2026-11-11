@@ -21,8 +21,7 @@ const howItWorksPageFile = Bun.file("./pages/how-it-works.html");
 const physicalStackPageFile = Bun.file("./pages/physical-stack.html");
 
 // Configuration
-const isVercel = Bun.env.APP_VERCEL;
-const DATA_DIR = Bun.env.DATA_DIR ?? "/tmp/data";
+const DATA_DIR = Bun.env.DATA_DIR ?? "./data";
 const ZIP_ARCHIVE_PATH = Bun.env.ZIP_ARCHIVE_PATH ?? `${DATA_DIR}/tokens.zip`;
 const IMAGE_DIR =
   Bun.env.IMAGE_DIR ??
@@ -33,12 +32,8 @@ const INDEXED_DIR_STAMP = `${DATA_DIR}/.indexed_dir`;
 const useZip = Bun.env.APP_ZIP_USE !== "false";
 const isTest = Bun.env.NODE_ENV === "test";
 const rawPort = Bun.env.PORT ?? Bun.env.APP_PORT ?? process.env.PORT;
-const port = isTest
-  ? 0
-  : isVercel
-    ? (rawPort ? Number(rawPort) : undefined)
-    : Number(rawPort ?? 3000);
-const host = isVercel ? (Bun.env.APP_HOST ?? "0.0.0.0") : (Bun.env.APP_HOST ?? "localhost");
+const port = isTest ? 0 : Number(rawPort ?? 3000);
+const host = Bun.env.APP_HOST ?? "localhost";
 
 // Cached HTML template
 let cachedHtml: string | null = null;

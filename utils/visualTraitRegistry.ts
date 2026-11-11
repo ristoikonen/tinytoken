@@ -76,7 +76,7 @@ export class VisualTraitRegistry {
     objectRegistryFilePath?: string,
     learningEvidenceFilePath?: string,
   ) {
-    const dataDir = Bun.env.DATA_DIR ?? "/tmp/data";
+    const dataDir = Bun.env.DATA_DIR ?? "./data";
 
     this.isDefaultPaths = !filePath && !objectRegistryFilePath && !learningEvidenceFilePath;
     this.registryFilePath = filePath ?? `${dataDir}/manual_token_registry.json`;

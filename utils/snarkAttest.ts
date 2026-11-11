@@ -36,7 +36,7 @@ const ED25519_ATTEST_MAGIC = [0x45, 0x44, 0x32, 0x35] as const; // "ED25"
 const DEFAULT_KEYPAIR_PATH = "./data/attestation_ed25519.json";
 
 function getDefaultKeypairPath(): string {
-  const dataDir = Bun.env.DATA_DIR ?? "/tmp/data";
+  const dataDir = Bun.env.DATA_DIR ?? "./data";
   return `${dataDir}/attestation_ed25519.json`;
 }
 const TRANSCRIPT_DOMAIN = new TextEncoder().encode("TinyToken-Ed25519-Attest-v3\0"); // 28 bytes
