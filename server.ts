@@ -105,16 +105,51 @@ export function ensureInitialized(): Promise<void> {
   return initPromise;
 }
 
-/* async function directoryExists(dir: string): Promise<boolean> {
+// Both logs and calls request handler
+async function requestLogging(req: Request, server: Bun.Server<any>, toConsole: boolean = true): Promise<Response> {
+  const start = performance.now();
+  const url = new URL(req.url);
+
+  let status = 500;
+
   try {
-    const glob = new Bun.Glob("*");
-    for await (const _ of glob.scan({ cwd: dir })) break;
-    return true;
-  } catch {
-    return false;
+    const response = await fetchHandler(req);
+    status = response.status;
+
+    const info = {
+      time: new Date().toISOString(),
+      method: req.method,
+      path: url.pathname,
+      status: status,
+      hostname: server.hostname,
+      port: server.port,
+      isdevelopment: server.development,
+      ip: server.requestIP(req)?.address ?? "unknown",
+      userAgent: req.headers.get("user-agent"),
+      referer: req.headers.get("referer"),
+      language: req.headers.get("accept-language"),
+      requesthost: req.headers.get("host"),
+      contentType: req.headers.get("content-type"),
+    };
+
+    return response;
+  } catch (error) {
+    console.error("Request error:", error);
+    throw error;
+  } finally {
+    if (toConsole) {
+      console.log(JSON.stringify({
+        time: new Date().toISOString(),
+        method: req.method,
+        path: url.pathname,
+        status,
+        durationMs: Math.round(performance.now() - start),
+      }));
+    }
   }
 }
- */
+
+
 async function directoryExists(dir: string): Promise<boolean> {
   try {
     const stats = await Bun.file(dir).stat();
@@ -271,10 +306,11 @@ async function handleApiRoute(path: string, req: BunRequest, url: URL): Promise<
   return errorResponse("Not Found", 404, false);
 }
 
-// Unified Request Handler
+// Request Handler
 export async function fetchHandler(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") return corsResponse(req);
   const url = new URL(req.url);
+
   try {
     await ensureInitialized();
     if (url.pathname === "/" || url.pathname === "/index.html") {
@@ -356,10 +392,26 @@ const server = serve({
 
 
   },
-  fetch(req: BunRequest) {
-    return fetchHandler(req);
-  },
+  // MAIN ROUTE HANDLER - SEE PIPELINE COMMENT BELOW
+  fetch: requestLogging,
 });
+
+
+/*
+PIPELINE
+
+HTTP Request
+    ↓
+requestLogging(req, server)
+    ↓
+fetchHandler(req)
+    ↓
+HTTP Response
+    ↓
+Log request to journald
+    ↓
+Return response to client
+*/
 
 console.log(`TinyToken Server running at http://${server.hostname}:${server.port}`);
 
