@@ -566,6 +566,14 @@
       line-height: 1.6;
     }
 
+    .tiny-t {
+      font-size: 16px;
+      font-weight: 400;
+      letter-spacing: 2px;
+
+      line-height: 1.55;
+    }
+
     /* Footer */
     footer {
       border-top: 1px solid var(--border-subtle);
@@ -652,14 +660,14 @@
 
     <section class="container hero-section">
 
-
+      <span class="tiny-t">.</span>
       <h1 class="hero-title">
         Tiny is the <span class="highlight">new Massive.</span>
       </h1>
 
       <p class="hero-sub">
-        TinyToken compresses multi-megabyte images and multi-page PDFs into ultra-dense, self-attesting 25 KB binary
-        tokens with sub-microsecond zero-copy search and permanent grounded intelligence.
+        TinyToken compresses images and PDFs into ultra-dense 25 KB binary
+        tokens with sub-microsecond cosine similarity and OCR text search.
       </p>
 
       <div class="hero-actions">
@@ -675,9 +683,7 @@
       </div>
     </section>
 
-    <!-- ====================================================================
-         SECTION: HOW TINYTOKEN WORKS (3 Hierarchical Levels of Vision)
-         ==================================================================== -->
+    <!-- 
     <section class="how-it-works-section" id="how-it-works">
       <div class="container">
         <h2 class="section-headline">How TinyToken works</h2>
@@ -688,7 +694,6 @@
 
         <div class="steps-grid">
 
-          <!-- Step 1 / Level 1 -->
           <div class="step-card" style="--card-glow: var(--glow-cyan); --card-glow-bg: var(--glow-cyan-light);">
             <div>
               <span class="step-badge">STEP 1 · LEVEL 1</span>
@@ -719,7 +724,7 @@
             </div>
           </div>
 
-          <!-- Step 2 / Level 2 -->
+
           <div class="step-card" style="--card-glow: var(--glow-purple); --card-glow-bg: var(--glow-purple-light);">
             <div>
               <span class="step-badge" style="background: var(--glow-purple-light); color: var(--glow-purple);">STEP 2 ·
@@ -747,7 +752,6 @@
             </div>
           </div>
 
-          <!-- Step 3 / Level 3 -->
           <div class="step-card" style="--card-glow: var(--glow-coral); --card-glow-bg: var(--glow-coral-light);">
             <div>
               <span class="step-badge" style="background: var(--glow-coral-light); color: var(--glow-coral);">STEP 3 ·
@@ -779,6 +783,7 @@
         </div>
       </div>
     </section>
+-->
 
     <!-- ====================================================================
          SECTION: "TINY IS TINY!" 
@@ -789,8 +794,7 @@
 
           <h2 class="evals-title">Tiny is <span class="glow">Tiny!</span></h2>
           <p style="font-size: 17px; color: var(--text-muted); line-height: 1.6;">
-            By ditching bloated runtime containers and fragile metadata schemas, TinyToken packs complete self-attesting
-            multimodal intelligence into sub-millisecond envelopes.
+            TinyToken packs multimodal intelligence into kilobyte envelopes.
           </p>
         </div>
 
@@ -862,7 +866,7 @@
               <div class="eval-big-num" style="color: #3b82f6;">100%</div>
               <div class="eval-card-title">Self-attesting cryptographic integrity</div>
               <p class="eval-card-text">
-                256-byte detached Ed25519 signature + 4-leaf SHA-256 Merkle root + 64-byte 3-lane $GF(2^8)$ Reed-Solomon
+                256-byte detached Ed25519 signature + 4-leaf SHA-256 Merkle root + 64-byte 3-lane GF Reed-Solomon
                 parity that heals up to 4 corrupted bytes.
               </p>
             </div>
@@ -892,10 +896,10 @@
 
     <!-- Final Call to Action -->
     <section class="cta-banner">
-      <h2>Ready to shrink your dataset by 99%?</h2>
+      <h2>Ready to shrink your assets by 98%?</h2>
       <p>
-        Inspect the binary field specifications, review the 3-level vision directives, or tokenize a local asset in a
-        single Bun command.
+        Inspect the binary field specifications, or tokenize a local asset in a
+        single CLI command. Yes; it comes with a command-line interface.
       </p>
       <div style="display: flex; gap: 14px; justify-content: center;">
         <a href="/structure" class="btn-large primary">View Binary Structure</a>
@@ -907,7 +911,7 @@
   <!-- Footer -->
   <footer>
     <div class="container footer-inner">
-      <div>TINYTOKEN SPECIFICATION &middot; BUN NATIVE &middot; 25 KB HARD CEILING</div>
+      <div>Part of Risukko project &middot; Utilises Galois field maths &middot; Targeting ns performance</div>
       <div class="footer-links">
         <a href="/how-it-works">How It Works</a>
         <a href="/structure">Binary Structure</a>
