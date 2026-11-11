@@ -48,8 +48,7 @@ async function getIndexHtml(): Promise<string> {
     if (await f1.exists()) {
       cachedHtml = await f1.text();
     } else {
-      const f2 = Bun.file("./index.html");
-      cachedHtml = (await f2.exists()) ? await f2.text() : "<!DOCTYPE html><html><body>TinyToken</body></html>";
+      cachedHtml = "<!DOCTYPE html><html><body>TinyToken</body></html>";
     }
   }
   return cachedHtml;
@@ -109,12 +108,17 @@ export function ensureInitialized(): Promise<void> {
 async function requestLogging(req: Request, server: Bun.Server<any>, toConsole: boolean = true): Promise<Response> {
   const start = performance.now();
   const url = new URL(req.url);
-
   let status = 500;
 
   try {
     const response = await fetchHandler(req);
     status = response.status;
+
+    return response;
+  } catch (error) {
+    console.error("Request error:", error);
+    throw error;
+  } finally {
 
     const info = {
       time: new Date().toISOString(),
@@ -132,19 +136,8 @@ async function requestLogging(req: Request, server: Bun.Server<any>, toConsole: 
       contentType: req.headers.get("content-type"),
     };
 
-    return response;
-  } catch (error) {
-    console.error("Request error:", error);
-    throw error;
-  } finally {
     if (toConsole) {
-      console.log(JSON.stringify({
-        time: new Date().toISOString(),
-        method: req.method,
-        path: url.pathname,
-        status,
-        durationMs: Math.round(performance.now() - start),
-      }));
+      console.log(JSON.stringify(info));
     }
   }
 }

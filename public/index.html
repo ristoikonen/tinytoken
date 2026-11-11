@@ -887,12 +887,12 @@
             Clear
           </button>
           <button id="btn-rebuild" class="btn mono" title="Re-scan and rebuild ./data/tokens.zip">
-            🔄 Re-Index
+            Re-Index
           </button>
           <label id="btn-upload-archive" class="btn mono"
             title="Directly ingest and swap tokens.zip archive (Learnings preserved)"
             style="cursor:pointer;display:inline-flex;align-items:center;">
-            📦 Ingest Archive
+            Ingest Archive
             <input type="file" id="archive-file-input" accept=".zip" style="display:none;" />
           </label>
         </div>
@@ -934,7 +934,7 @@
         <div id="label-box" class="label-bounding-box" style="display:none;"></div>
         <div id="label-popover" class="label-popover" style="display:none;">
           <div class="popover-title mono">
-            <span>✎ TEACH OBJECT</span>
+            <span>TEACH OBJECT</span>
             <button id="btn-close-popover" class="popover-close" type="button" title="Close">✕</button>
           </div>
           <div class="popover-body mono">
@@ -968,11 +968,11 @@
 
       <div style="display:flex;gap:0.35rem;flex-wrap:wrap;justify-content:space-between;align-items:center;">
         <button id="btn-find-similar" class="btn btn-action-cyan mono">
-          ◈ Find Visually Similar
+          Etsi samankaltaisia
         </button>
         <button id="btn-homomorphic" class="btn mono"
           title="Apply blind GF(2^8) linear state mask directly on raw 25KB token slice">
-          ⊕ GF(2⁸) Mask
+          GF(2⁸) Mask
         </button>
         <button id="btn-index-google-photos" class="btn btn-action-emerald mono" style="display:none;"
           title="Fetch and index 50 Google Photos into TinyToken">
@@ -1885,16 +1885,26 @@ No object recipe associated with this token yet. Click [✎ Label] to teach.`;
       }
     });
 
-    // Keyboard navigation (Left/Right arrows)
+    // Left/Right/Up/Down keyboard arrows
     window.addEventListener('keydown', (e) => {
       if (document.activeElement === elSearch) return;
-      if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+      if (['ArrowRight', 'ArrowLeft', 'ArrowDown', 'ArrowUp'].includes(e.key)) {
         const idx = currentHits.findIndex(h => h.id === selectedTokenId);
         if (idx !== -1) {
-          const nextIdx = e.key === 'ArrowRight'
+          const isNext = e.key === 'ArrowRight' || e.key === 'ArrowDown';
+          const nextIdx = isNext
             ? (idx + 1) % currentHits.length
             : (idx - 1 + currentHits.length) % currentHits.length;
-          selectToken(currentHits[nextIdx].id);
+
+          const nextId = currentHits[nextIdx].id;
+          selectToken(nextId);
+
+          // Automatically scroll the selected element into view
+          const targetEl = document.getElementById(nextId); // Adjust selector if needed
+          if (targetEl) {
+            targetEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          }
+
         }
       }
     });
