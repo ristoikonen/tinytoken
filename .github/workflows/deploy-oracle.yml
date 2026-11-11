@@ -1,0 +1,48 @@
+
+name: Deploy TinyToken to Oracle
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tinytoken-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Configure SSH
+        env:
+          SSH_KEY: ${{ secrets.ORACLE_SSH_KEY }}
+          SSH_HOST_KEY: ${{ secrets.ORACLE_SSH_HOST_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/oracle
+          chmod 600 ~/.ssh/oracle
+          printf '%s\n' "$SSH_HOST_KEY" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Deploy latest code
+        env:
+          HOST: ${{ secrets.ORACLE_HOST }}
+          USERNAME: ${{ secrets.ORACLE_USER }}
+        run: |
+          ssh -o StrictHostKeyChecking=yes \
+            -i ~/.ssh/oracle "$USERNAME@$HOST" 'bash -se' <<'EOF'
+          set -e
+          cd /home/ubuntu/tinytoken
+          git fetch origin main
+          git merge --ff-only origin/main
+          /home/ubuntu/.bun/bin/bun install --frozen-lockfile
+          sudo -n /usr/bin/systemctl restart tinytoken.service
+          sudo /usr/bin/systemctl is-active tinytoken.service
+          EOF
