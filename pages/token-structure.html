@@ -92,6 +92,41 @@
       gap: 24px;
     }
 
+
+    /* Top navigation bar */
+    .topbar {
+      height: 60px;
+      position: fixed;
+      inset: 0 0 auto 0;
+      z-index: 30;
+      display: flex;
+      align-items: center;
+      padding: 0 28px;
+      background: rgba(255, 255, 255, 0.94);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(12px);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.4px;
+    }
+
+    .brand-icon {
+      width: 40px;
+      height: 40px;
+      display: grid;
+      place-items: center;
+      border-radius: 4px;
+      background: #18181b;
+      color: white;
+      padding: 4px;
+    }
+
     .brand-cluster {
       display: flex;
       align-items: center;
@@ -1066,36 +1101,26 @@
     .color-rect:hover {
       transform: scale(1.08);
     }
-
-    /* Header strip */
-    header {
-      background-color: #333333;
-
-      padding: 25px;
-      text-align: center;
-      font-size: 28px;
-      font-weight: bold;
-      transition: background-color 0.3s ease;
-    }
   </style>
 </head>
 
 <body>
 
-  <header id="header-strip">
+  <header>
+    <div class="brand">
+      <div class="brand-icon">
 
+        <svg version="1.0" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 128 128"
+          preserveAspectRatio="xMidYMid meet">
+          <g transform="translate(0.0,128.0) scale(0.1,-0.1)" fill="#e15e12" stroke="none">
+            <path
+              d="M1130 1261 c-5 -11 -10 -25 -10 -31 0 -19 -50 -113 -73 -138 -25 -27 -155 -109 -272 -172 -44 -23 -93 -52 -109 -63 -70 -49 -301 -185 -308 -181 -4 3 23 51 60 108 l66 104 65 7 c85 9 155 53 204 127 20 29 52 68 72 85 37 33 44 65 15 71 -13 2 -64 -44 -197 -180 -55 -56 -158 -66 -165 -15 -2 12 -11 23 -20 25 -15 3 -18 -4 -18 -35 0 -30 -13 -57 -64 -133 -84 -124 -154 -210 -192 -235 -17 -11 -65 -29 -107 -39 l-77 -18 0 -55 c0 -51 1 -54 22 -48 11 4 54 8 93 8 56 0 82 -5 114 -21 23 -12 49 -22 58 -22 20 0 348 -169 407 -209 23 -16 48 -36 55 -45 8 -9 21 -16 30 -16 33 0 61 -43 61 -93 0 -40 3 -47 19 -47 16 0 20 8 23 38 4 51 26 52 125 2 65 -32 91 -40 137 -40 48 0 56 3 56 18 0 14 -24 30 -88 60 -48 23 -95 42 -105 42 -23 0 -243 114 -287 149 -19 16 -46 32 -60 36 -37 11 -300 147 -300 155 0 8 450 33 550 30 41 -1 139 -2 218 -1 140 1 142 1 142 24 0 46 -7 47 -181 48 -90 0 -295 -3 -455 -7 -198 -5 -293 -4 -297 3 -9 14 28 41 213 154 85 53 218 134 295 181 77 48 166 98 197 111 31 14 74 37 95 51 20 14 48 26 61 26 30 0 82 39 82 62 0 24 -29 23 -91 -3 -27 -12 -52 -19 -56 -16 -3 3 6 36 21 72 14 36 26 70 26 75 0 18 -39 10 -50 -9z" />
+          </g>
+        </svg>
 
-
-    <h1 class="brand-text">TinyToken</h1>
-
-    <div class="brand-text">
-
-      <p>Schema Specification</p>
+      </div>
+      <span>TinyToken <span style="color:#e15e12; font-weight:500;">Struct</span></span>
     </div>
-    <div class="brand-cluster"></div>
-    </div>
-
-
 
     <!-- Universal Navigation -->
     <nav>
@@ -1104,17 +1129,28 @@
       <a href="/structure" class="active">Binary Spec</a>
       <a href="/guide">CLI Guide</a>
     </nav>
-    <div class="palette">
-      <div class="color-rect" style="background-color: #E5E5E5;" data-color="#E5E5E5"></div>
-      <div class="color-rect" style="background-color: #F2C1CA;" data-color="#F2C1CA"></div>
-      <div class="color-rect" style="background-color: #38BDF8;" data-color="#38BDF8"></div>
-      <div class="color-rect" style="background-color: #f39c12;" data-color="#f39c12"></div>
-      <div class="color-rect" style="background-color: #FFFAFA;" data-color="#FFFAFA"></div>
-      <div class="color-rect" style="background-color: #A3BBAD;" data-color="#A3BBAD"></div>
-      <div class="color-rect" style="background-color: #65532F;" data-color="#65532F"></div>
-      <div class="color-rect" style="background-color: #EDE7D9;" data-color="#EDE7D9"></div>
-      <div class="color-rect" style="background-color: #A49694;" data-color="#A49694"></div>
+
+    <!-- Universal Navigation -->
+    <!--     <nav style="display: flex; align-items: center; gap: 28px; margin-left: 36px;">
+      <a href="/physical-stack"
+        style="font-size: 13px; font-weight: 600; color: #71717a; text-decoration: none;">Physical Stack</a>
+      <a href="/how-it-works" style="font-size: 13px; font-weight: 600; color: #71717a; text-decoration: none;">How It
+        Works</a>
+      <a href="/structure" style="font-size: 13px; font-weight: 600; color: #71717a; text-decoration: none;">Binary
+        Spec</a>
+      <a href="/guide"
+        style="font-size: 13px; font-weight: 700; color: #09090b; text-decoration: none; border-bottom: 2px solid #09090b; padding-bottom: 2px;">CLI
+        Guide</a>
+    </nav> -->
+
+    <div class="topbar-right">
+      <span class="badge-pill">
+        <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+        <span></span>
+      </span>
+
     </div>
+
 
   </header>
   <!-- Active Asset Sample Toggle (Image vs PDF) -->
@@ -1141,14 +1177,14 @@
     <!-- Hero Headline & Token Architecture Intro -->
     <section class="hero-meta">
       <div class="hero-headline">
-        <div class="hero-eyebrow">
+        <!--         <div class="hero-eyebrow">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
             <polygon points="12 2 2 7 12 12 22 7 12 2" />
             <polyline points="2 17 12 22 22 17" />
             <polyline points="2 12 12 17 22 12" />
           </svg>
           Architectural Specification
-        </div>
+        </div> -->
         <h2>TinyToken Envelope</h2>
         <p>TinyToken compresses image and multi-page document assets into a self-contained, tamper-proof 25 KB envelope.
           It couples a sub-microsecond zero-copy fixed header with neural VQ lattice centroids and an on-demand QuickLZ

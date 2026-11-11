@@ -528,6 +528,11 @@
       box-shadow: 0 2px 6px rgba(2, 132, 199, 0.35);
     }
 
+    .ball-emerald {
+      background: var(--glow-emerald);
+      box-shadow: 0 2px 6px rgba(3, 161, 29, 0.938);
+    }
+
     .ball-coral {
       background: var(--glow-coral);
       box-shadow: 0 2px 6px rgba(225, 29, 72, 0.35);
@@ -1208,7 +1213,7 @@
       switch (segIndex) {
         case 1:
           document.getElementById("bar-seg-1").classList.add("active-seg");
-          ballClass = "ball-blue";
+          ballClass = "ball-emerald";
           label = "Header 88 B";
           break;
         case 2:
