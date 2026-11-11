@@ -37,4 +37,5 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 # Generated ZIP archives and compiled binaries
 *.exe
 *.zip
+!data/tokens.zip
 
