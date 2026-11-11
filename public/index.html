@@ -1182,7 +1182,7 @@
       }
     }
 
-    async function runSearch() {
+    async function runSearch({ selectFirstSimilar = false } = {}) {
       try {
         const q = elSearch.value.trim();
         const params = new URLSearchParams({ q, limit: '80' });
@@ -1205,7 +1205,11 @@
         currentHits = res.hits || [];
         renderGrid();
 
-        if (currentHits.length > 0 && (!selectedTokenId || !currentHits.some(h => h.id === selectedTokenId))) {
+        if (selectFirstSimilar && currentHits.length > 0) {
+          elGrid.scrollTop = 0;
+          const firstSimilar = currentHits.find(h => h.id !== activeSimilarTo) || currentHits[0];
+          await selectToken(firstSimilar.id);
+        } else if (currentHits.length > 0 && (!selectedTokenId || !currentHits.some(h => h.id === selectedTokenId))) {
           selectToken(currentHits[0].id);
         }
       } catch (err) {
@@ -1733,7 +1737,7 @@ No object recipe associated with this token yet. Click [✎ Label] to teach.`;
     // Search input & VQ Similarity
     elSearch.addEventListener('input', () => runSearch());
 
-    document.getElementById('btn-find-similar').onclick = () => {
+    document.getElementById('btn-find-similar').onclick = async () => {
       if (!selectedTokenId) return;
       activeSimilarTo = selectedTokenId;
       const clearBtn = document.getElementById('btn-clear-sim');
@@ -1746,7 +1750,7 @@ No object recipe associated with this token yet. Click [✎ Label] to teach.`;
         elSimRow.textContent = initMsg;
         elSimRow.style.display = 'flex';
       }
-      runSearch();
+      await runSearch({ selectFirstSimilar: true });
     };
 
     document.getElementById('btn-clear-sim').onclick = () => {
