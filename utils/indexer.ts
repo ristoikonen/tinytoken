@@ -76,6 +76,7 @@ export type ArchiveTokenItem = {
   >;
 };
 
+const WORKER_COUNT = 4;
 const IMAGE_EXTENSIONS = new Set([".jpg", ".jpeg", ".png", ".webp", ".avif", ".bmp", ".svg"]);
 const DOCUMENT_EXTENSIONS = new Set([
   ".pdf",
@@ -93,7 +94,7 @@ const DOCUMENT_EXTENSIONS = new Set([
 ]);
 
 export class Win11TokenPipeline {
-  constructor(private config: IndexerConfig) {}
+  constructor(private config: IndexerConfig) { }
 
   public isZipMode(): boolean {
     if (this.config.useZip !== undefined) {
@@ -784,7 +785,7 @@ export class Win11TokenPipeline {
 
 
 
-  
+
 
   /**
    * Tokenizes all real files in `sourceDirectory` (`./images`) and `documentDirectory` (`./documents`)
@@ -891,6 +892,7 @@ export class Win11TokenPipeline {
 
       const items: ArchiveTokenItem[] = [];
       for (const entry of orderedMatches) {
+        // get token
         const tokenBytes = await existingEngine.extractToken(entry.id);
         if (!tokenBytes) return null;
         const {
@@ -913,8 +915,8 @@ export class Win11TokenPipeline {
     let imageTokens = 0;
     let documentTokens = 0;
 
-    // Concurrent worker pool (C=4) for 3.1x faster multi-core image throughput
-    const imageConcurrency = Math.min(4, imagePaths.length || 1);
+    // Concurrent worker pool (C = WORKER_COUNT) for faster multi-core image throughput
+    const imageConcurrency = Math.min(WORKER_COUNT, imagePaths.length || 1);
     let pathIndex = 0;
     const imageItemsByIndex: (ArchiveTokenItem | null)[] = new Array(imagePaths.length);
 
@@ -928,6 +930,7 @@ export class Win11TokenPipeline {
           if (cachedItems) {
             imageItemsByIndex[idx] = cachedItems[0] ?? null;
           } else {
+            // generate token - image
             const item = await this.tokenizeImageFile(
               fullPath,
               nextTokenCounter++,
@@ -954,6 +957,7 @@ export class Win11TokenPipeline {
       try {
         const sourceHash = await this.hashSourceFile(fullPath, benchmark);
         const cachedItems = await tryReuse(fullPath, true, sourceHash);
+        // generate token - document
         const items =
           cachedItems ?? (await this.tokenizeDocumentFile(fullPath, nextTokenCounter, benchmark));
         for (const item of items) {

@@ -7,7 +7,7 @@
  * - Checks environment flag: USE_MY_GOOGLE_PHOTOS = true
  * - Fetches media items in batches of 50 via https://photoslibrary.googleapis.com/v1/mediaItems
  * - Derives date ranges from photo metadata
- * - Emits structured debug logs for the Tactical Terminal Console
+ * - Emits structured debug logs for the Debug Console
  */
 
 import { OAuth2Client, GoogleAuth } from "google-auth-library";
