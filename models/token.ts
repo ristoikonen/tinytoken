@@ -48,6 +48,8 @@ export enum EmbeddingModelId {
   NONE = 0x00,
   COLOR_HOG_FALLBACK = 0x01, // Synchronous 384B Color/HOG fallback descriptor
   DINOV3_VITS16_Q8 = 0x02,   // Real Meta DINOv3 ViT-S/16 ONNX (384-dim CLS int8)
+  BGE_TEXT_FALLBACK = 0x03,
+  BGE_SMALL_EN_V15_Q8 = 0x04,
 }
 
 export interface TokenMetadataPayload {
