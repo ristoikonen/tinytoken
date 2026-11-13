@@ -28,6 +28,13 @@ export interface ExtractedDocumentInfo {
   isOversized?: boolean;
 }
 
+
+export interface TextEmbeddingResult {
+  embedding: Int8Array<ArrayBuffer>;
+  modelId: EmbeddingModelId;
+}
+
+
 /**
  * Core interface for format-aware document parsing & page rendering.
  */
@@ -42,6 +49,11 @@ export interface DocumentProcessor {
   renderPages(
     bytes: Uint8Array,
   ): Promise<PageBundle[]>;
+  embedText?(
+    bytes: Uint8Array,
+    filename: string,
+  ): Promise<TextEmbeddingResult | null>;
+
 }
 
 /**
