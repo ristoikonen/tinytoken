@@ -4,7 +4,8 @@ Beta by Risto Ikonen 2026. See License Agreement
 
  - For all Risukku -project apps, keystone tech is utilising Galois Field GF(2^8) Arithmetic with Reed-Solomon Error Correction.
  - DINOv3 ViT-S/16 ONNX with VQ - Semantic Visual Embedding.
- - ED25519-MERKLE-GF28-v3 - Tokens cryptographic 'tag' .
+ - ED25519-MERKLE-GF28-v3 - Tokens cryptographic 'tag'.
+ - **Binary Container Specification**: Detailed byte offsets, Merkle leaf layout, RS generator polynomials, and test vectors are documented in [STRUCT.md](STRUCT.md).
 
 
 
