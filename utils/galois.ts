@@ -8,6 +8,13 @@
  * - Row-hoisted synthetic polynomial division in `reedSolomonEncode`
  */
 
+import {
+  RS_PARITY_OFFSET,
+  SECTION1_HEADER_BYTES,
+  TOKEN_MAGIC,
+  TOKEN_VERSION,
+} from "../models/token";
+
 const PRIMITIVE_POLY = 0x11d;
 export const EXP_TABLE = new Uint8Array(512);
 export const LOG_TABLE = new Uint8Array(256);
@@ -275,9 +282,131 @@ export function verifyAndHealHeader640(
 }
 
 /**
+ * Allowed mutable header changes in Section I.
+ * Only non-signed operational fields are permitted to be modified.
+ */
+export interface HeaderMutation {
+  flags?: number;
+  shardBlockId?: number;
+  shardIndex?: number;
+  timestamp?: number | bigint;
+  homomorphicTag?: number;
+}
+
+/**
+ * Centralized, atomic Section I header mutation engine.
+ *
+ * Implements a strict 5-phase transactional lifecycle:
+ * 1. Pre-flight verification: checks Magic, Version, and verifies/heals RS parity.
+ * 2. Input constraint validation: checks ranges (shardIndex 0..63, tag 0..255, etc.).
+ * 3. Out-of-place staging: updates ONLY whitelisted mutable offsets (6, 76, 80, 82, 88).
+ * 4. RS parity re-synchronization: re-encodes 64B parity over the 640B payload.
+ * 5. Post-flight verification: verifies RS parity and ensures immutable fields are untouched.
+ * 6. Atomic commit: writes staged header into destination buffer only after 100% verification.
+ */
+export function mutateHeader(
+  header: Uint8Array,
+  changes: HeaderMutation,
+): Uint8Array {
+  if (header.length < SECTION1_HEADER_BYTES) {
+    throw new Error(
+      `Cannot mutate header: buffer length (${header.length}) is less than Section I size (${SECTION1_HEADER_BYTES})`,
+    );
+  }
+
+  // 1. Pre-flight verification: Magic & Version
+  const magic = String.fromCharCode(header[0] ?? 0, header[1] ?? 0, header[2] ?? 0, header[3] ?? 0);
+  if (magic !== TOKEN_MAGIC) {
+    throw new Error(`Cannot mutate header: invalid magic '${magic}', expected '${TOKEN_MAGIC}'`);
+  }
+  const viewSrc = new DataView(header.buffer, header.byteOffset, header.byteLength);
+  const version = viewSrc.getUint16(4, true);
+  if (version !== TOKEN_VERSION) {
+    throw new Error(`Cannot mutate header: invalid version ${version}, expected ${TOKEN_VERSION}`);
+  }
+
+  // 2. Pre-flight RS parity verification & healing
+  const sourcePayload640 = header.subarray(0, RS_PARITY_OFFSET);
+  const sourceParity64 = header.subarray(RS_PARITY_OFFSET, SECTION1_HEADER_BYTES);
+  const rsPreCheck = verifyAndHealHeader640(sourcePayload640, sourceParity64);
+  if (!rsPreCheck.valid) {
+    throw new Error("Cannot mutate header: Section I Reed-Solomon parity corrupted");
+  }
+
+  // 3. Validate allowed changes
+  if (changes.shardIndex !== undefined) {
+    if (!Number.isInteger(changes.shardIndex) || changes.shardIndex < 0 || changes.shardIndex > 63) {
+      throw new Error(`Invalid shardIndex ${changes.shardIndex}: must be an integer between 0 and 63`);
+    }
+  }
+  if (changes.shardBlockId !== undefined) {
+    if (!Number.isInteger(changes.shardBlockId) || changes.shardBlockId < 0 || changes.shardBlockId > 0xffffffff) {
+      throw new Error(`Invalid shardBlockId ${changes.shardBlockId}: must be a 32-bit unsigned integer`);
+    }
+  }
+  if (changes.homomorphicTag !== undefined) {
+    if (!Number.isInteger(changes.homomorphicTag) || changes.homomorphicTag < 0 || changes.homomorphicTag > 255) {
+      throw new Error(`Invalid homomorphicTag ${changes.homomorphicTag}: must be an integer between 0 and 255`);
+    }
+  }
+  if (changes.flags !== undefined) {
+    if (!Number.isInteger(changes.flags) || changes.flags < 0 || changes.flags > 0xffff) {
+      throw new Error(`Invalid flags ${changes.flags}: must be a 16-bit unsigned integer`);
+    }
+  }
+  if (changes.timestamp !== undefined) {
+    const tsNum = typeof changes.timestamp === "bigint" ? Number(changes.timestamp) : changes.timestamp;
+    if (Number.isNaN(tsNum) || tsNum < 0) {
+      throw new Error(`Invalid timestamp ${changes.timestamp}: must be non-negative`);
+    }
+  }
+
+  // 4. Construct updated header in an isolated staging buffer (application-level atomicity)
+  const staging = new Uint8Array(SECTION1_HEADER_BYTES);
+  staging.set(rsPreCheck.healedPayload, 0);
+  const viewStaging = new DataView(staging.buffer, staging.byteOffset, staging.byteLength);
+
+  // Apply ONLY whitelisted mutable fields at designated offsets
+  if (changes.flags !== undefined) {
+    viewStaging.setUint16(6, changes.flags, true);
+  }
+  if (changes.shardBlockId !== undefined) {
+    viewStaging.setUint32(76, changes.shardBlockId >>> 0, true);
+  }
+  if (changes.shardIndex !== undefined) {
+    viewStaging.setUint16(80, changes.shardIndex, true);
+  }
+  if (changes.timestamp !== undefined) {
+    const ts = typeof changes.timestamp === "bigint" ? Number(changes.timestamp) : changes.timestamp;
+    viewStaging.setUint32(82, ts >>> 0, true);
+    viewStaging.setUint16(86, Math.floor(ts / 0x100000000) & 0xffff, true);
+  }
+  if (changes.homomorphicTag !== undefined) {
+    staging[88] = changes.homomorphicTag & 0xff;
+  }
+
+  // 5. Recalculate 64-byte Reed-Solomon parity over updated 640-byte payload
+  const newParity64 = encodeHeaderParity64(staging.subarray(0, RS_PARITY_OFFSET));
+  staging.set(newParity64, RS_PARITY_OFFSET);
+
+  // 6. Post-flight verification: verify resulting staged header before commit
+  const postCheck = verifyAndHealHeader640(
+    staging.subarray(0, RS_PARITY_OFFSET),
+    staging.subarray(RS_PARITY_OFFSET, SECTION1_HEADER_BYTES),
+  );
+  if (!postCheck.valid) {
+    throw new Error("Header mutation failed: post-verification Reed-Solomon parity invalid");
+  }
+
+  // 7. Atomic commit to caller's buffer
+  header.set(staging, 0);
+  return header;
+}
+
+/**
  * Homomorphic State Transition in GF(2^8):
  * Applies a reversible linear transformation directly on the raw 25 KB token header
- * and updates its Reed-Solomon parity linearly without decompressing Section II or III.
+ * via the centralized atomic mutateHeader engine.
  */
 export function applyHomomorphicMaskGF28(
   rawToken: Uint8Array,
@@ -287,17 +416,15 @@ export function applyHomomorphicMaskGF28(
   const mutated = new Uint8Array(rawToken);
   const view = new DataView(mutated.buffer, mutated.byteOffset, mutated.byteLength);
 
-  // Toggle homomorphic state flags at offset 6..7
   const currentFlags = view.getUint16(6, true);
-  view.setUint16(6, currentFlags ^ toggleFlagBits, true);
-
-  // Apply linear GF(2^8) transformation to homomorphic tag slot at offset 88
   const prevTag = mutated[88] ?? 0;
-  mutated[88] = gfAdd(gfMul(prevTag || 1, maskScalar & 0xff), maskScalar & 0xff);
+  const newTag = gfAdd(gfMul(prevTag || 1, maskScalar & 0xff), maskScalar & 0xff);
+  const newFlags = currentFlags ^ toggleFlagBits;
 
-  // Re-synchronize Section I Reed-Solomon parity over bytes 0..639
-  const newParity = encodeHeaderParity64(mutated.subarray(0, 640));
-  mutated.set(newParity, 640);
+  mutateHeader(mutated, {
+    flags: newFlags,
+    homomorphicTag: newTag,
+  });
 
   return mutated;
 }

@@ -15,6 +15,7 @@ import {
   gfDiv,
   gfInv,
   gfMul,
+  mutateHeader,
 } from "../utils/galois";
 import {
   DocxDocumentProcessor,
@@ -1359,6 +1360,53 @@ describe("TinyToken GF(2^8) + VQ + SHARK/SNARK Pipeline", () => {
     const decoded2 = await decodeBinaryToken(tamperedCompressed);
     expect(decoded2.metadata.id).toBe("tok_test_comp_resilient");
     expect(decoded2.metadata.ocrText).toContain("Compressed payload with stripped flag");
+  });
+
+  test("mutateHeader: centralizes atomic header mutations and preserves cryptographic Ed25519 validity", async () => {
+    const validToken = await generateMockTinyTokenBuffer("tok_mutate_01");
+    const originalHeader = new Uint8Array(validToken.subarray(0, SECTION1_HEADER_BYTES));
+
+    // 1. Successful atomic mutation of allowed mutable fields
+    const targetToken = new Uint8Array(validToken);
+    const updated = mutateHeader(targetToken, {
+      flags: TokenFlags.HAS_VQ_GRID | TokenFlags.HOMOMORPHIC_MASKED,
+      shardBlockId: 42,
+      shardIndex: 7,
+      timestamp: 1731600000000,
+      homomorphicTag: 0xaa,
+    });
+    expect(updated).toBe(targetToken);
+
+    // Verify fields were updated
+    const decoded = await decodeBinaryToken(targetToken);
+    expect(decoded.flags & TokenFlags.HOMOMORPHIC_MASKED).toBeTruthy();
+    expect(decoded.shardBlockId).toBe(42);
+    expect(decoded.shardIndex).toBe(7);
+    expect(decoded.timestampMs).toBe(1731600000000);
+    expect(decoded.homomorphicTag).toBe(0xaa);
+    expect(decoded.rsParityValid).toBe(true);
+    expect(decoded.snarkAttestation.valid).toBe(true); // Ed25519 attestation remains valid!
+
+    // 2. Reject out-of-range shardIndex without altering token
+    const beforeError = new Uint8Array(targetToken);
+    expect(() => mutateHeader(targetToken, { shardIndex: 99 })).toThrow(
+      "must be an integer between 0 and 63",
+    );
+    expect(targetToken).toEqual(beforeError); // Atomic: buffer remained untouched
+
+    // 3. Reject out-of-range homomorphicTag without altering token
+    expect(() => mutateHeader(targetToken, { homomorphicTag: 300 })).toThrow(
+      "must be an integer between 0 and 255",
+    );
+    expect(targetToken).toEqual(beforeError);
+
+    // 4. Reject invalid magic or buffer length
+    expect(() => mutateHeader(new Uint8Array(100), { shardIndex: 1 })).toThrow(
+      "less than Section I size",
+    );
+    const badMagic = new Uint8Array(targetToken);
+    badMagic[0] = 0;
+    expect(() => mutateHeader(badMagic, { shardIndex: 1 })).toThrow("invalid magic");
   });
 
   test("tokenCodec: validateBinaryToken strictly enforces integrity, authenticity and envelope structure", async () => {

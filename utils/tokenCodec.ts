@@ -27,7 +27,14 @@ import {
   type TokenHeaderInspection,
   type TokenMetadataPayload,
 } from "../models/token";
-import { encodeHeaderParity64, verifyAndHealHeader640 } from "./galois";
+import {
+  encodeHeaderParity64,
+  verifyAndHealHeader640,
+  mutateHeader,
+  type HeaderMutation,
+} from "./galois";
+
+export { mutateHeader, type HeaderMutation };
 import { QuickLZ } from "./quicklz";
 import { hexToBgeEmbedding } from "./bgeEmbedding";
 import {
