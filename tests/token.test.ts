@@ -1289,6 +1289,78 @@ describe("TinyToken GF(2^8) + VQ + SHARK/SNARK Pipeline", () => {
     );
   });
 
+  test("tokenCodec: structural payload detection safely neutralizes QUICKLZ_COMPRESSED flag tampering", async () => {
+    // 1. Uncompressed token with QUICKLZ_COMPRESSED maliciously set
+    const uncompressedToken = await encodeBinaryToken({
+      originalFileSize: 1000,
+      width: 100,
+      height: 100,
+      page: 1,
+      previewFormat: PreviewFormat.WEBP,
+      vqIndices: new Uint8Array(256),
+      metadata: {
+        id: "tok_test_uncomp_resilient",
+        filename: "test.png",
+        sourcePath: "/test.png",
+        mimeType: "image/png",
+        page: 1,
+        totalPages: 1,
+        width: 100,
+        height: 100,
+        colorDepth: 24,
+        createdAt: new Date().toISOString(),
+        ocrText: "Uncompressed payload with injected flag",
+      },
+      previewBytes: new Uint8Array(200),
+      compressMetadata: false,
+    });
+    const tamperedUncompressed = new Uint8Array(uncompressedToken);
+    new DataView(tamperedUncompressed.buffer).setUint16(
+      6,
+      new DataView(tamperedUncompressed.buffer).getUint16(6, true) | TokenFlags.QUICKLZ_COMPRESSED,
+      true,
+    );
+    tamperedUncompressed.set(encodeHeaderParity64(tamperedUncompressed.subarray(0, 640)), 640);
+    const decoded1 = await decodeBinaryToken(tamperedUncompressed);
+    expect(decoded1.metadata.id).toBe("tok_test_uncomp_resilient");
+    expect(decoded1.metadata.ocrText).toBe("Uncompressed payload with injected flag");
+
+    // 2. Compressed token with QUICKLZ_COMPRESSED maliciously stripped
+    const compressedToken = await encodeBinaryToken({
+      originalFileSize: 2000,
+      width: 200,
+      height: 200,
+      page: 1,
+      previewFormat: PreviewFormat.WEBP,
+      vqIndices: new Uint8Array(256),
+      metadata: {
+        id: "tok_test_comp_resilient",
+        filename: "test2.png",
+        sourcePath: "/test2.png",
+        mimeType: "image/png",
+        page: 1,
+        totalPages: 1,
+        width: 200,
+        height: 200,
+        colorDepth: 24,
+        createdAt: new Date().toISOString(),
+        ocrText: "Compressed payload with stripped flag ".repeat(20),
+      },
+      previewBytes: new Uint8Array(200),
+      compressMetadata: true,
+    });
+    const tamperedCompressed = new Uint8Array(compressedToken);
+    new DataView(tamperedCompressed.buffer).setUint16(
+      6,
+      new DataView(tamperedCompressed.buffer).getUint16(6, true) & ~TokenFlags.QUICKLZ_COMPRESSED,
+      true,
+    );
+    tamperedCompressed.set(encodeHeaderParity64(tamperedCompressed.subarray(0, 640)), 640);
+    const decoded2 = await decodeBinaryToken(tamperedCompressed);
+    expect(decoded2.metadata.id).toBe("tok_test_comp_resilient");
+    expect(decoded2.metadata.ocrText).toContain("Compressed payload with stripped flag");
+  });
+
   test("tokenCodec: validateBinaryToken strictly enforces integrity, authenticity and envelope structure", async () => {
     const authorityKeys = await getAuthorityAttestationKeys();
     const validToken = await generateMockTinyTokenBuffer("tok_strict_01");

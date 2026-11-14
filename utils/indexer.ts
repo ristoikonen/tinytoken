@@ -926,10 +926,14 @@ export class Win11TokenPipeline {
 
       if (!isDocument && orderedMatches.length !== 1) return null;
       if (isDocument) {
-        const expectedPages = Math.min(
-          orderedMatches[0]!.totalPages,
-          this.config.maxPagesPerDocument ?? 3,
-        );
+        const ext = filename.slice(filename.lastIndexOf(".")).toLowerCase();
+        const isPdf = ext === ".pdf";
+        const expectedPages = isPdf
+          ? Math.min(
+              orderedMatches[0]!.totalPages,
+              this.config.maxPagesPerDocument ?? 3,
+            )
+          : 1;
         if (
           orderedMatches.length !== expectedPages ||
           orderedMatches.some((entry, index) => entry.page !== index + 1)

@@ -715,6 +715,7 @@ export class CompressedTokenSearchEngine {
   ): SearchHitDTO[] {
     let queryGrid: Uint8Array;
     let queryDino: Int8Array | undefined;
+    let queryBge: Int8Array | undefined;
     let queryModelId: EmbeddingModelId | undefined;
     let targetId = "";
 
@@ -724,6 +725,7 @@ export class CompressedTokenSearchEngine {
       targetId = targetEntry.id;
       queryGrid = targetEntry.vqIndices;
       queryDino = targetEntry.dinoEmbedding;
+      queryBge = targetEntry.bgeEmbedding;
       queryModelId = targetEntry.embeddingModelId;
     } else {
       queryGrid = targetIdOrVqGrid;
@@ -739,6 +741,7 @@ export class CompressedTokenSearchEngine {
       similarityScore: number;
       adcDistance: number;
       dinoSimilarity: number | null;
+      bgeSimilarity: number | null;
     }> = [];
 
     for (const item of this.metadataStore) {
@@ -756,6 +759,7 @@ export class CompressedTokenSearchEngine {
           similarityScore: 100,
           adcDistance: 0,
           dinoSimilarity: item.dinoEmbedding && item.dinoEmbedding.length > 0 ? 100 : null,
+          bgeSimilarity: item.bgeEmbedding && item.bgeEmbedding.length > 0 ? 100 : null,
         });
         continue;
       }
@@ -768,17 +772,25 @@ export class CompressedTokenSearchEngine {
         queryModelId,
         item.embeddingModelId,
       );
+
+      let bgeSimilarity: number | null = null;
+      if (queryBge && queryBge.length === 384 && item.bgeEmbedding && item.bgeEmbedding.length === 384) {
+        const cosine = computeBgeCosineSimilarity(queryBge, item.bgeEmbedding);
+        bgeSimilarity = Math.round(Math.max(0, (cosine + 1) / 2) * 1000) / 10;
+      }
+
       scored.push({
         entry: item,
         similarityScore: sim.similarityScore,
         adcDistance: sim.adcDistance,
         dinoSimilarity: sim.dinoSimilarityPct,
+        bgeSimilarity,
       });
     }
 
     scored.sort((a, b) => b.similarityScore - a.similarityScore || a.adcDistance - b.adcDistance);
-    return scored.slice(0, limit).map(({ entry, similarityScore, adcDistance, dinoSimilarity }) =>
-      this.toSearchHitDTO(entry, adcDistance, similarityScore, dinoSimilarity),
+    return scored.slice(0, limit).map(({ entry, similarityScore, adcDistance, dinoSimilarity, bgeSimilarity }) =>
+      this.toSearchHitDTO(entry, adcDistance, similarityScore, dinoSimilarity, bgeSimilarity),
     );
   }
 

@@ -985,16 +985,15 @@
         </button>
       </div>
 
-      <!-- Semantic Visual Traits (Human-in-the-Loop Explainable Registry) -->
+      <!-- Semantic Traits (Human-in-the-Loop Explainable Registry) -->
       <div class="traits-box">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.35rem;" class="mono">
-          <span style="color:var(--text-high);font-weight:600;font-size:0.65rem;letter-spacing:0.04em;">SEMANTIC VISUAL
-            TRAITS</span>
+          <span style="color:var(--text-high);font-weight:600;font-size:0.65rem;letter-spacing:0.04em;">SEMANTIC TRAITS</span>
           <span id="traits-status" style="color:var(--cyan-bright);font-size:0.62rem;font-weight:500;">0 DETECTED</span>
         </div>
         <div id="traits-similarity-debug" class="traits-sim-row mono" style="display:none;"></div>
         <div id="traits-container" class="traits-container">
-          <span class="trait-empty mono">Select a token to inspect its visual traits</span>
+          <span class="trait-empty mono">Select a token to inspect its traits</span>
         </div>
       </div>
 
@@ -1318,23 +1317,24 @@
       document.getElementById('lbl-s2').textContent = `${bm.section2MetaBytes}B`;
       document.getElementById('lbl-s3').textContent = `${bm.section3PreviewBytes}B`;
 
-      // Output Live Telemetry to Terminal Debug Area & Visual Traits Debug Row
+      // Output Live Telemetry to Terminal Debug Area & Semantic Traits Debug Row
       logDebug(`[TOKEN] Selected ${t.id} (P.${t.page}/${t.metadata?.totalPages || 1})`, 'cyan');
       const elSimRow = document.getElementById('traits-similarity-debug');
       if (activeSimilarTo) {
         const hit = currentHits.find(h => h.id === id);
         if (hit && (hit.adcDistance !== undefined || hit.similarityScore !== undefined)) {
           let simMsg = '';
+          const dinoPart = (hit.dinoSimilarity !== undefined && hit.dinoSimilarity !== null) ? `DINOv3: ${hit.dinoSimilarity}%` : '';
+          const bertPart = (hit.bgeSimilarity !== undefined && hit.bgeSimilarity !== null) ? `BERTv1.5: ${hit.bgeSimilarity}%` : '';
+          const modelParts = [dinoPart, bertPart].filter(Boolean).join(', ');
+
           if (id === activeSimilarTo) {
-            simMsg = `[SIMILARITY] Anchor Token: ${id} • Similarity Score: 100% • ADC Distance (VQ): 0`;
-            logDebug(simMsg, 'info');
+            simMsg = modelParts ? `${modelParts} (Anchor: ${id})` : `[SIMILARITY] Anchor: ${id} • 100%`;
+            logDebug(`[SIMILARITY] Anchor: ${id} • 100%${modelParts ? ` (${modelParts})` : ''}`, 'info');
           } else {
-            const adcFormatted = typeof hit.adcDistance === 'number' ? hit.adcDistance.toLocaleString() : (hit.adcDistance ?? 0);
-            const simScore = hit.similarityScore !== undefined ? `${hit.similarityScore}%` : 'N/A';
-            const dinoPart = (hit.dinoSimilarity !== undefined && hit.dinoSimilarity !== null) ? ` • DINOv3: ${hit.dinoSimilarity}%` : '';
-            const bgePart = (hit.bgeSimilarity !== undefined && hit.bgeSimilarity !== null) ? ` • BGE: ${hit.bgeSimilarity}%` : '';
-            simMsg = `[SIMILARITY] ADC Distance (VQ): ${adcFormatted} • Similarity Score: ${simScore}${dinoPart}${bgePart} (vs ${activeSimilarTo})`;
-            logDebug(simMsg, 'success');
+            const vsPart = `(vs ${activeSimilarTo})`;
+            simMsg = modelParts ? `${modelParts} ${vsPart}` : `Score: ${hit.similarityScore}% ${vsPart}`;
+            logDebug(`[SIMILARITY] ${simMsg} • ADC: ${hit.adcDistance ?? 0}`, 'success');
           }
           if (elSimRow) {
             elSimRow.textContent = simMsg;
@@ -1749,7 +1749,7 @@ No object recipe associated with this token yet. Click [✎ Label] to teach.`;
       const clearBtn = document.getElementById('btn-clear-sim');
       clearBtn.classList.add('btn-active');
       clearBtn.title = `Similarity filter active on ${selectedTokenId}. Click to clear.`;
-      const initMsg = `[SIMILARITY] Anchor set to ${selectedTokenId}. Ranking archive by VQ ADC + DINOv3...`;
+      const initMsg = `[SIMILARITY] Anchor set to ${selectedTokenId}. Ranking archive by VQ ADC + DINOv3 + BERTv1.5...`;
       logDebug(initMsg, 'cyan');
       const elSimRow = document.getElementById('traits-similarity-debug');
       if (elSimRow) {

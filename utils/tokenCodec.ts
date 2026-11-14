@@ -425,7 +425,8 @@ export function extractTokenMetadata(rawBytes: Uint8Array): TokenMetadataPayload
   const metaSlice = rawBytes.subarray(insp.metaOffset, Math.min(rawBytes.length, insp.metaOffset + insp.metaLength));
 
   let jsonBytes = metaSlice;
-  if ((insp.flags & TokenFlags.QUICKLZ_COMPRESSED) !== 0 && metaSlice.length >= 9) {
+  const isQuickLz = metaSlice.length >= 9 && metaSlice[0] === 3 && (metaSlice[0] + 0 !== 0x7b);
+  if (isQuickLz) {
     const claimedDecompressedLen =
       ((metaSlice[1] ?? 0) |
         ((metaSlice[2] ?? 0) << 8) |
@@ -542,7 +543,8 @@ export async function decodeBinaryToken(
   let metadata: TokenMetadataPayload;
   try {
     let decodedMetaBytes = rawMetaSlice;
-    if ((flags & TokenFlags.QUICKLZ_COMPRESSED) !== 0 && rawMetaSlice.length >= 9) {
+    const isQuickLz = rawMetaSlice.length >= 9 && rawMetaSlice[0] === 3 && (rawMetaSlice[0] + 0 !== 0x7b);
+    if (isQuickLz) {
       const claimedDecompressedLen =
         ((rawMetaSlice[1] ?? 0) |
           ((rawMetaSlice[2] ?? 0) << 8) |
