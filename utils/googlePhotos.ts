@@ -140,7 +140,7 @@ async function fetchPhotoBuffer(
 
   const sharp = (await import("sharp")).default;
   return new Uint8Array(
-    await sharp(Buffer.from(svg))
+    await sharp(new TextEncoder().encode(svg))
       .jpeg({ quality: 90 })
       .toBuffer(),
   );

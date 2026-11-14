@@ -10,6 +10,11 @@
 
 import sharp from "sharp";
 import {
+  ALLOWED_DOCUMENT_EXTENSIONS,
+  ALLOWED_EXTENSIONS,
+  ALLOWED_IMAGE_EXTENSIONS,
+  ALLOWED_TEXT_DOCUMENT_EXTENSIONS,
+  AllowedFileTypes,
   EmbeddingModelId,
   PreviewFormat,
   type TokenMetadataPayload,
@@ -42,6 +47,11 @@ import {
 } from "./zipEngine";
 
 export {
+  ALLOWED_DOCUMENT_EXTENSIONS,
+  ALLOWED_EXTENSIONS,
+  ALLOWED_IMAGE_EXTENSIONS,
+  ALLOWED_TEXT_DOCUMENT_EXTENSIONS,
+  AllowedFileTypes,
   type DocumentProcessor,
   type ExtractedDocumentInfo,
   type PageBundle,
@@ -58,7 +68,7 @@ export interface IndexerConfig {
   outputZipPath: string;
   dataDirectory?: string;
   useZip?: boolean;
-  allowedExtensions: string[];
+  allowedExtensions?: string[];
   maxTokenSizeKb: number;
   maxPagesPerDocument?: number;
 }
@@ -78,21 +88,8 @@ export type ArchiveTokenItem = {
 };
 
 const WORKER_COUNT = 4;
-const IMAGE_EXTENSIONS = new Set([".jpg", ".jpeg", ".png", ".webp", ".avif", ".bmp", ".svg"]);
-const DOCUMENT_EXTENSIONS = new Set([
-  ".pdf",
-  ".docx",
-  ".doc",
-  ".txt",
-  ".text",
-  ".md",
-  ".markdown",
-  ".csv",
-  ".json",
-  ".log",
-  ".yaml",
-  ".yml",
-]);
+const IMAGE_EXTENSIONS = AllowedFileTypes.IMAGE_SET;
+const DOCUMENT_EXTENSIONS = AllowedFileTypes.DOCUMENT_SET;
 
 function getBasename(fullPath: string, fallback = "asset.bin"): string {
   return fullPath.replace(/\\/g, "/").split("/").pop() ?? fallback;
@@ -165,7 +162,7 @@ export class Win11TokenPipeline {
   ): Promise<string[]> {
     const matchedFiles: string[] = [];
     const extSet =
-      filterSet ?? new Set(this.config.allowedExtensions.map((e) => e.toLowerCase()));
+      filterSet ?? new Set(this.config.allowedExtensions!.map((e) => e.toLowerCase()));
 
     let totalSeen = 0;
     try {
@@ -213,7 +210,7 @@ export class Win11TokenPipeline {
       this.config.allowedExtensions.length > 0;
     if (hasExplicitExtensions) {
       const allowedSet = new Set(
-        this.config.allowedExtensions
+        this.config.allowedExtensions!
           .map((e) => e.toLowerCase())
           .filter((e) => DOCUMENT_EXTENSIONS.has(e)),
       );
@@ -252,7 +249,7 @@ export class Win11TokenPipeline {
       <text x="160" y="272" fill="#94a3b8" font-family="sans-serif" font-size="10" text-anchor="middle">${safeTitle}</text>
     </svg>`;
 
-    const previewWebp = await sharp(Buffer.from(svgWarning))
+    const previewWebp = await sharp(new TextEncoder().encode(svgWarning))
       .resize(320, 320)
       .webp({ quality: 75 })
       .toBuffer();
@@ -852,10 +849,10 @@ export class Win11TokenPipeline {
 
     const imageFilter = hasExplicitExtensions
       ? new Set(
-          this.config.allowedExtensions
-            .map((e) => e.toLowerCase())
-            .filter((e) => IMAGE_EXTENSIONS.has(e)),
-        )
+        this.config.allowedExtensions!
+          .map((e) => e.toLowerCase())
+          .filter((e) => IMAGE_EXTENSIONS.has(e)),
+      )
       : IMAGE_EXTENSIONS;
 
     const imagePaths =
@@ -930,9 +927,9 @@ export class Win11TokenPipeline {
         const isPdf = ext === ".pdf";
         const expectedPages = isPdf
           ? Math.min(
-              orderedMatches[0]!.totalPages,
-              this.config.maxPagesPerDocument ?? 3,
-            )
+            orderedMatches[0]!.totalPages,
+            this.config.maxPagesPerDocument ?? 3,
+          )
           : 1;
         if (
           orderedMatches.length !== expectedPages ||

@@ -89,7 +89,7 @@ export class TokenApiHandlers {
    * GET /api/search?q=...&mode=ocr|vq&similarTo=...&limit=50
    */
   public handleSearch(url: URL): Response {
-    const t0 = performance.now();
+    const t0 = Bun.nanoseconds();
     const q = url.searchParams.get("q") ?? "";
     const similarTo = url.searchParams.get("similarTo") ?? "";
     const mode = url.searchParams.get("mode") ?? (similarTo ? "vq" : "ocr");
@@ -118,7 +118,7 @@ export class TokenApiHandlers {
       hits = this.engine.searchOCR(q, limit);
     }
 
-    const elapsedMs = Math.round((performance.now() - t0) * 1000) / 1000;
+    const elapsedMs = Math.round(((Bun.nanoseconds() - t0) / 1e6) * 1000) / 1000;
 
     return jsonResponse({
       success: true,
@@ -138,23 +138,25 @@ export class TokenApiHandlers {
    * and the 256-byte SNARK/SHARK provenance stub, and returns detailed byte-map telemetry.
    */
   public async handleGetToken(id: string): Promise<Response> {
-    const t0 = performance.now();
+    const t0 = Bun.nanoseconds();
     const rawToken = await this.engine.extractToken(id);
     if (!rawToken) {
       return errorResponse(`Token '${id}' not found in ZIP index`, 404);
     }
 
-    const sliceTimeMs = Math.round((performance.now() - t0) * 1000) / 1000;
-    const tDecode = performance.now();
+    const sliceTimeMs = Math.round(((Bun.nanoseconds() - t0) / 1e6) * 1000) / 1000;
+    const tDecode = Bun.nanoseconds();
     const decoded = await decodeBinaryToken(rawToken);
-    const decodeTimeMs = Math.round((performance.now() - tDecode) * 1000) / 1000;
+    const decodeTimeMs = Math.round(((Bun.nanoseconds() - tDecode) / 1e6) * 1000) / 1000;
     const indexMeta = this.engine.getEntry(id);
 
     // Sample first 64 bytes of header & parity as hex for the Glow2 Byte-Map inspector
-    let headerHexPreview = "";
-    for (let i = 0; i < Math.min(64, rawToken.length); i++) {
-      headerHexPreview += (rawToken[i] ?? 0).toString(16).padStart(2, "0").toUpperCase() + " ";
-    }
+    const headerHexPreview = rawToken
+      .subarray(0, 64)
+      .toHex()
+      .toUpperCase()
+      .replace(/../g, "$& ")
+      .trim();
 
     // Retrieve object registry intelligence associated with this token
     const evidenceList = await visualTraitRegistry.getEvidence();
@@ -198,7 +200,7 @@ export class TokenApiHandlers {
       telemetry: {
         sliceExtractTimeMs: sliceTimeMs,
         rsAndSnarkVerifyTimeMs: decodeTimeMs,
-        totalTimeMs: Math.round((performance.now() - t0) * 1000) / 1000,
+        totalTimeMs: Math.round(((Bun.nanoseconds() - t0) / 1e6) * 1000) / 1000,
         zipDataOffset: indexMeta?.dataOffset ?? 0,
         zipCompressedSize: indexMeta?.compressedSize ?? rawToken.length,
         zipCrc32Hex: (indexMeta?.crc32 ?? 0).toString(16).padStart(8, "0").toUpperCase(),
@@ -236,7 +238,7 @@ export class TokenApiHandlers {
         metadata: decoded.metadata,
         byteMap: decoded.byteMap,
         traits: visualTraitRegistry.evaluateGrid(decoded.vqIndices),
-        headerHexPreview: headerHexPreview.trim(),
+        headerHexPreview,
         objectAnnotations,
         primaryObjectLabel,
       },
@@ -366,7 +368,7 @@ export class TokenApiHandlers {
    * Streams the embedded Section III preview image directly from the sliced 25 KB token.
    */
   public async handleGetTokenPreview(id: string): Promise<Response> {
-    const t0 = performance.now();
+    const t0 = Bun.nanoseconds();
     const rawToken = await this.engine.extractToken(id);
     if (!rawToken) {
       return errorResponse(`Token '${id}' not found`, 404);
@@ -376,7 +378,7 @@ export class TokenApiHandlers {
     const insp = inspectBinaryTokenHeader(rawToken);
     const previewBytes = extractTokenPreviewBytes(rawToken);
     const mimeType = previewFormatToMime(insp.previewFormat);
-    const extractMs = (performance.now() - t0).toFixed(3);
+    const extractMs = ((Bun.nanoseconds() - t0) / 1e6).toFixed(3);
 
     const headers: Record<string, string> = {
       "Content-Type": mimeType,
@@ -480,7 +482,7 @@ export class TokenApiHandlers {
         // use default scalar
       }
 
-      const t0 = performance.now();
+      const t0 = Bun.nanoseconds();
       const mutated = applyHomomorphicMaskGF28(
         rawToken,
         scalar || 0x5a,
@@ -488,7 +490,7 @@ export class TokenApiHandlers {
       );
       await this.engine.writeMutatedTokenInPlace(id, mutated);
       const decoded = await decodeBinaryToken(mutated);
-      const elapsedUs = Math.round((performance.now() - t0) * 1000);
+      const elapsedUs = Math.round((Bun.nanoseconds() - t0) / 1e3);
 
       try {
         const stampPath = `${this.engine.getDataDirPath ? this.engine.getDataDirPath() : "./data"}/.indexed_dir`;
@@ -576,7 +578,7 @@ export class TokenApiHandlers {
       return errorResponse("VQ Inverted Index is not initialized", 503);
     }
 
-    const t0 = performance.now();
+    const t0 = Bun.nanoseconds();
     const threshold = Number(url.searchParams.get("threshold") ?? 0.5);
     const limit = Math.min(250, Math.max(1, Number(url.searchParams.get("limit") ?? 50)));
     const similarTo = url.searchParams.get("similarTo") ?? "";
@@ -601,7 +603,7 @@ export class TokenApiHandlers {
       threshold,
       limit,
     );
-    const elapsedMs = Math.round((performance.now() - t0) * 1000) / 1000;
+    const elapsedMs = Math.round(((Bun.nanoseconds() - t0) / 1e6) * 1000) / 1000;
 
     return jsonResponse({
       success: true,

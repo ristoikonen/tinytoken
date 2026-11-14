@@ -167,9 +167,19 @@ export function extensionToMimeType(ext: string): string {
     case ".doc":
       return "application/msword";
     case ".txt":
+    case ".text":
+    case ".log":
       return "text/plain";
     case ".md":
+    case ".markdown":
       return "text/markdown";
+    case ".csv":
+      return "text/csv";
+    case ".json":
+      return "application/json";
+    case ".yaml":
+    case ".yml":
+      return "application/yaml";
     default:
       return "application/octet-stream";
   }

@@ -83,11 +83,7 @@ export function uuidStringToBytes(uuid: string): Uint8Array {
   } else {
     throw new Error(`Invalid UUID syntax: "${uuid}"`);
   }
-  const out = new Uint8Array(16);
-  for (let i = 0; i < 16; i++) {
-    out[i] = Number.parseInt(hex.slice(i * 2, i * 2 + 2), 16);
-  }
-  return out;
+  return new Uint8Array(Uint8Array.fromHex(hex));
 }
 
 /**

@@ -63,6 +63,89 @@ export enum EmbeddingModelId {
 export const DEFAULT_CLIP_TEXT_LIMIT = 2200;
 
 /**
+ * Single centralized registry of allowed asset file extensions across the server, indexer, CLI, and document processors.
+ */
+export class AllowedFileTypes {
+  public static readonly IMAGE_EXTENSIONS = [
+    ".jpg",
+    ".jpeg",
+    ".png",
+    ".webp",
+    ".avif",
+    ".bmp",
+    ".svg",
+  ] as const;
+
+  public static readonly TEXT_DOCUMENT_EXTENSIONS = [
+    ".txt",
+    ".text",
+    ".md",
+    ".markdown",
+    ".csv",
+    ".json",
+    ".log",
+    ".yaml",
+    ".yml",
+  ] as const;
+
+  public static readonly DOCUMENT_EXTENSIONS = [
+    ".pdf",
+    ".docx",
+    ".doc",
+    ...AllowedFileTypes.TEXT_DOCUMENT_EXTENSIONS,
+  ] as const;
+
+  public static readonly ALL_EXTENSIONS = [
+    ...AllowedFileTypes.IMAGE_EXTENSIONS,
+    ...AllowedFileTypes.DOCUMENT_EXTENSIONS,
+  ] as const;
+
+  public static readonly IMAGE_SET: ReadonlySet<string> = new Set(
+    AllowedFileTypes.IMAGE_EXTENSIONS,
+  );
+  public static readonly TEXT_DOCUMENT_SET: ReadonlySet<string> = new Set(
+    AllowedFileTypes.TEXT_DOCUMENT_EXTENSIONS,
+  );
+  public static readonly DOCUMENT_SET: ReadonlySet<string> = new Set(
+    AllowedFileTypes.DOCUMENT_EXTENSIONS,
+  );
+  public static readonly ALL_SET: ReadonlySet<string> = new Set(
+    AllowedFileTypes.ALL_EXTENSIONS,
+  );
+
+  public static normalizeExtension(ext: string): string {
+    const trimmed = ext.trim().toLowerCase();
+    if (!trimmed) return "";
+    return trimmed.startsWith(".") ? trimmed : `.${trimmed}`;
+  }
+
+  public static list(): string[] {
+    return [...AllowedFileTypes.ALL_EXTENSIONS];
+  }
+
+  public static isAllowed(ext: string): boolean {
+    return AllowedFileTypes.ALL_SET.has(AllowedFileTypes.normalizeExtension(ext));
+  }
+
+  public static isImage(ext: string): boolean {
+    return AllowedFileTypes.IMAGE_SET.has(AllowedFileTypes.normalizeExtension(ext));
+  }
+
+  public static isDocument(ext: string): boolean {
+    return AllowedFileTypes.DOCUMENT_SET.has(AllowedFileTypes.normalizeExtension(ext));
+  }
+
+  public static isTextDocument(ext: string): boolean {
+    return AllowedFileTypes.TEXT_DOCUMENT_SET.has(AllowedFileTypes.normalizeExtension(ext));
+  }
+}
+
+export const ALLOWED_IMAGE_EXTENSIONS = AllowedFileTypes.IMAGE_EXTENSIONS;
+export const ALLOWED_TEXT_DOCUMENT_EXTENSIONS = AllowedFileTypes.TEXT_DOCUMENT_EXTENSIONS;
+export const ALLOWED_DOCUMENT_EXTENSIONS = AllowedFileTypes.DOCUMENT_EXTENSIONS;
+export const ALLOWED_EXTENSIONS = AllowedFileTypes.ALL_EXTENSIONS;
+
+/**
  * Returns the app-wide text clipping ceiling in characters, read from APP_CLIP_TEXT_LIMIT_CHARS (or fallback).
  */
 export function getClipTextLimit(): number {

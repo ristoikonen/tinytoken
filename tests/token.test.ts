@@ -1,6 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { TokenApiHandlers } from "../handlers/tokenHandlers";
 import {
+  ALLOWED_EXTENSIONS,
+  AllowedFileTypes,
   type ContentId,
   EmbeddingModelId,
   MAX_TOKEN_BYTES,
@@ -852,8 +854,41 @@ describe("TinyToken GF(2^8) + VQ + SHARK/SNARK Pipeline", () => {
     );
     expect(extensionToMimeType(".doc")).toBe("application/msword");
     expect(extensionToMimeType(".txt")).toBe("text/plain");
+    expect(extensionToMimeType(".text")).toBe("text/plain");
+    expect(extensionToMimeType(".log")).toBe("text/plain");
     expect(extensionToMimeType(".md")).toBe("text/markdown");
+    expect(extensionToMimeType(".markdown")).toBe("text/markdown");
+    expect(extensionToMimeType(".csv")).toBe("text/csv");
+    expect(extensionToMimeType(".json")).toBe("application/json");
+    expect(extensionToMimeType(".yaml")).toBe("application/yaml");
+    expect(extensionToMimeType(".yml")).toBe("application/yaml");
     expect(extensionToMimeType(".unknown")).toBe("application/octet-stream");
+
+    expect(AllowedFileTypes.list()).toEqual([
+      ".jpg",
+      ".jpeg",
+      ".png",
+      ".webp",
+      ".avif",
+      ".bmp",
+      ".svg",
+      ".pdf",
+      ".docx",
+      ".doc",
+      ".txt",
+      ".text",
+      ".md",
+      ".markdown",
+      ".csv",
+      ".json",
+      ".log",
+      ".yaml",
+      ".yml",
+    ]);
+    for (const ext of ALLOWED_EXTENSIONS) {
+      expect(AllowedFileTypes.isAllowed(ext)).toBe(true);
+      expect(extensionToMimeType(ext)).not.toBe("application/octet-stream");
+    }
 
     expect(formatToMimeType(PreviewFormat.PNG)).toBe("image/png");
     expect(formatToMimeType(PreviewFormat.JPEG)).toBe("image/jpeg");

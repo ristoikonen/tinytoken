@@ -326,14 +326,14 @@ export class CompressedTokenSearchEngine {
    * If `APP_ZIP_USE=false` (or unzipped directory mode), indexes `*.token` files directly from data directory.
    */
   public async buildIndex(): Promise<void> {
-    const startTime = performance.now();
+    const startNs = Bun.nanoseconds();
     this.metadataIndex.clear();
     this.metadataStore = [];
 
     if (!this.isZipMode()) {
       await this.buildIndexFromDirectory();
       if (this.metadataStore.length > 0 || !(await Bun.file(this.zipFilePath).exists())) {
-        this.lastBootIndexMs = Math.round((performance.now() - startTime) * 100) / 100;
+        this.lastBootIndexMs = Math.round(((Bun.nanoseconds() - startNs) / 1e6) * 100) / 100;
         return;
       }
     }
@@ -343,7 +343,7 @@ export class CompressedTokenSearchEngine {
       if (this.metadataStore.length === 0) {
         await this.buildIndexFromDirectory();
       }
-      this.lastBootIndexMs = Math.round((performance.now() - startTime) * 100) / 100;
+      this.lastBootIndexMs = Math.round(((Bun.nanoseconds() - startNs) / 1e6) * 100) / 100;
       return;
     }
 
@@ -523,7 +523,7 @@ export class CompressedTokenSearchEngine {
       }
     }
 
-    this.lastBootIndexMs = Math.round((performance.now() - startTime) * 100) / 100;
+    this.lastBootIndexMs = Math.round(((Bun.nanoseconds() - startNs) / 1e6) * 100) / 100;
   }
 
   /**

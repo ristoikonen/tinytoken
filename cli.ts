@@ -15,6 +15,7 @@
  */
 
 import {
+  AllowedFileTypes,
   EmbeddingModelId,
   PreviewFormat,
   SECTION1_HEADER_BYTES,
@@ -635,7 +636,7 @@ async function main() {
 
     const dotIdx = basename.lastIndexOf(".");
     const ext = dotIdx !== -1 ? basename.slice(dotIdx).toLowerCase() : "";
-    const isDoc = [".pdf", ".docx", ".doc", ".txt", ".md", ".csv", ".json", ".log", ".yaml", ".yml"].includes(ext);
+    const isDoc = AllowedFileTypes.isDocument(ext);
 
     const pipeline = new Win11TokenPipeline({
       sourceDirectory: dir,

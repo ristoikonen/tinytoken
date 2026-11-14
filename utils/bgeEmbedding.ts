@@ -146,14 +146,8 @@ export function extractBgeTextFallback(
     }
 
     function hashString(value: string): number {
-        let hash = 2166136261;
-
-        for (let i = 0; i < value.length; i++) {
-            hash ^= value.charCodeAt(i);
-            hash = Math.imul(hash, 16777619);
-        }
-
-        return hash >>> 0;
+        const h = Bun.hash(value);
+        return typeof h === "bigint" ? Number(h & 0xffffffffn) >>> 0 : h >>> 0;
     }
 
     function addFeature(

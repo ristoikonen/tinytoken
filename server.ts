@@ -1,6 +1,7 @@
 import { serve, type BunRequest } from "bun";
 import { LearningHandlers } from "./handlers/learningHandlers";
 import { TokenApiHandlers } from "./handlers/tokenHandlers";
+import { AllowedFileTypes } from "./models/token";
 import { ArchiveManager } from "./utils/archiveManager";
 import type { Win11TokenPipeline } from "./utils/indexer";
 import { errorResponse, jsonResponse, verifySameOriginMutation, corsResponse } from "./utils/response";
@@ -31,8 +32,7 @@ const DOCUMENT_DIR = "./documents";
 const INDEXED_DIR_STAMP = `${DATA_DIR}/.indexed_dir`;
 const useZip = Bun.env.APP_ZIP_USE !== "false";
 const isTest = Bun.env.NODE_ENV === "test";
-const rawPort = Bun.env.PORT ?? Bun.env.APP_PORT ?? process.env.PORT;
-const port = isTest ? 0 : Number(rawPort ?? 3000);
+const port = isTest ? 0 : Number(Bun.env.PORT ?? 3000);
 const host = Bun.env.APP_HOST ?? "localhost";
 
 // Cached HTML template
@@ -60,7 +60,7 @@ async function getPipeline(): Promise<Win11TokenPipeline> {
       outputZipPath: ZIP_ARCHIVE_PATH,
       dataDirectory: DATA_DIR,
       useZip,
-      allowedExtensions: [".jpg", ".jpeg", ".png", ".webp", ".avif", ".bmp", ".svg", ".pdf", ".docx"],
+      allowedExtensions: AllowedFileTypes.list(),
       maxTokenSizeKb: 25,
     });
   }
@@ -101,7 +101,7 @@ export function ensureInitialized(): Promise<void> {
 
 // Both logs and calls request handler
 async function requestLogging(req: Request, server?: Bun.Server<any>, toConsole: boolean = true): Promise<Response> {
-  const start = performance.now();
+  const startNs = Bun.nanoseconds();
   const url = new URL(req.url);
   let status = 500;
 
@@ -114,12 +114,13 @@ async function requestLogging(req: Request, server?: Bun.Server<any>, toConsole:
     console.error("Request error:", error);
     throw error;
   } finally {
-
+    const durationMs = Math.round(((Bun.nanoseconds() - startNs) / 1e6) * 1000) / 1000;
     const info = {
       time: new Date().toISOString(),
       method: req.method,
       path: url.pathname,
       status: status,
+      durationMs,
       hostname: server?.hostname,
       port: server?.port,
       isdevelopment: server?.development,
@@ -175,7 +176,7 @@ async function ensureDataDirectory(targetDir: string, zipPath: string): Promise<
 
 async function initIndex(): Promise<void> {
   await ensureDataDirectory(DATA_DIR, ZIP_ARCHIVE_PATH);
-  const t0 = performance.now();
+  const t0 = Bun.nanoseconds();
   const isZip = searchEngine.isZipMode();
   const zipFile = Bun.file(ZIP_ARCHIVE_PATH);
   const stampFile = Bun.file(INDEXED_DIR_STAMP);
@@ -213,7 +214,7 @@ async function initIndex(): Promise<void> {
   try {
     await searchEngine.buildIndex();
     await invertedIndex.syncTokens(searchEngine.getAllEntries());
-    const totalMs = (performance.now() - t0).toFixed(2);
+    const totalMs = ((Bun.nanoseconds() - t0) / 1e6).toFixed(2);
     const storageLabel = isZip ? "archive" : `*.token files in ${DATA_DIR}`;
     console.log(
       `Indexed ${searchEngine.getCount()} tokens into RAM in ${totalMs} ms (${(searchEngine.archiveSizeBytes / 1024).toFixed(1)} KB, ${storageLabel})`,

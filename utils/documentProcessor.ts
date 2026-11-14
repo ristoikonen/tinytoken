@@ -8,7 +8,7 @@
  * 4. Fallback binary document handler
  */
 
-import { EmbeddingModelId, PreviewFormat, getClipTextLimit } from "../models/token";
+import { AllowedFileTypes, EmbeddingModelId, PreviewFormat, getClipTextLimit } from "../models/token";
 import { extensionToMimeType, rasterizeAssetToWebpAndTensors } from "./imagePreview";
 import { type PageBundle, renderPdfPagesWithPdfium } from "./pdfEngine";
 import { extractRealBgeEmbedding } from "./bgeEmbedding";
@@ -226,21 +226,10 @@ export class DocxDocumentProcessor implements DocumentProcessor {
  * Text Document Processor: renders clean visual document page previews for plain-text, markdown, and config files.
  */
 export class TextDocumentProcessor implements DocumentProcessor {
-  private static readonly TEXT_EXTENSIONS = new Set([
-    ".txt",
-    ".text",
-    ".md",
-    ".markdown",
-    ".csv",
-    ".json",
-    ".log",
-    ".yaml",
-    ".yml",
-  ]);
+  private static readonly TEXT_EXTENSIONS = AllowedFileTypes.TEXT_DOCUMENT_SET;
 
   public supports(extension: string): boolean {
-    const ext = extension.startsWith(".") ? extension.toLowerCase() : `.${extension.toLowerCase()}`;
-    return TextDocumentProcessor.TEXT_EXTENSIONS.has(ext);
+    return AllowedFileTypes.isTextDocument(extension);
   }
 
   public async extract(bytes: Uint8Array, filename: string): Promise<ExtractedDocumentInfo> {
