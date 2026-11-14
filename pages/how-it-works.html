@@ -818,7 +818,7 @@
               <div class="eval-big-num cyan">&lt; 25 KB</div>
               <div class="eval-card-title">Strict physical envelope ceiling</div>
               <p class="eval-card-text">
-                Hard maximum size bounds ($GF(2^8)$ + VQ-VAE + DINOv3 + Ed25519) strictly guarded at encode time.
+                Hard maximum size bounds ($GF(2^8)$ + VQ-VAE + DINOv3 + BGE + Ed25519) strictly guarded at encode time.
                 Guaranteed never to overflow.
               </p>
             </div>
@@ -848,14 +848,13 @@
             </div>
           </div>
 
-          <!-- Stat 5: 384-Dim Vector -->
+          <!-- Stat 5: Dual 384-Dim Vectors -->
           <div class="eval-card">
             <div>
               <div class="eval-big-num amber">384-Dim</div>
-              <div class="eval-card-title">Meta DINOv3 ViT-S/16 Int8 vector</div>
+              <div class="eval-card-title">Dual Neural Embeddings (DINOv3 + BGE)</div>
               <p class="eval-card-text">
-                Compact 384-byte normalized semantic vector provides illumination-robust matching invariant to lighting
-                or white-balance shifts.
+                Compact 384-byte Int8 vectors: DINOv3 provides visual geometry and illumination invariance, while BGE-small-en-v1.5 provides deep conceptual text semantics for documents.
               </p>
             </div>
           </div>

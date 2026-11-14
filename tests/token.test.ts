@@ -1528,6 +1528,14 @@ describe("TinyToken GF(2^8) + VQ + SHARK/SNARK Pipeline", () => {
     expect(sizesProc.exitCode).toBe(0);
     expect(sizesProc.stdout.toString().trim()).toBe("Header: 704B | Meta: 1229B | Preview: 8656B | Total: 10589B");
 
+    const dinoProc = Bun.spawnSync([process.execPath, "cli.ts", "tok_00004_Henri.jpg.token", "-f", "dino"]);
+    expect(dinoProc.exitCode).toBe(0);
+    expect(dinoProc.stdout.toString().trim().length).toBe(768);
+
+    const bgeProc = Bun.spawnSync([process.execPath, "cli.ts", "tok_00004_Henri.jpg.token", "-f", "bge"]);
+    expect(bgeProc.exitCode).toBe(0);
+    expect(bgeProc.stdout.toString().trim()).toBe("none");
+
     // 3. struct JSON format
     const jsonProc = Bun.spawnSync([process.execPath, "cli.ts", "struct", "tok_00004_Henri.jpg.token", "--format", "json"]);
     expect(jsonProc.exitCode).toBe(0);

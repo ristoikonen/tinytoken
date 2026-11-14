@@ -401,70 +401,68 @@
         grid-template-columns: 1fr;
         gap: 4px;
       }
+    }
 
-      /* Base Callout Structure */
-      .callout {
-        display: flex;
-        align-items: flex-start;
-        gap: 0.75rem;
-        border-left: 4px solid transparent;
-        border-radius: 0.375rem;
-        padding: 1rem;
-        margin: 1.5rem 0;
-        font-family: system-ui, -apple-system, sans-serif;
-        font-size: 0.95rem;
-      }
+    /* Base Callout Structure */
+    .callout {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+      border-left: 4px solid transparent;
+      border-radius: 0.375rem;
+      padding: 1rem;
+      margin: 1.5rem 0;
+      font-family: system-ui, -apple-system, sans-serif;
+      font-size: 0.95rem;
+    }
 
-      .callout-icon {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-shrink: 0;
-        margin-top: 0.15rem;
-      }
+    .callout-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 0.15rem;
+    }
 
-      .callout-content {
-        color: #374151;
-        /* Slate-700 / Dark Gray text */
-      }
+    .callout-content {
+      color: #374151;
+      /* Slate-700 / Dark Gray text */
+    }
 
-      /* Tip Specific (Green) */
-      .callout-tip {
-        background-color: rgba(16, 185, 129, 0.08);
-        /* Transparent emerald */
-        border-color: #10b981;
-        color: #065f46;
-      }
+    /* Tip Specific (Green) */
+    .callout-tip {
+      background-color: rgba(16, 185, 129, 0.08);
+      /* Transparent emerald */
+      border-color: #10b981;
+      color: #065f46;
+    }
 
-      .callout-tip .callout-icon {
-        color: #10b981;
-      }
+    .callout-tip .callout-icon {
+      color: #10b981;
+    }
 
-      /* Note Specific (Blue) */
-      .callout-note {
-        background-color: rgba(59, 130, 246, 0.08);
-        /* Transparent blue */
-        border-color: #3b82f6;
-        color: #1e3a8a;
-      }
+    /* Note Specific (Blue) */
+    .callout-note {
+      background-color: rgba(59, 130, 246, 0.08);
+      /* Transparent blue */
+      border-color: #3b82f6;
+      color: #1e3a8a;
+    }
 
-      .callout-note .callout-icon {
-        color: #3b82f6;
-      }
+    .callout-note .callout-icon {
+      color: #3b82f6;
+    }
 
-      /* Warning Specific (Amber) */
-      .callout-warning {
-        background-color: rgba(245, 158, 11, 0.08);
-        /* Transparent amber */
-        border-color: #f59e0b;
-        color: #78350f;
-      }
+    /* Warning Specific (Amber) */
+    .callout-warning {
+      background-color: rgba(245, 158, 11, 0.08);
+      /* Transparent amber */
+      border-color: #f59e0b;
+      color: #78350f;
+    }
 
-      .callout-warning .callout-icon {
-        color: #f59e0b;
-      }
-
-
+    .callout-warning .callout-icon {
+      color: #f59e0b;
     }
   </style>
 </head>
@@ -504,32 +502,31 @@
     <div class="nav-heading">Commands</div>
 
     <a class="nav-link active" href="#tokenize">
-      <span class="nav-icon">⌘</span>info on tinytoken
+      <span class="nav-icon">⌘</span> Tokenize &amp; Inspect
     </a>
 
-    <a class="nav-link active" href="#generate">
-      <span class="nav-icon">&#x2699;</span> generate tinytoken
-    </a>
-    <a class="nav-link active" href="#search">
-      <span class="nav-icon">&#x2315;</span> find tinytoken by name, closest, text
+    <a class="nav-link" href="#generate">
+      <span class="nav-icon">&#x2699;</span> Generate Tokens
     </a>
 
-    <a class="nav-link active" href="#struct">
-      <span class="nav-icon">&#x2315;</span>fist some or all fileds, enables looping via chosen field, fgast. Uses
-      memeory mapped file kind of file read -feature
+    <a class="nav-link" href="#struct">
+      <span class="nav-icon">&#x25A4;</span> Fast Zero-Copy Struct
     </a>
 
+    <a class="nav-link" href="#search">
+      <span class="nav-icon">&#x2315;</span> Search &amp; Retrieval
+    </a>
 
-    <!-- Add further commands here -->
-    <!--
-  <a class="nav-link" href="#verify">
-    <span class="nav-icon">✓</span> verify
-  </a>
-  -->
+    <div style="height:24px"></div>
+    <div class="nav-heading">Intelligence</div>
+
+    <a class="nav-link" href="#embeddings">
+      <span class="nav-icon">&#x2728;</span> Dual Embeddings (DINO + BGE)
+    </a>
 
     <div class="sidebar-note">
       TinyToken CLI<br>
-      Command reference
+      Command &amp; Architecture Reference
     </div>
   </aside>
 
@@ -707,84 +704,266 @@ bun tinytoken ./documents/report.pdf -o ./output/report.token --info</pre>
 
     </section>
     <section id="generate">
-      <h1>generate<h1>
+      <h1>generate</h1>
 
-          <p>
-            Create a TinyToken <kbd>token</kbd> from an image or document file.
-          </p>
+      <p>
+        Create a compact, self-attesting 25 KB TinyToken (<kbd>.token</kbd>) from an image or document file.
+      </p>
 
-          <div class="syntax">
-            <div class="syntax-label">Syntax</div>
-            <span class="command">tinytoken</span>
-            <span class="argument">&lt;file&gt;</span>
-            <span class="option">[options]</span>
+      <div class="syntax">
+        <div class="syntax-label">Syntax</div>
+        <span class="command">tinytoken</span>
+        <span class="argument">&lt;source-file&gt;</span>
+        <span class="option">[-o &lt;output-path&gt;] [--info]</span>
+      </div>
+
+      <h2>Arguments</h2>
+
+      <div class="option-list">
+        <div class="option-row">
+          <div class="option-name">&lt;source-file&gt;</div>
+          <div class="option-description">
+            Source asset path to tokenize. Supports images (JPEG, PNG, WebP, AVIF, SVG, BMP)
+            and documents (PDF, DOCX, TXT, MD, CSV, JSON, LOG, YAML).
+            <span class="required">REQUIRED</span>
           </div>
+        </div>
+      </div>
 
-          <h2>Arguments</h2>
+      <h2>Options</h2>
 
+      <div class="option-list">
+        <div class="option-row">
+          <div class="option-name">-o, --out &lt;path&gt;</div>
+          <div class="option-description">
+            Custom destination <kbd>.token</kbd> path. Defaults to <kbd>&lt;input_dir&gt;/&lt;basename&gt;.token</kbd>.
+          </div>
+        </div>
+        <div class="option-row">
+          <div class="option-name">--info</div>
+          <div class="option-description">
+            Print verbose breakdown immediately after encoding: Section I header, QuickLZ compression ratio, VQ centroids, DINOv3 visual embedding, and BGE semantic text embedding.
+          </div>
+        </div>
+      </div>
 
+      <div class="callout callout-note">
+        <div class="callout-icon">ℹ</div>
+        <div class="callout-content">
+          <strong>Document Multi-Page Tokenization:</strong> Multi-page PDFs generate sequential page tokens (<kbd>_p1_</kbd>, <kbd>_p2_</kbd>, <kbd>_p3_</kbd>) up to <kbd>maxPagesPerDocument</kbd> (default 3), rasterized with Chrome PDFium WASM at 150 DPI and paired with clean Unicode text layers.
+        </div>
+      </div>
+
+      <h2>Examples</h2>
+
+      <div class="example">
+        <div class="example-header">
+          <span class="example-title">Tokenize a PDF document with BGE embeddings</span>
+          <button class="copy-btn" onclick="copyExample(this)">▢ Copy</button>
+        </div>
+        <pre><span class="comment"># Tokenize a PDF with full metadata breakdown</span>
+bun tinytoken ./documents/annual_report.pdf -o ./output/annual_report.token --info</pre>
+      </div>
+
+      <div class="example">
+        <div class="example-header">
+          <span class="example-title">Tokenize a Markdown or text file</span>
+          <button class="copy-btn" onclick="copyExample(this)">▢ Copy</button>
+        </div>
+        <pre><span class="comment"># Tokenize a text document</span>
+bun tinytoken ./documents/notes.md --info</pre>
+      </div>
     </section>
 
+    <section id="struct">
+      <h1>struct</h1>
 
-    <!-- <div class="callout callout-tip">
-      <div class="callout-icon">
-        <svg xmlns="http://w3.org" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-          stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path
-            d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .6 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5" />
-          <path d="M9 18h6" />
-          <path d="M10 22h4" />
-        </svg>
-      </div>
-      <div class="callout-content">
-        <strong>Tip:</strong> Only events that happen after you set a trigger live can send messages.
-      </div>
-    </div>
+      <p>
+        Perform ultra-fast zero-copy binary inspection of Section I headers in sub-microsecond time (&lt;1 µs).
+        Inspects raw 25 KB tokens, entire archives (<kbd>tokens.zip</kbd>), or directories with zero QuickLZ decompression,
+        zero JSON parsing, and zero cryptographic verification overhead.
+      </p>
 
-    <div class="callout callout-warning">
-      <div class="callout-icon">
-        <svg xmlns="http://w3.org" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-          stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
-          <line x1="12" y1="9" x2="12" y2="13" />
-          <line x1="12" y1="17" x2="12.01" y2="17" />
-        </svg>
+      <div class="syntax">
+        <div class="syntax-label">Syntax</div>
+        <span class="command">tinytoken</span>
+        <span class="command">struct</span>
+        <span class="argument">&lt;target&gt;</span>
+        <span class="option">[-f &lt;field&gt;] [--format &lt;table|csv|json|raw-hex&gt;] [--limit &lt;n&gt;]</span>
       </div>
-      <div class="callout-content">
-        Once a trigger is saved, you cannot switch it between real-time and Aampe optimised.
-      </div>
-    </div>
 
+      <h2>Arguments</h2>
 
-    <div class="my-5 flex gap-3 border-l-4 border-amber-500 bg-amber-500/10 rounded-r-lg p-4 text-[15px] leading-6">
-      <div class="flex-shrink-0 text-amber-500 mt-0.5">
-        <svg xmlns="http://w3.org" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-          stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
-          <line x1="12" y1="9" x2="12" y2="13" />
-          <line x1="12" y1="17" x2="12.01" y2="17" />
-        </svg>
+      <div class="option-list">
+        <div class="option-row">
+          <div class="option-name">&lt;target&gt;</div>
+          <div class="option-description">
+            A single <kbd>.token</kbd> file, a ZIP archive containing tokens (<kbd>tokens.zip</kbd>), or a directory of token files.
+            <span class="required">REQUIRED</span>
+          </div>
+        </div>
       </div>
-      <div class="text-slate-700 dark:text-slate-300">
-        Once a trigger is saved or attached to a message, you can't switch it between real-time and Aampe optimised.
+
+      <h2>Options</h2>
+
+      <div class="option-list">
+        <div class="option-row">
+          <div class="option-name">-f, --field &lt;name&gt;</div>
+          <div class="option-description">
+            Extract a single field to stdout. Fast for shell scripts and pipelines:
+            <kbd>uuid</kbd>, <kbd>merkle</kbd>, <kbd>dims</kbd>, <kbd>flags</kbd>, <kbd>ts</kbd>,
+            <kbd>sizes</kbd>, <kbd>vq</kbd>, <kbd>model</kbd>, <kbd>ocr</kbd>, <kbd>dino</kbd>, <kbd>bge</kbd>, <kbd>tags</kbd>.
+          </div>
+        </div>
+        <div class="option-row">
+          <div class="option-name">--format &lt;fmt&gt;</div>
+          <div class="option-description">
+            Output formatting mode: <kbd>table</kbd> (default), <kbd>csv</kbd>, <kbd>json</kbd>, or <kbd>raw-hex</kbd>.
+          </div>
+        </div>
+        <div class="option-row">
+          <div class="option-name">--limit &lt;n&gt;</div>
+          <div class="option-description">
+            Maximum number of entries to inspect when scanning an archive or directory.
+          </div>
+        </div>
+        <div class="option-row">
+          <div class="option-name">--decode-meta</div>
+          <div class="option-description">
+            On-demand Section II QuickLZ metadata unpack (only when requesting text or embedding fields).
+          </div>
+        </div>
       </div>
-    </div>
-    <div class="my-5 flex gap-3 border-l-4 border-emerald-500 bg-emerald-500/10 rounded-r-lg p-4 text-[15px] leading-6">
-      <div class="flex-shrink-0 text-emerald-500 mt-0.5">
-        <svg xmlns="http://w3.org" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-          stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path
-            d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .6 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5" />
-          <path d="M9 18h6" />
-          <path d="M10 22h4" />
-        </svg>
+
+      <h2>Examples</h2>
+
+      <div class="example">
+        <div class="example-header">
+          <span class="example-title">Fast zero-copy field extraction</span>
+          <button class="copy-btn" onclick="copyExample(this)">▢ Copy</button>
+        </div>
+        <pre><span class="comment"># Extract SHA-256 Merkle root in sub-0.05ms</span>
+tinytoken tok_00001_report.pdf.token -f merkle
+
+<span class="comment"># Extract BGE text embedding vector</span>
+tinytoken tok_00001_report.pdf.token -f bge</pre>
       </div>
-      <div class="text-slate-700 dark:text-slate-300">
-        <strong class="font-semibold text-emerald-800 dark:text-emerald-400">Tip:</strong> Only events that happen
-        <strong class="font-semibold text-slate-900 dark:text-white">after</strong> you set a trigger live can send
-        messages.
+
+      <div class="example">
+        <div class="example-header">
+          <span class="example-title">Scan an entire token archive</span>
+          <button class="copy-btn" onclick="copyExample(this)">▢ Copy</button>
+        </div>
+        <pre><span class="comment"># Inspect first 15 tokens in archive with zero decompression overhead</span>
+tinytoken struct ./data/tokens.zip --limit 15</pre>
       </div>
-    </div>
+    </section>
+
+    <section id="search">
+      <h1>search</h1>
+
+      <p>
+        TinyToken's built-in in-memory engine (<kbd>CompressedTokenSearchEngine</kbd>) indexes tens of thousands of tokens into RAM in under 50 ms.
+        Search supports 4 complementary modalities:
+      </p>
+
+      <div class="option-list">
+        <div class="option-row">
+          <div class="option-name">OCR &amp; Substring Search</div>
+          <div class="option-description">
+            Searches token filenames and extracted Unicode text layers with instant sub-millisecond prefix/substring filtering.
+          </div>
+        </div>
+        <div class="option-row">
+          <div class="option-name">VQ Visual Similarity (ADC)</div>
+          <div class="option-description">
+            Asymmetric Distance Computation over 16&times;16 color codebook grids in O(1) time using a precomputed 256&times;256 distance LUT. Evaluates 10,000 tokens in RAM in ~1.5 ms without GPU.
+          </div>
+        </div>
+        <div class="option-row">
+          <div class="option-name">DINOv3 Visual Cosine</div>
+          <div class="option-description">
+            Meta ViT-S/16 384-byte Int8 embeddings ranked by cosine similarity for illumination- and angle-invariant visual scene matching.
+          </div>
+        </div>
+        <div class="option-row">
+          <div class="option-name">BGE Semantic Text Search</div>
+          <div class="option-description">
+            BAAI <kbd>bge-small-en-v1.5</kbd> 384-byte Int8 text embeddings ranked by semantic cosine similarity for conceptual text search across documents.
+          </div>
+        </div>
+      </div>
+
+      <h2>Examples</h2>
+
+      <div class="example">
+        <div class="example-header">
+          <span class="example-title">Search API endpoints</span>
+          <button class="copy-btn" onclick="copyExample(this)">▢ Copy</button>
+        </div>
+        <pre><span class="comment"># OCR substring search</span>
+curl "http://localhost:3000/api/search?q=invoice"
+
+<span class="comment"># Reverse visual similarity search</span>
+curl "http://localhost:3000/api/search/similar?id=tok_00001_p1_report.pdf"</pre>
+      </div>
+    </section>
+
+    <section id="embeddings">
+      <h1>Dual Embeddings (DINOv3 + BGE)</h1>
+
+      <p class="intro">
+        TinyToken integrates two independent 384-dimensional Int8 neural representations within its self-attesting 25 KB envelope:
+        a <strong>visual embedding</strong> (Meta DINOv3 ViT-S/16) and a <strong>semantic text embedding</strong> (BAAI bge-small-en-v1.5).
+      </p>
+
+      <div class="option-list">
+        <div class="option-row">
+          <div class="option-name">Output Embedding</div>
+          <div class="option-name" style="color:#555">Model</div>
+          <div class="option-name" style="color:#555">Dimension &amp; Size</div>
+          <div class="option-description" style="color:#555;font-weight:600">Primary Domain</div>
+        </div>
+        <div class="option-row">
+          <div class="option-name">Visual Embedding</div>
+          <div class="option-description">Meta DINOv3 ViT-S/16 ONNX (q8)</div>
+          <div class="option-description">384-dim &middot; 384 bytes Int8</div>
+          <div class="option-description">Visual layout, objects, textures, camera geometry</div>
+        </div>
+        <div class="option-row">
+          <div class="option-name">Semantic Text Embedding</div>
+          <div class="option-description">BAAI bge-small-en-v1.5 ONNX (q8)</div>
+          <div class="option-description">384-dim &middot; 384 bytes Int8</div>
+          <div class="option-description">Document semantics, text meaning, conceptual topics</div>
+        </div>
+      </div>
+
+      <h2>How Document Text Embedding Works</h2>
+
+      <p>
+        When processing document files (<kbd>.pdf</kbd>, <kbd>.docx</kbd>, <kbd>.txt</kbd>, <kbd>.md</kbd>, <kbd>.csv</kbd>, <kbd>.json</kbd>, <kbd>.log</kbd>, <kbd>.yaml</kbd>),
+        the pipeline executes:
+      </p>
+
+      <ol style="color:#555;padding-left:20px;line-height:2">
+        <li><strong>Text Extraction:</strong> Extracted via Chrome PDFium WASM (PDF), XML streaming parser (DOCX), or Bun UTF-8 streaming (plain text and markdown).</li>
+        <li><strong>Token-Aware Clipping:</strong> Text is capped according to <kbd>APP_CLIP_TEXT_LIMIT_CHARS</kbd> (default 2200 characters) to ensure the token envelope never exceeds 25 KB.</li>
+        <li><strong>ONNX Feature Extraction:</strong> Runs BAAI's BERT-based sentence encoder using <kbd>@huggingface/transformers</kbd> with q8 quantized weights cached in <kbd>./.cache/transformers</kbd>.</li>
+        <li><strong>L2 Normalization &amp; Int8 Quantization:</strong> The 384-dimensional <kbd>[CLS]</kbd> representation is L2-normalized and scalar-quantized to an <kbd>Int8Array(384)</kbd>.</li>
+        <li><strong>Zero-Copy Storage:</strong> Encoded as a 768-character hex string in Section II metadata and indexed in the ZIP central manifest (<kbd>_index.json</kbd>) for instant RAM retrieval without unpacking.</li>
+      </ol>
+
+      <div class="callout callout-tip">
+        <div class="callout-icon">💡</div>
+        <div class="callout-content">
+          <strong>Dual-Score Fused Metric:</strong> In search operations, visual geometry and semantic text fidelity can be evaluated together:
+          <br>
+          <kbd>Fused Score = &alpha; &middot; Text_Cosine + (1 - &alpha;) &middot; Visual_Overlap</kbd>
+          <br>
+          This prevents false positive matches where scenes share similar color distributions but completely different semantic contexts.
+        </div>
+      </div>
+    </section>
 
 
     <footer class="footer">

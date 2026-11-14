@@ -1,8 +1,12 @@
 
 import { getDocumentProcessor } from "./documentProcessor";
 import { type ExtractedDocumentInfo } from "./indexer";
-import { extname } from "node:path";
 import { EmbeddingModelId } from "../models/token";
+
+function getFileExtension(filename: string): string {
+  const dot = filename.lastIndexOf(".");
+  return dot !== -1 ? filename.slice(dot).toLowerCase() : "";
+}
 
 export interface EmbeddedDocument {
   document: ExtractedDocumentInfo;
@@ -14,7 +18,7 @@ export async function embedDocument(
   bytes: Uint8Array,
   filename: string,
 ): Promise<EmbeddedDocument> {
-  const processor = getDocumentProcessor(extname(filename).toLowerCase());
+  const processor = getDocumentProcessor(getFileExtension(filename));
   const document = await processor.extract(bytes, filename);
   const embResult = await processor.embedText?.(bytes, filename);
 

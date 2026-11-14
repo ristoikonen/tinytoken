@@ -983,7 +983,7 @@
 
         <p class="tier-desc">
           QuickLZ Level-1 compressed semantic core. Holds asset taxonomy, full OCR text transcripts,
-          illumination-invariant Meta DINOv3 ViT-S/16 vectors, and geographic coordinates. Decompressed strictly on
+          illumination-invariant Meta DINOv3 ViT-S/16 visual vectors, BGE-small-en-v1.5 semantic text embeddings, and geographic coordinates. Decompressed strictly on
           demand.
         </p>
 
@@ -994,6 +994,14 @@
               <span class="brick-size">384 D</span>
             </div>
             <div class="brick-val">ViT-S/16 Int8 (768 Hex Chars)</div>
+          </div>
+
+          <div class="component-brick" onclick="onBarClick(3)">
+            <div class="brick-top">
+              <span class="brick-label">BGE Text Embedding</span>
+              <span class="brick-size">384 D</span>
+            </div>
+            <div class="brick-val">bge-small-en-v1.5 Int8 (Semantic Vector)</div>
           </div>
 
           <div class="component-brick" onclick="onBarClick(3)">
@@ -1116,7 +1124,7 @@
         name: "Beyond Deviation and Deficit (1).pdf",
         id: "tok_00028_p1_Beyond_Deviation_and_Deficit__1_.pdf",
         totalSize: 14827,
-        flags: "0x0037 [+MULTI_PAGE_DOC, VQ, SNARK, QLZ, DINO]",
+        flags: "0x0077 [+HAS_BGE, +MULTI_PAGE_DOC, VQ, SNARK, QLZ, DINO]",
         uuid: "16420037bad84b9fb5303b44acb85794",
         dims: "892 × 1261 px (Page 1 of 12)",
         merkle: "6a1a8ce531202188d4fb034e9e3727ca9c99c69f59c3ad4595bfcb551a6558c0",
@@ -1127,7 +1135,7 @@
         freeBytes: 10773,
         ocrChars: "1,480 Chars",
         ocrSnippet: "\"PDF Page 1/12: Beyond Deviation (210.5 KB) | Text: ISDUT...\"",
-        tags: "local-document, pdf, page-1-of-12, pdfium, verified",
+        tags: "local-document, pdf, page-1-of-12, pdfium, bge-small-en-v15, verified",
         previewFormat: "320 × 320 px PDFium Raster WebP Preview",
         pL1: Math.max(3.5, (88 / 25600) * 100),
         pL2: Math.max(4.0, (616 / 25600) * 100),

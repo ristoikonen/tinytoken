@@ -69,7 +69,7 @@ Arguments:
   <file|target>        Source file (image, doc, .token file, or tokens.zip archive) [required]
 
 Options:
-  -f, --field <name>   Extract single field: uuid, merkle, dims, flags, ts, sizes, vq, model, ocr
+  -f, --field <name>   Extract single field: uuid, merkle, dims, flags, ts, sizes, vq, model, ocr, dino, bge, tags
   --format <fmt>       Output format: table (default), csv, json, raw-hex
   --decode-meta        On-demand Section II QuickLZ metadata unpack (only when needed)
   --limit <n>          Maximum tokens to inspect when target is an archive or directory
@@ -201,17 +201,22 @@ function decodeFlagsToStrings(flags: number): string[] {
   if (flags & TokenFlags.HOMOMORPHIC_MASKED) list.push("HOMOMORPHIC_MASKED");
   if (flags & TokenFlags.MULTI_PAGE_DOC) list.push("MULTI_PAGE_DOC");
   if (flags & TokenFlags.HAS_DINO_EMBEDDING) list.push("HAS_DINO_EMBEDDING");
+  if (flags & TokenFlags.HAS_BGE_EMBEDDING) list.push("HAS_BGE_EMBEDDING");
   return list;
 }
 
 function embeddingModelToString(modelId: number): string {
   switch (modelId) {
+    case EmbeddingModelId.NONE:
+      return "0x00 (None)";
     case EmbeddingModelId.COLOR_HOG_FALLBACK:
       return "0x01 (Color/HOG Fallback 384B)";
     case EmbeddingModelId.DINOV3_VITS16_Q8:
       return "0x02 (Meta DINOv3 ViT-S/16 ONNX q8)";
-    case EmbeddingModelId.NONE:
-      return "0x00 (None)";
+    case EmbeddingModelId.BGE_TEXT_FALLBACK:
+      return "0x03 (BGE Text Lexical Fallback 384B)";
+    case EmbeddingModelId.BGE_SMALL_EN_V15_Q8:
+      return "0x04 (BAAI BGE-small-en-v1.5 ONNX q8)";
     default:
       return `0x${modelId.toString(16).padStart(2, "0")}`;
   }
@@ -325,7 +330,7 @@ async function handleStructCommand(
         return;
       default:
         // Decode Section II on-demand only if requesting metadata fields
-        if (["ocr", "ocrtext", "filename", "tags", "dino", "sourcepath"].includes(f) || args.decodeMeta) {
+        if (["ocr", "ocrtext", "filename", "tags", "dino", "bge", "bgemodel", "sourcepath"].includes(f) || args.decodeMeta) {
           const meta = extractTokenMetadata(rawBytes);
           if (f === "ocr" || f === "ocrtext") {
             process.stdout.write(`${meta.ocrText || ""}\n`);
@@ -343,12 +348,20 @@ async function handleStructCommand(
             process.stdout.write(`${meta.dinoEmbeddingHex || "none"}\n`);
             return;
           }
+          if (f === "bge") {
+            process.stdout.write(`${meta.bgeEmbeddingHex || "none"}\n`);
+            return;
+          }
+          if (f === "bgemodel") {
+            process.stdout.write(`${meta.bgeModelId !== undefined ? embeddingModelToString(meta.bgeModelId) : "none"}\n`);
+            return;
+          }
           if (f === "sourcepath") {
             process.stdout.write(`${meta.sourcePath || ""}\n`);
             return;
           }
         }
-        console.error(`Unknown field: "${args.field}". Available: uuid, merkle, dims, flags, ts, sizes, vq, model, ocr, filename, tags.`);
+        console.error(`Unknown field: "${args.field}". Available: uuid, merkle, dims, flags, ts, sizes, vq, model, ocr, filename, tags, dino, bge.`);
         process.exit(1);
     }
   }
@@ -788,6 +801,7 @@ async function main() {
     console.log(`  Source Path:            ${meta.sourcePath}`);
     console.log(`  Created At:             ${meta.createdAt}`);
     console.log(`  DINOv3 Vector:          ${meta.dinoEmbeddingHex ? "Present (384-dim Int8 CLS, 768 hex chars)" : "None"}`);
+    console.log(`  BGE Text Vector:        ${meta.bgeEmbeddingHex ? `Present (384-dim Int8, ${meta.bgeModelId !== undefined ? embeddingModelToString(meta.bgeModelId) : "bge-small-en-v1.5"})` : "None"}`);
     console.log(`  Tags:                   ${meta.tags ? meta.tags.join(", ") : "None"}`);
     if (meta.geoCoordinates) {
       console.log(`  Geo Coordinates:        ${meta.geoCoordinates.latitude}, ${meta.geoCoordinates.longitude}`);
