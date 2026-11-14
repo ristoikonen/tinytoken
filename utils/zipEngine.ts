@@ -18,6 +18,11 @@ import {
   type SearchHitDTO,
   type ZipTokenIndexEntry,
 } from "../models/token";
+import {
+  bgeEmbeddingToHex,
+  computeBgeCosineSimilarity,
+  hexToBgeEmbedding,
+} from "./bgeEmbedding";
 import { dinoEmbeddingToHex, hexToDinoEmbedding } from "./dinoEmbedding";
 import { crc32 } from "./galois";
 import { previewFormatToLabel } from "./imagePreview";
@@ -67,6 +72,8 @@ export interface SerializedManifestEntry {
   vqHex: string;
   dinoHex?: string;
   embeddingModelId?: EmbeddingModelId;
+  bgeHex?: string;
+  bgeModelId?: EmbeddingModelId;
 }
 
 /**
@@ -199,6 +206,12 @@ export async function writeNativeTokenZipArchive(
         : {}),
       ...(item.meta.embeddingModelId !== undefined
         ? { embeddingModelId: item.meta.embeddingModelId }
+        : {}),
+      ...(item.meta.bgeEmbedding
+        ? { bgeHex: bgeEmbeddingToHex(item.meta.bgeEmbedding) }
+        : {}),
+      ...(item.meta.bgeModelId !== undefined
+        ? { bgeModelId: item.meta.bgeModelId }
         : {}),
     });
   }
@@ -445,6 +458,8 @@ export class CompressedTokenSearchEngine {
           ...(item.embeddingModelId !== undefined
             ? { embeddingModelId: item.embeddingModelId }
             : {}),
+          ...(item.bgeHex ? { bgeEmbedding: hexToBgeEmbedding(item.bgeHex) } : {}),
+          ...(item.bgeModelId !== undefined ? { bgeModelId: item.bgeModelId } : {}),
         };
         this.metadataIndex.set(entry.id, entry);
         this.metadataIndex.set(entry.entryName, entry);
@@ -488,6 +503,12 @@ export class CompressedTokenSearchEngine {
             ? { dinoEmbedding: hexToDinoEmbedding(decoded.metadata.dinoEmbeddingHex) }
             : {}),
           embeddingModelId: decoded.embeddingModelId,
+          ...(decoded.metadata.bgeEmbeddingHex
+            ? { bgeEmbedding: hexToBgeEmbedding(decoded.metadata.bgeEmbeddingHex) }
+            : {}),
+          ...(decoded.metadata.bgeModelId !== undefined
+            ? { bgeModelId: decoded.metadata.bgeModelId }
+            : {}),
         };
         this.metadataIndex.set(entry.id, entry);
         this.metadataIndex.set(entry.entryName, entry);
@@ -545,6 +566,8 @@ export class CompressedTokenSearchEngine {
             ...(item.embeddingModelId !== undefined
               ? { embeddingModelId: item.embeddingModelId }
               : {}),
+            ...(item.bgeHex ? { bgeEmbedding: hexToBgeEmbedding(item.bgeHex) } : {}),
+            ...(item.bgeModelId !== undefined ? { bgeModelId: item.bgeModelId } : {}),
           };
           this.metadataIndex.set(entry.id, entry);
           this.metadataIndex.set(entry.entryName, entry);
@@ -596,6 +619,12 @@ export class CompressedTokenSearchEngine {
               ? { dinoEmbedding: hexToDinoEmbedding(decoded.metadata.dinoEmbeddingHex) }
               : {}),
             embeddingModelId: decoded.embeddingModelId,
+            ...(decoded.metadata.bgeEmbeddingHex
+              ? { bgeEmbedding: hexToBgeEmbedding(decoded.metadata.bgeEmbeddingHex) }
+              : {}),
+            ...(decoded.metadata.bgeModelId !== undefined
+              ? { bgeModelId: decoded.metadata.bgeModelId }
+              : {}),
           };
           this.metadataIndex.set(entry.id, entry);
           this.metadataIndex.set(entry.entryName, entry);
@@ -630,6 +659,12 @@ export class CompressedTokenSearchEngine {
               : {}),
             ...(decoded.embeddingModelId !== undefined
               ? { embeddingModelId: decoded.embeddingModelId }
+              : {}),
+            ...(decoded.metadata.bgeEmbeddingHex
+              ? { bgeHex: decoded.metadata.bgeEmbeddingHex }
+              : {}),
+            ...(decoded.metadata.bgeModelId !== undefined
+              ? { bgeModelId: decoded.metadata.bgeModelId }
               : {}),
           });
         } catch (err) {
@@ -747,11 +782,80 @@ export class CompressedTokenSearchEngine {
     );
   }
 
+  /**
+   * Sub-millisecond BGE semantic text embedding similarity search.
+   * Compares 384-byte Int8 embeddings across all indexed tokens.
+   */
+  public searchSimilarBGE(
+    targetIdOrEmbedding: string | Int8Array,
+    textFilter = "",
+    limit = 50,
+  ): SearchHitDTO[] {
+    let queryEmbedding: Int8Array | undefined;
+    let targetId = "";
+
+    if (typeof targetIdOrEmbedding === "string") {
+      const targetEntry = this.metadataIndex.get(targetIdOrEmbedding);
+      if (!targetEntry || !targetEntry.bgeEmbedding) return [];
+      targetId = targetEntry.id;
+      queryEmbedding = targetEntry.bgeEmbedding;
+    } else {
+      queryEmbedding = targetIdOrEmbedding;
+    }
+
+    if (!queryEmbedding || queryEmbedding.length !== 384) {
+      return [];
+    }
+
+    const lowerFilter = textFilter.trim().toLowerCase();
+    const scored: Array<{
+      entry: ZipTokenIndexEntry;
+      bgeSimilarity: number;
+    }> = [];
+
+    for (const item of this.metadataStore) {
+      if (!item.bgeEmbedding || item.bgeEmbedding.length !== 384) {
+        continue;
+      }
+
+      if (
+        lowerFilter &&
+        !item.filename.toLowerCase().includes(lowerFilter) &&
+        !item.ocrText.toLowerCase().includes(lowerFilter)
+      ) {
+        continue;
+      }
+
+      if (targetId && item.id === targetId) {
+        scored.push({
+          entry: item,
+          bgeSimilarity: 100,
+        });
+        continue;
+      }
+
+      const cosine = computeBgeCosineSimilarity(queryEmbedding, item.bgeEmbedding);
+      const similarityPct = Math.round(Math.max(0, (cosine + 1) / 2) * 10000) / 100;
+      scored.push({
+        entry: item,
+        bgeSimilarity: similarityPct,
+      });
+    }
+
+    scored.sort((a, b) => b.bgeSimilarity - a.bgeSimilarity);
+    return scored
+      .slice(0, limit)
+      .map(({ entry, bgeSimilarity }) =>
+        this.toSearchHitDTO(entry, undefined, bgeSimilarity, null, bgeSimilarity),
+      );
+  }
+
   private toSearchHitDTO(
     entry: ZipTokenIndexEntry,
     adcDist?: number,
     similarityScore?: number,
     dinoSimilarity?: number | null,
+    bgeSimilarity?: number | null,
   ): SearchHitDTO {
     return {
       id: entry.id,
@@ -776,8 +880,9 @@ export class CompressedTokenSearchEngine {
             adcDistance: adcDist,
             similarityScore: similarityScore ?? adcDistanceToSimilarityPct(adcDist),
             dinoSimilarity: dinoSimilarity ?? null,
+            bgeSimilarity: bgeSimilarity ?? null,
           }
-        : {}),
+        : (bgeSimilarity !== undefined ? { bgeSimilarity } : {})),
     };
   }
 

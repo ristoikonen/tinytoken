@@ -29,6 +29,7 @@ import {
 } from "../models/token";
 import { encodeHeaderParity64, verifyAndHealHeader640 } from "./galois";
 import { QuickLZ } from "./quicklz";
+import { hexToBgeEmbedding } from "./bgeEmbedding";
 import {
   bytesToHex,
   generateSnarkAttestationStub,
@@ -180,6 +181,9 @@ export async function encodeBinaryToken(
   }
   if (input.metadata.dinoEmbeddingHex) {
     flags |= TokenFlags.HAS_DINO_EMBEDDING;
+  }
+  if (input.metadata.bgeEmbeddingHex) {
+    flags |= TokenFlags.HAS_BGE_EMBEDDING;
   }
   if (isCompressed) {
     flags |= TokenFlags.QUICKLZ_COMPRESSED;
@@ -342,6 +346,7 @@ export function inspectBinaryTokenHeader(rawBytes: Uint8Array): TokenHeaderInspe
   if (flags & TokenFlags.HOMOMORPHIC_MASKED) flagNames.push("HOMOMORPHIC_MASKED");
   if (flags & TokenFlags.MULTI_PAGE_DOC) flagNames.push("MULTI_PAGE_DOC");
   if (flags & TokenFlags.HAS_DINO_EMBEDDING) flagNames.push("HAS_DINO_EMBEDDING");
+  if (flags & TokenFlags.HAS_BGE_EMBEDDING) flagNames.push("HAS_BGE_EMBEDDING");
 
   let previewFormatLabel = "UNKNOWN";
   switch (previewFormat) {
@@ -569,6 +574,13 @@ export async function decodeBinaryToken(
     };
   }
 
+  let bgeEmbedding: Int8Array<ArrayBuffer> | undefined;
+  if (metadata.bgeEmbeddingHex) {
+    try {
+      bgeEmbedding = hexToBgeEmbedding(metadata.bgeEmbeddingHex);
+    } catch { }
+  }
+
   return {
     id: metadata.id,
     magic,
@@ -595,6 +607,7 @@ export async function decodeBinaryToken(
     rsCorrectedErrors: rsResult.correctedErrors,
     envelopeBoundsValid,
     metadata,
+    bgeEmbedding,
     previewBytes,
     byteMap: {
       totalTokenBytes: rawToken.length,

@@ -12,10 +12,14 @@
 
 import { PDFiumLibrary } from "@hyzyla/pdfium";
 import sharp from "sharp";
-import { EmbeddingModelId, PreviewFormat } from "../models/token";
+import { EmbeddingModelId, PreviewFormat, getClipTextLimit } from "../models/token";
 import { extractRealDinoEmbedding } from "./dinoEmbedding";
+import { extractRealBgeEmbedding } from "./bgeEmbedding";
 import { boxDownsampleRgbTo16x16 } from "./imagePreview";
 import { encodeRgb16x16ToVqGrid } from "./vqCodebook";
+
+const MAX_PAGES = 3;
+const MAX_PREVIEW_BYTES = 16384;
 
 export interface RenderedPdfPageBundle {
   page: number; // 1-indexed page number
@@ -27,7 +31,9 @@ export interface RenderedPdfPageBundle {
   previewFormat: PreviewFormat;
   vqIndices: Uint8Array<ArrayBuffer>;
   dinoEmbedding: Int8Array<ArrayBuffer>;
+  bgeEmbedding?: Int8Array<ArrayBuffer>;
   embeddingModelId: EmbeddingModelId;
+  bgeModelId?: EmbeddingModelId;
   timing?: {
     sharpNs: number;
     vqNs: number;
@@ -73,8 +79,8 @@ export function selectPdfPageIndices(totalPages: number, maxPagesPerDoc = 3): nu
  */
 export async function renderPdfPagesWithPdfium(
   pdfBytes: Uint8Array,
-  maxPagesPerDoc = 3,
-  maxPreviewBytes = 16384,
+  maxPagesPerDoc = MAX_PAGES,
+  maxPreviewBytes = MAX_PREVIEW_BYTES,
 ): Promise<RenderedPdfPageBundle[]> {
   const library = await getPdfiumLibrary();
   const doc = await library.loadDocument(pdfBytes);
@@ -91,7 +97,7 @@ export async function renderPdfPagesWithPdfium(
         .replace(/\r\n/g, " ")
         .replace(/\s+/g, " ")
         .trim()
-        .slice(0, 2200);
+        .slice(0, getClipTextLimit());
 
       // Render PDF page to raw RGBA bitmap via PDFium WASM
       let bitmapWidth = 612;
@@ -175,6 +181,8 @@ export async function renderPdfPagesWithPdfium(
       );
       const dinoNs = Bun.nanoseconds() - tDino0;
 
+      const bge = cleanText.trim() ? await extractRealBgeEmbedding(cleanText) : null;
+
       bundles.push({
         page: pageIdx + 1,
         totalPages,
@@ -185,7 +193,9 @@ export async function renderPdfPagesWithPdfium(
         previewFormat: PreviewFormat.WEBP,
         vqIndices,
         dinoEmbedding: dinoRes.embedding,
+        bgeEmbedding: bge?.embedding,
         embeddingModelId: dinoRes.modelId,
+        bgeModelId: bge?.modelId,
         timing: {
           sharpNs,
           vqNs,

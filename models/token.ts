@@ -32,6 +32,7 @@ export enum TokenFlags {
   HOMOMORPHIC_MASKED = 1 << 3, // 0x08: GF(2^8) homomorphic redaction/watermark applied
   MULTI_PAGE_DOC = 1 << 4,     // 0x10: Token represents a page from a multi-page document
   HAS_DINO_EMBEDDING = 1 << 5, // 0x20: 384-byte DINOv3 ViT-S/16 Int8 semantic embedding present
+  HAS_BGE_EMBEDDING = 1 << 6,  // 0x40: 384-byte BGE-small-en-v1.5 Int8 semantic text embedding present
 }
 
 export enum PreviewFormat {
@@ -52,6 +53,17 @@ export enum EmbeddingModelId {
   BGE_SMALL_EN_V15_Q8 = 0x04,
 }
 
+export const DEFAULT_CLIP_TEXT_LIMIT = 2200;
+
+/**
+ * Returns the app-wide text clipping ceiling in characters, read from APP_CLIP_TEXT_LIMIT_CHARS (or fallback).
+ */
+export function getClipTextLimit(): number {
+  const val = Bun.env.APP_CLIP_TEXT_LIMIT_CHARS ?? Bun.env.APP_CLIP_TEXT_LIMIT_CHAR;
+  const num = val ? Number(val) : NaN;
+  return Number.isFinite(num) && num > 0 ? num : DEFAULT_CLIP_TEXT_LIMIT;
+}
+
 export interface TokenMetadataPayload {
   id: string;
   filename: string;
@@ -65,6 +77,8 @@ export interface TokenMetadataPayload {
   createdAt: string;
   ocrText: string;
   dinoEmbeddingHex?: string; // 384-byte (768 hex chars) Int8 DINOv3 ViT-S/16 semantic embedding
+  bgeEmbeddingHex?: string;  // 384-byte (768 hex chars) Int8 BGE-small-en-v1.5 semantic text embedding
+  bgeModelId?: EmbeddingModelId;
   tags?: string[];
   environmentClass?: string;
   geoCoordinates?: {
@@ -131,6 +145,7 @@ export interface DecodedToken {
   rsCorrectedErrors: number;
   envelopeBoundsValid: boolean;
   metadata: TokenMetadataPayload;
+  bgeEmbedding?: Int8Array;
   previewBytes: Uint8Array;
   byteMap: {
     totalTokenBytes: number;
@@ -206,7 +221,9 @@ export interface ZipTokenIndexEntry {
   snarkVerified: boolean;
   vqIndices: Uint8Array; // 256 bytes kept in RAM for 0ms neural preview & ADC search
   dinoEmbedding?: Int8Array; // 384 bytes kept in RAM for sub-ms DINOv3 semantic similarity
+  bgeEmbedding?: Int8Array; // 384 bytes kept in RAM for sub-ms BGE semantic text similarity
   embeddingModelId?: EmbeddingModelId;
+  bgeModelId?: EmbeddingModelId;
 }
 
 export interface SearchHitDTO {
@@ -229,5 +246,6 @@ export interface SearchHitDTO {
   vqHex: string; // 512-char hex of 256-byte VQ 16x16 grid
   similarityScore?: number; // 0..100% hybrid DINOv3 + VQ similarity score
   dinoSimilarity?: number | null; // 0..100% DINOv3 ViT-S/16 semantic cosine score (null if un-evaluated or incompatible)
+  bgeSimilarity?: number | null; // 0..100% BGE semantic text cosine score
   adcDistance?: number;
 }

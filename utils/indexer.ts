@@ -19,6 +19,7 @@ import {
   dinoEmbeddingToHex,
   extractColorHogFallbackFromRgb224,
 } from "./dinoEmbedding";
+import { bgeEmbeddingToHex, extractRealBgeEmbedding } from "./bgeEmbedding";
 import {
   type DocumentProcessor,
   type ExtractedDocumentInfo,
@@ -92,6 +93,10 @@ const DOCUMENT_EXTENSIONS = new Set([
   ".yaml",
   ".yml",
 ]);
+
+function getBasename(fullPath: string, fallback = "asset.bin"): string {
+  return fullPath.replace(/\\/g, "/").split("/").pop() ?? fallback;
+}
 
 export class Win11TokenPipeline {
   constructor(private config: IndexerConfig) { }
@@ -203,12 +208,19 @@ export class Win11TokenPipeline {
    */
   public async scanDocumentDirectory(): Promise<string[]> {
     const docDir = this.config.documentDirectory ?? "./documents";
-    const allowedSet = new Set(
-      this.config.allowedExtensions
-        .map((e) => e.toLowerCase())
-        .filter((e) => DOCUMENT_EXTENSIONS.has(e)),
-    );
-    return this.scanDirectory(docDir, allowedSet.size > 0 ? allowedSet : DOCUMENT_EXTENSIONS);
+    const hasExplicitExtensions =
+      Array.isArray(this.config.allowedExtensions) &&
+      this.config.allowedExtensions.length > 0;
+    if (hasExplicitExtensions) {
+      const allowedSet = new Set(
+        this.config.allowedExtensions
+          .map((e) => e.toLowerCase())
+          .filter((e) => DOCUMENT_EXTENSIONS.has(e)),
+      );
+      if (allowedSet.size === 0) return [];
+      return this.scanDirectory(docDir, allowedSet);
+    }
+    return this.scanDirectory(docDir, DOCUMENT_EXTENSIONS);
   }
 
   /**
@@ -453,7 +465,7 @@ export class Win11TokenPipeline {
     const bunFile = Bun.file(fullPath);
     if (!(await bunFile.exists())) return null;
 
-    const filename = fullPath.split("/").pop() ?? "asset.bin";
+    const filename = getBasename(fullPath, "asset.bin");
     const dotIdx = filename.lastIndexOf(".");
     const ext = dotIdx !== -1 ? filename.slice(dotIdx).toLowerCase() : "";
     const createdAt = new Date(bunFile.lastModified || Date.now()).toISOString();
@@ -503,7 +515,7 @@ export class Win11TokenPipeline {
     const bunFile = Bun.file(fullPath);
     if (!(await bunFile.exists())) return [];
 
-    const filename = fullPath.split("/").pop() ?? "document.pdf";
+    const filename = getBasename(fullPath, "document.pdf");
     const dotIdx = filename.lastIndexOf(".");
     const ext = dotIdx !== -1 ? filename.slice(dotIdx).toLowerCase() : ".pdf";
     const createdAt = new Date(bunFile.lastModified || Date.now()).toISOString();
@@ -569,6 +581,10 @@ export class Win11TokenPipeline {
         const id = `tok_${String(seq).padStart(5, "0")}_p${pg.page}_${safeFile}`;
         const entryName = `${id}.token`;
         const dinoEmbeddingHex = dinoEmbeddingToHex(pg.dinoEmbedding);
+        const bgeEmbeddingHex = pg.bgeEmbedding ? bgeEmbeddingToHex(pg.bgeEmbedding) : undefined;
+        const bgeModelId = pg.bgeEmbedding
+          ? (pg.bgeModelId ?? EmbeddingModelId.BGE_SMALL_EN_V15_Q8)
+          : undefined;
 
         const snippetPart = pg.extractedText ? ` | Page Text: ${pg.extractedText}` : "";
         const ocrText =
@@ -588,12 +604,15 @@ export class Win11TokenPipeline {
           createdAt,
           ocrText,
           dinoEmbeddingHex,
+          bgeEmbeddingHex,
+          bgeModelId,
           tags: [
             "local-document",
             ext.replace(".", ""),
             `page-${pg.page}-of-${pg.totalPages}`,
             ext === ".pdf" ? "pdfium-rendered" : "processor-rendered",
             "dinov3-vit-s16",
+            ...(bgeEmbeddingHex ? ["bge-small-en-v15"] : []),
             "verified",
             ...(pg.extractedText.includes("DOCX uncomressed size over max size")
               ? ["docx-oversized", "uncompressed-size-over-max"]
@@ -654,7 +673,9 @@ export class Win11TokenPipeline {
             snarkVerified: decoded.snarkAttestation.valid,
             vqIndices: pg.vqIndices,
             dinoEmbedding: pg.dinoEmbedding,
+            bgeEmbedding: pg.bgeEmbedding,
             embeddingModelId: pg.embeddingModelId,
+            bgeModelId,
           },
         });
       }
@@ -662,8 +683,22 @@ export class Win11TokenPipeline {
     }
 
     const docInfo = await processor.extract(rawBytes, filename);
-    const id = `tok_${String(startTokenCounter).padStart(5, "0")}_${filename.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+    const safeFile = filename.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const id = `tok_${String(startTokenCounter).padStart(5, "0")}_p1_${safeFile}`;
     const entryName = `${id}.token`;
+
+    let fallbackBgeEmbedding: Int8Array | undefined;
+    let fallbackBgeModelId: EmbeddingModelId | undefined;
+    if (docInfo.extractedText && docInfo.extractedText.trim().length > 0) {
+      try {
+        const bgeRes = await extractRealBgeEmbedding(docInfo.extractedText);
+        fallbackBgeEmbedding = bgeRes.embedding;
+        fallbackBgeModelId = bgeRes.modelId;
+      } catch (err) {
+        console.warn(`BGE embedding failed in fallback for ${filename}:`, err);
+      }
+    }
+    const bgeEmbeddingHex = fallbackBgeEmbedding ? bgeEmbeddingToHex(fallbackBgeEmbedding) : undefined;
 
     const tTokenStart = Bun.nanoseconds();
     const bundle = await rasterizeAssetToWebpAndTensors(
@@ -698,6 +733,7 @@ export class Win11TokenPipeline {
       ext.replace(".", ""),
       `${docInfo.totalPages}-pages`,
       "dinov3-vit-s16",
+      ...(bgeEmbeddingHex ? ["bge-small-en-v15"] : []),
       "verified",
     ];
     if (pdfiumFailureReason) {
@@ -720,6 +756,8 @@ export class Win11TokenPipeline {
       createdAt,
       ocrText,
       dinoEmbeddingHex,
+      bgeEmbeddingHex,
+      bgeModelId: fallbackBgeModelId,
       tags,
     };
 
@@ -776,7 +814,9 @@ export class Win11TokenPipeline {
           snarkVerified: decoded.snarkAttestation.valid,
           vqIndices: bundle.vqIndices,
           dinoEmbedding: bundle.dinoEmbedding,
+          bgeEmbedding: fallbackBgeEmbedding,
           embeddingModelId: bundle.embeddingModelId,
+          bgeModelId: fallbackBgeModelId,
         },
       },
     ];
@@ -806,15 +846,23 @@ export class Win11TokenPipeline {
     const benchmark = new PipelineBenchmark();
     const t0 = performance.now();
     const sourceDir = this.config.sourceDirectory;
-    const imageFilter = new Set(
-      this.config.allowedExtensions
-        .map((e) => e.toLowerCase())
-        .filter((e) => IMAGE_EXTENSIONS.has(e)),
-    );
-    const imagePaths = await this.scanDirectory(
-      sourceDir,
-      imageFilter.size > 0 ? imageFilter : IMAGE_EXTENSIONS,
-    );
+    const hasExplicitExtensions =
+      Array.isArray(this.config.allowedExtensions) &&
+      this.config.allowedExtensions.length > 0;
+
+    const imageFilter = hasExplicitExtensions
+      ? new Set(
+          this.config.allowedExtensions
+            .map((e) => e.toLowerCase())
+            .filter((e) => IMAGE_EXTENSIONS.has(e)),
+        )
+      : IMAGE_EXTENSIONS;
+
+    const imagePaths =
+      hasExplicitExtensions && imageFilter.size === 0
+        ? []
+        : await this.scanDirectory(sourceDir, imageFilter);
+
     const documentPaths = await this.scanDocumentDirectory();
 
     const existingTokens = new Map<string, ZipTokenIndexEntry[]>();
@@ -854,7 +902,7 @@ export class Win11TokenPipeline {
       for (const fullPath of paths) {
         const file = Bun.file(fullPath);
         if (!(await file.exists())) continue;
-        const filename = fullPath.split("/").pop() ?? "asset.bin";
+        const filename = getBasename(fullPath, "asset.bin");
         const key = JSON.stringify([filename, file.size, isDocument]);
         scannedSourceCounts.set(key, (scannedSourceCounts.get(key) ?? 0) + 1);
       }
@@ -868,7 +916,7 @@ export class Win11TokenPipeline {
     ): Promise<ArchiveTokenItem[] | null> => {
       const file = Bun.file(fullPath);
       if (!(await file.exists())) return null;
-      const filename = fullPath.split("/").pop() ?? "asset.bin";
+      const filename = getBasename(fullPath, "asset.bin");
       const key = JSON.stringify([filename, file.size, isDocument]);
       const matches = existingTokens
         .get(key)
@@ -1011,6 +1059,12 @@ export class Win11TokenPipeline {
             : {}),
           ...(item.meta.embeddingModelId !== undefined
             ? { embeddingModelId: item.meta.embeddingModelId }
+            : {}),
+          ...(item.meta.bgeEmbedding
+            ? { bgeHex: bgeEmbeddingToHex(item.meta.bgeEmbedding) }
+            : {}),
+          ...(item.meta.bgeModelId !== undefined
+            ? { bgeModelId: item.meta.bgeModelId }
             : {}),
         });
       }

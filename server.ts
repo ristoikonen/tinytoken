@@ -100,7 +100,7 @@ export function ensureInitialized(): Promise<void> {
 }
 
 // Both logs and calls request handler
-async function requestLogging(req: Request, server: Bun.Server<any>, toConsole: boolean = true): Promise<Response> {
+async function requestLogging(req: Request, server?: Bun.Server<any>, toConsole: boolean = true): Promise<Response> {
   const start = performance.now();
   const url = new URL(req.url);
   let status = 500;
@@ -120,10 +120,10 @@ async function requestLogging(req: Request, server: Bun.Server<any>, toConsole: 
       method: req.method,
       path: url.pathname,
       status: status,
-      hostname: server.hostname,
-      port: server.port,
-      isdevelopment: server.development,
-      ip: server.requestIP(req)?.address ?? "unknown",
+      hostname: server?.hostname,
+      port: server?.port,
+      isdevelopment: server?.development,
+      ip: server?.requestIP?.(req)?.address ?? "unknown",
       userAgent: req.headers.get("user-agent"),
       referer: req.headers.get("referer"),
       language: req.headers.get("accept-language"),

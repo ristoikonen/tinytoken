@@ -8,9 +8,11 @@
  * 4. Fallback binary document handler
  */
 
-import { EmbeddingModelId, PreviewFormat } from "../models/token";
+import { EmbeddingModelId, PreviewFormat, getClipTextLimit } from "../models/token";
 import { extensionToMimeType, rasterizeAssetToWebpAndTensors } from "./imagePreview";
 import { type PageBundle, renderPdfPagesWithPdfium } from "./pdfEngine";
+import { extractRealBgeEmbedding } from "./bgeEmbedding";
+
 
 /**
  * Maximum decompressed size ceiling for DOCX `word/document.xml` to prevent zip-bomb attacks.
@@ -48,12 +50,28 @@ export interface DocumentProcessor {
 
   renderPages(
     bytes: Uint8Array,
+    maxPages?: number,
   ): Promise<PageBundle[]>;
+
   embedText?(
     bytes: Uint8Array,
     filename: string,
   ): Promise<TextEmbeddingResult | null>;
+}
 
+export async function embedDocumentText(
+  processor: DocumentProcessor,
+  bytes: Uint8Array,
+  filename: string,
+): Promise<TextEmbeddingResult | null> {
+  const info = await processor.extract(bytes, filename);
+  const text = info.extractedText.trim();
+  if (!text || info.isOversized) return null;
+  const bge = await extractRealBgeEmbedding(text);
+  return {
+    embedding: bge.embedding,
+    modelId: bge.modelId,
+  };
 }
 
 /**
@@ -89,8 +107,12 @@ export class PdfDocumentProcessor implements DocumentProcessor {
     };
   }
 
-  public async renderPages(bytes: Uint8Array): Promise<PageBundle[]> {
-    return renderPdfPagesWithPdfium(bytes, 3);
+  public async renderPages(bytes: Uint8Array, maxPages?: number): Promise<PageBundle[]> {
+    return renderPdfPagesWithPdfium(bytes, maxPages ?? 3);
+  }
+
+  public async embedText(bytes: Uint8Array, filename: string): Promise<TextEmbeddingResult | null> {
+    return embedDocumentText(this, bytes, filename);
   }
 }
 
@@ -137,7 +159,7 @@ export class DocxDocumentProcessor implements DocumentProcessor {
             .replace(/[^\x20-\x7E]+/g, " ")
             .replace(/\s+/g, " ")
             .trim()
-            .slice(0, 1200);
+            .slice(0, getClipTextLimit());
         } catch {
           // Fallback below
         }
@@ -172,6 +194,10 @@ export class DocxDocumentProcessor implements DocumentProcessor {
       },
     );
 
+    const bge = info.extractedText.trim()
+      ? await extractRealBgeEmbedding(info.extractedText)
+      : null;
+
     return [
       {
         page: 1,
@@ -183,10 +209,16 @@ export class DocxDocumentProcessor implements DocumentProcessor {
         previewFormat: bundle.previewFormat,
         vqIndices: bundle.vqIndices,
         dinoEmbedding: bundle.dinoEmbedding,
+        bgeEmbedding: bge?.embedding,
         embeddingModelId: bundle.embeddingModelId,
+        bgeModelId: bge?.modelId,
         timing: bundle.timing,
       },
     ];
+  }
+
+  public async embedText(bytes: Uint8Array, filename: string): Promise<TextEmbeddingResult | null> {
+    return embedDocumentText(this, bytes, filename);
   }
 }
 
@@ -212,7 +244,9 @@ export class TextDocumentProcessor implements DocumentProcessor {
   }
 
   public async extract(bytes: Uint8Array, filename: string): Promise<ExtractedDocumentInfo> {
-    const sample = bytes.subarray(0, 8192);
+    const clipLimit = getClipTextLimit();
+    const maxSample = Math.min(bytes.length, Math.max(8192, clipLimit * 4));
+    const sample = bytes.subarray(0, maxSample);
     const decoded = new TextDecoder("utf-8", { fatal: false }).decode(sample);
     const lines = decoded.split(/\r?\n/);
     const totalLinesEstimate = Math.max(
@@ -225,7 +259,7 @@ export class TextDocumentProcessor implements DocumentProcessor {
       .replace(/[^\x20-\x7E\n\r\t]+/g, " ")
       .replace(/\s+/g, " ")
       .trim()
-      .slice(0, 1200);
+      .slice(0, clipLimit);
 
     return {
       totalPages,
@@ -251,6 +285,10 @@ export class TextDocumentProcessor implements DocumentProcessor {
       },
     );
 
+    const bge = info.extractedText.trim()
+      ? await extractRealBgeEmbedding(info.extractedText)
+      : null;
+
     return [
       {
         page: 1,
@@ -262,10 +300,16 @@ export class TextDocumentProcessor implements DocumentProcessor {
         previewFormat: bundle.previewFormat,
         vqIndices: bundle.vqIndices,
         dinoEmbedding: bundle.dinoEmbedding,
+        bgeEmbedding: bge?.embedding,
         embeddingModelId: bundle.embeddingModelId,
+        bgeModelId: bge?.modelId,
         timing: bundle.timing,
       },
     ];
+  }
+
+  public async embedText(bytes: Uint8Array, filename: string): Promise<TextEmbeddingResult | null> {
+    return embedDocumentText(this, bytes, filename);
   }
 }
 
@@ -278,12 +322,14 @@ export class FallbackDocumentProcessor implements DocumentProcessor {
   }
 
   public async extract(bytes: Uint8Array, filename: string): Promise<ExtractedDocumentInfo> {
+    const clipLimit = getClipTextLimit();
+    const maxSample = Math.min(bytes.length, Math.max(4096, clipLimit * 4));
     const textPreview = new TextDecoder("utf-8", { fatal: false })
-      .decode(bytes.subarray(0, 4096))
+      .decode(bytes.subarray(0, maxSample))
       .replace(/[^\x20-\x7E]+/g, " ")
       .replace(/\s+/g, " ")
       .trim()
-      .slice(0, 800);
+      .slice(0, clipLimit);
 
     return {
       totalPages: 1,
@@ -309,6 +355,10 @@ export class FallbackDocumentProcessor implements DocumentProcessor {
       },
     );
 
+    const bge = info.extractedText.trim()
+      ? await extractRealBgeEmbedding(info.extractedText)
+      : null;
+
     return [
       {
         page: 1,
@@ -320,10 +370,16 @@ export class FallbackDocumentProcessor implements DocumentProcessor {
         previewFormat: bundle.previewFormat,
         vqIndices: bundle.vqIndices,
         dinoEmbedding: bundle.dinoEmbedding,
+        bgeEmbedding: bge?.embedding,
         embeddingModelId: bundle.embeddingModelId,
+        bgeModelId: bge?.modelId,
         timing: bundle.timing,
       },
     ];
+  }
+
+  public async embedText(bytes: Uint8Array, filename: string): Promise<TextEmbeddingResult | null> {
+    return embedDocumentText(this, bytes, filename);
   }
 }
 
