@@ -13,6 +13,7 @@
  */
 
 import {
+  type ContentId,
   EmbeddingModelId,
   PreviewFormat,
   type SearchHitDTO,
@@ -68,6 +69,7 @@ export interface SerializedManifestEntry {
   compressionMethod: number;
   crc32: number;
   merkleRootHex: string;
+  contentId?: string;
   snarkVerified: boolean;
   vqHex: string;
   dinoHex?: string;
@@ -199,6 +201,7 @@ export async function writeNativeTokenZipArchive(
       compressionMethod: offsets.compressionMethod,
       crc32: offsets.crc32,
       merkleRootHex: item.meta.merkleRootHex,
+      contentId: item.meta.contentId ?? item.meta.merkleRootHex,
       snarkVerified: item.meta.snarkVerified,
       vqHex: vqGridToHex(item.meta.vqIndices),
       ...(item.meta.dinoEmbedding
@@ -452,6 +455,7 @@ export class CompressedTokenSearchEngine {
           compressionMethod: item.compressionMethod,
           crc32: item.crc32,
           merkleRootHex: item.merkleRootHex,
+          contentId: item.contentId ?? item.merkleRootHex,
           snarkVerified: item.snarkVerified,
           vqIndices: hexToVqGrid(item.vqHex),
           ...(item.dinoHex ? { dinoEmbedding: hexToDinoEmbedding(item.dinoHex) } : {}),
@@ -463,6 +467,7 @@ export class CompressedTokenSearchEngine {
         };
         this.metadataIndex.set(entry.id, entry);
         this.metadataIndex.set(entry.entryName, entry);
+        this.metadataIndex.set(entry.merkleRootHex.toLowerCase(), entry);
         this.metadataStore.push(entry);
       }
     } else {
@@ -497,6 +502,7 @@ export class CompressedTokenSearchEngine {
           compressionMethod: fb.compressionMethod,
           crc32: fb.crc32,
           merkleRootHex: decoded.merkleRootHex,
+          contentId: decoded.contentId ?? decoded.merkleRootHex,
           snarkVerified: decoded.snarkAttestation.valid,
           vqIndices: decoded.vqIndices,
           ...(decoded.metadata.dinoEmbeddingHex
@@ -512,6 +518,7 @@ export class CompressedTokenSearchEngine {
         };
         this.metadataIndex.set(entry.id, entry);
         this.metadataIndex.set(entry.entryName, entry);
+        this.metadataIndex.set(entry.merkleRootHex.toLowerCase(), entry);
         this.metadataStore.push(entry);
       }
     }
@@ -560,6 +567,7 @@ export class CompressedTokenSearchEngine {
             compressionMethod: 0,
             crc32: item.crc32 || 0,
             merkleRootHex: item.merkleRootHex,
+            contentId: item.contentId ?? item.merkleRootHex,
             snarkVerified: item.snarkVerified,
             vqIndices: hexToVqGrid(item.vqHex),
             ...(item.dinoHex ? { dinoEmbedding: hexToDinoEmbedding(item.dinoHex) } : {}),
@@ -571,6 +579,7 @@ export class CompressedTokenSearchEngine {
           };
           this.metadataIndex.set(entry.id, entry);
           this.metadataIndex.set(entry.entryName, entry);
+          this.metadataIndex.set(entry.merkleRootHex.toLowerCase(), entry);
           this.metadataStore.push(entry);
         }
         this.archiveSizeBytes = totalBytes;
@@ -613,6 +622,7 @@ export class CompressedTokenSearchEngine {
             compressionMethod: 0,
             crc32: 0,
             merkleRootHex: decoded.merkleRootHex,
+            contentId: decoded.contentId ?? decoded.merkleRootHex,
             snarkVerified: decoded.snarkAttestation.valid,
             vqIndices: decoded.vqIndices,
             ...(decoded.metadata.dinoEmbeddingHex
@@ -628,6 +638,7 @@ export class CompressedTokenSearchEngine {
           };
           this.metadataIndex.set(entry.id, entry);
           this.metadataIndex.set(entry.entryName, entry);
+          this.metadataIndex.set(entry.merkleRootHex.toLowerCase(), entry);
           this.metadataStore.push(entry);
 
           manifestRecords.push({
@@ -652,6 +663,7 @@ export class CompressedTokenSearchEngine {
             compressionMethod: 0,
             crc32: 0,
             merkleRootHex: decoded.merkleRootHex,
+            contentId: decoded.contentId ?? decoded.merkleRootHex,
             snarkVerified: decoded.snarkAttestation.valid,
             vqHex: vqGridToHex(decoded.vqIndices),
             ...(decoded.metadata.dinoEmbeddingHex
@@ -676,7 +688,7 @@ export class CompressedTokenSearchEngine {
       if (manifestRecords.length > 0) {
         try {
           await Bun.write(`${dataDir}/_index.json`, JSON.stringify(manifestRecords, null, 2));
-        } catch {}
+        } catch { }
       }
     } catch {
       // data directory not accessible or empty
@@ -885,17 +897,25 @@ export class CompressedTokenSearchEngine {
       ocrSnippet: entry.ocrText.slice(0, 220),
       createdAt: entry.createdAt,
       merkleRootHex: entry.merkleRootHex,
+      contentId: entry.contentId ?? entry.merkleRootHex,
       snarkVerified: entry.snarkVerified,
       vqHex: vqGridToHex(entry.vqIndices),
       ...(adcDist !== undefined
         ? {
-            adcDistance: adcDist,
-            similarityScore: similarityScore ?? adcDistanceToSimilarityPct(adcDist),
-            dinoSimilarity: dinoSimilarity ?? null,
-            bgeSimilarity: bgeSimilarity ?? null,
-          }
+          adcDistance: adcDist,
+          similarityScore: similarityScore ?? adcDistanceToSimilarityPct(adcDist),
+          dinoSimilarity: dinoSimilarity ?? null,
+          bgeSimilarity: bgeSimilarity ?? null,
+        }
         : (bgeSimilarity !== undefined ? { bgeSimilarity } : {})),
     };
+  }
+
+  /**
+   * Retrieves a token index entry by its immutable 32-byte SHA-256 ContentId (Merkle root hex).
+   */
+  public getByContentId(cid: ContentId): ZipTokenIndexEntry | undefined {
+    return this.metadataIndex.get(cid) || this.metadataIndex.get(cid.toLowerCase());
   }
 
   /**
@@ -903,7 +923,7 @@ export class CompressedTokenSearchEngine {
    * If APP_ZIP_USE=false, reads the individual *.token file from dataDirPath directly.
    */
   public async extractToken(idOrEntryName: string): Promise<Uint8Array | null> {
-    const meta = this.metadataIndex.get(idOrEntryName);
+    const meta = this.metadataIndex.get(idOrEntryName) || this.metadataIndex.get(idOrEntryName.toLowerCase());
     if (!meta) {
       // Fallback: check directly for loose token file in data directory
       const candidates = [

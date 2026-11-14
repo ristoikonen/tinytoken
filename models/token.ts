@@ -24,6 +24,13 @@ export const VQ_GRID_BYTES = 256; // 384..639 (16x16 Uint8 codebook indices in G
 export const RS_PARITY_OFFSET = 640;
 export const RS_PARITY_BYTES = 64; // 640..703 (64B Reed-Solomon parity over 0..639: 3 lanes [22B, 21B, 21B])
 
+/**
+ * 32-byte SHA-256 Merkle root hex string (64 characters).
+ * Serves as the token's immutable, content-addressed cryptographic identity (CID).
+ * Commits across all 4 leaves: Origin identity, Section III Preview, Section II Metadata, and Section I VQ grid.
+ */
+export type ContentId = string;
+
 export enum TokenFlags {
   NONE = 0,
   HAS_VQ_GRID = 1 << 0,        // 0x01: 16x16 VQ neural thumbnail present
@@ -133,6 +140,7 @@ export interface DecodedToken {
   page: number;
   previewFormat: PreviewFormat;
   merkleRootHex: string;
+  contentId?: ContentId;
   shardBlockId: number;
   shardIndex: number;
   timestampMs: number;
@@ -175,6 +183,7 @@ export interface TokenHeaderInspection {
   previewFormatLabel: string;
   merkleRoot: Uint8Array;
   merkleRootHex: string;
+  contentId: ContentId;
   shardBlockId: number;
   shardIndex: number;
   timestampMs: number;
@@ -218,6 +227,7 @@ export interface ZipTokenIndexEntry {
   compressionMethod: number; // 0 = STORE, 8 = DEFLATE
   crc32: number;
   merkleRootHex: string;
+  contentId?: ContentId;
   snarkVerified: boolean;
   vqIndices: Uint8Array; // 256 bytes kept in RAM for 0ms neural preview & ADC search
   dinoEmbedding?: Int8Array; // 384 bytes kept in RAM for sub-ms DINOv3 semantic similarity
@@ -242,6 +252,7 @@ export interface SearchHitDTO {
   ocrSnippet: string;
   createdAt: string;
   merkleRootHex: string;
+  contentId?: ContentId;
   snarkVerified: boolean;
   vqHex: string; // 512-char hex of 256-byte VQ 16x16 grid
   similarityScore?: number; // 0..100% hybrid DINOv3 + VQ similarity score

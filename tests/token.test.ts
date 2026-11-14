@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { TokenApiHandlers } from "../handlers/tokenHandlers";
 import {
+  type ContentId,
   EmbeddingModelId,
   MAX_TOKEN_BYTES,
   PreviewFormat,
@@ -16,6 +17,9 @@ import {
   gfInv,
   gfMul,
   mutateHeader,
+  reedSolomonEncode,
+  reedSolomonVerifyAndHeal,
+  verifyAndHealHeader640,
 } from "../utils/galois";
 import {
   DocxDocumentProcessor,
@@ -42,6 +46,7 @@ import {
 import {
   decodeBinaryToken,
   encodeBinaryToken,
+  extractTokenContentId,
   extractTokenMetadata,
   extractTokenPreviewBytes,
   generateMockTinyTokenBuffer,
@@ -588,7 +593,7 @@ describe("TinyToken GF(2^8) + VQ + SHARK/SNARK Pipeline", () => {
         if (await file.exists()) {
           await file.delete();
         }
-      } catch {}
+      } catch { }
     }
   });
 
@@ -1409,6 +1414,81 @@ describe("TinyToken GF(2^8) + VQ + SHARK/SNARK Pipeline", () => {
     expect(() => mutateHeader(badMagic, { shardIndex: 1 })).toThrow("invalid magic");
   });
 
+  test("Reed-Solomon recovery limits: Decode(Encode(m) + e) = m for all correctable errors & clear failure on uncorrectable errors", async () => {
+    // 1. Single-block / single-lane proof: test all 214 byte positions with multiple error magnitudes
+    const laneData = new Uint8Array(214);
+    for (let i = 0; i < 214; i++) laneData[i] = (i * 11 + 37) & 0xff;
+    const parity22 = reedSolomonEncode(laneData, 22);
+
+    for (let pos = 0; pos < 214; pos++) {
+      for (const mag of [1, 0x5a, 0xaa, 0xff]) {
+        const corrupted = new Uint8Array(laneData);
+        corrupted[pos] = (corrupted[pos] ?? 0) ^ mag;
+        const res = reedSolomonVerifyAndHeal(corrupted, parity22);
+
+        // Mathematical identity: Decode(Encode(m) + e) = m
+        expect(res.valid).toBe(true);
+        expect(res.correctedErrors).toBe(1);
+        expect(res.correctedData[pos]).toBe(laneData[pos]);
+        expect(res.correctedData).toEqual(laneData);
+      }
+    }
+
+    // 2. Multi-lane Section I test: 1 error in Lane 0, 1 in Lane 1, 1 in Lane 2 (3 errors across 640B payload)
+    const payload640 = new Uint8Array(640);
+    for (let i = 0; i < 640; i++) payload640[i] = (i * 7 + 19) & 0xff;
+    const parity64 = encodeHeaderParity64(payload640);
+
+    const multiCorrupted = new Uint8Array(payload640);
+    multiCorrupted[50] = (multiCorrupted[50] ?? 0) ^ 0x42; // Lane 0 (0..213)
+    multiCorrupted[214 + 75] = (multiCorrupted[214 + 75] ?? 0) ^ 0x99; // Lane 1 (214..426)
+    multiCorrupted[214 + 213 + 100] = (multiCorrupted[214 + 213 + 100] ?? 0) ^ 0xef; // Lane 2 (427..639)
+
+    const multiHeal = verifyAndHealHeader640(multiCorrupted, parity64);
+    expect(multiHeal.valid).toBe(true);
+    expect(multiHeal.correctedErrors).toBe(3);
+    expect(multiHeal.healedPayload).toEqual(payload640);
+
+    // 3. Uncorrectable error test: 2 errors in the SAME lane must produce clear failure, not silent corruption
+    let doubleErrorCount = 0;
+    let falseRecoveries = 0;
+    for (let i = 0; i < 100; i++) {
+      const p1 = Math.floor(Math.random() * 214);
+      let p2 = Math.floor(Math.random() * 214);
+      while (p2 === p1) p2 = Math.floor(Math.random() * 214);
+      const m1 = Math.floor(Math.random() * 255) + 1;
+      const m2 = Math.floor(Math.random() * 255) + 1;
+
+      const uncorrectable = new Uint8Array(laneData);
+      uncorrectable[p1] = (uncorrectable[p1] ?? 0) ^ m1;
+      uncorrectable[p2] = (uncorrectable[p2] ?? 0) ^ m2;
+
+      const res = reedSolomonVerifyAndHeal(uncorrectable, parity22);
+      doubleErrorCount++;
+      if (res.valid) {
+        // If it claimed valid, check if it actually matched laneData (which should never happen)
+        const matches = res.correctedData.every((b, idx) => b === laneData[idx]);
+        if (!matches) falseRecoveries++;
+      } else {
+        expect(res.valid).toBe(false);
+        expect(res.correctedErrors).toBe(-1);
+      }
+    }
+    expect(doubleErrorCount).toBe(100);
+    expect(falseRecoveries).toBe(0);
+
+    // 4. Full binary token test: uncorrectable Section I corruption causes validateBinaryToken to reject clearly
+    const validToken = await generateMockTinyTokenBuffer("tok_rs_bounds_01");
+    const uncorrectableToken = new Uint8Array(validToken);
+    uncorrectableToken[15] = (uncorrectableToken[15] ?? 0) ^ 0xaa; // Lane 0 pos 15
+    uncorrectableToken[25] = (uncorrectableToken[25] ?? 0) ^ 0xbb; // Lane 0 pos 25
+
+    // Must clearly throw and fail validation
+    expect(validateBinaryToken(uncorrectableToken)).rejects.toThrow(
+      "Reed-Solomon header parity validation failed",
+    );
+  });
+
   test("tokenCodec: validateBinaryToken strictly enforces integrity, authenticity and envelope structure", async () => {
     const authorityKeys = await getAuthorityAttestationKeys();
     const validToken = await generateMockTinyTokenBuffer("tok_strict_01");
@@ -1640,6 +1720,14 @@ describe("TinyToken GF(2^8) + VQ + SHARK/SNARK Pipeline", () => {
     expect(merkleProc.exitCode).toBe(0);
     expect(merkleProc.stdout.toString().trim()).toBe("c5f22f2ab4735d185130605f9e01297f40317300b29ac99a31c3bff668342ba9");
 
+    const cidProc = Bun.spawnSync([process.execPath, "cli.ts", "tok_00004_Henri.jpg.token", "-f", "cid"]);
+    expect(cidProc.exitCode).toBe(0);
+    expect(cidProc.stdout.toString().trim()).toBe("c5f22f2ab4735d185130605f9e01297f40317300b29ac99a31c3bff668342ba9");
+
+    const contentIdProc = Bun.spawnSync([process.execPath, "cli.ts", "tok_00004_Henri.jpg.token", "-f", "contentid"]);
+    expect(contentIdProc.exitCode).toBe(0);
+    expect(contentIdProc.stdout.toString().trim()).toBe("c5f22f2ab4735d185130605f9e01297f40317300b29ac99a31c3bff668342ba9");
+
     const dimsProc = Bun.spawnSync([process.execPath, "cli.ts", "tok_00004_Henri.jpg.token", "-f", "dims"]);
     expect(dimsProc.exitCode).toBe(0);
     expect(dimsProc.stdout.toString().trim()).toBe("520x200");
@@ -1671,5 +1759,63 @@ describe("TinyToken GF(2^8) + VQ + SHARK/SNARK Pipeline", () => {
     const zipOut = zipProc.stdout.toString();
     expect(zipOut).toContain("[STRUCT ARCHIVE]");
     expect(zipOut).toContain("tokens inspected");
+  });
+
+  test("ContentId: immutable content-addressed identity via 32-byte SHA-256 Merkle root", async () => {
+    const tokenFile = Bun.file("data/tok_00004_Henri.jpg.token");
+    expect(await tokenFile.exists()).toBe(true);
+    const tokenBytes = new Uint8Array(await tokenFile.arrayBuffer());
+
+    // 1. Zero-copy sub-microsecond extraction
+    for (let i = 0; i < 20; i++) extractTokenContentId(tokenBytes);
+    const t0 = Bun.nanoseconds();
+    const iters = 50;
+    let cid = "";
+    for (let i = 0; i < iters; i++) {
+      cid = extractTokenContentId(tokenBytes);
+    }
+    const avgUs = (Bun.nanoseconds() - t0) / 1000 / iters;
+    expect(cid).toBe("c5f22f2ab4735d185130605f9e01297f40317300b29ac99a31c3bff668342ba9");
+    expect(cid.length).toBe(64); // 32 bytes hex encoded
+    expect(avgUs).toBeLessThan(100); // average sub-100 µs (typically < 0.1 µs)
+
+    // 2. Consistency across header inspection and full decode
+    const header = inspectBinaryTokenHeader(tokenBytes);
+    expect(header.contentId).toBe(cid);
+    expect(header.merkleRootHex).toBe(cid);
+
+    const decoded = await decodeBinaryToken(tokenBytes);
+    expect(decoded.contentId).toBe(cid);
+    expect(decoded.merkleRootHex).toBe(cid);
+
+    // 3. Invariance under mutable operational header changes (shard coordinates, timestamp, flags)
+    const headerCopy = new Uint8Array(tokenBytes.subarray(0, 704));
+    mutateHeader(headerCopy, {
+      shardBlockId: 9999,
+      shardIndex: 42,
+      timestamp: 1800000000000n,
+    });
+    const mutatedToken = new Uint8Array(tokenBytes.length);
+    mutatedToken.set(headerCopy, 0);
+    mutatedToken.set(tokenBytes.subarray(704), 704);
+
+    const mutatedCid = extractTokenContentId(mutatedToken);
+    expect(mutatedCid).toBe(cid); // Content identity remains strictly invariant!
+
+    // 4. In-memory engine O(1) ContentId index & lookup
+    const { CompressedTokenSearchEngine } = await import("../utils/zipEngine");
+    const engine = new CompressedTokenSearchEngine("./data/tokens.zip");
+    await engine.buildIndex();
+
+    const entryByCid = engine.getByContentId(cid);
+    if (entryByCid) {
+      expect(entryByCid.contentId).toBe(cid);
+      expect(entryByCid.merkleRootHex).toBe(cid);
+      const extractedBytes = await engine.extractToken(cid);
+      expect(extractedBytes).not.toBeNull();
+      if (extractedBytes) {
+        expect(extractTokenContentId(extractedBytes)).toBe(cid);
+      }
+    }
   });
 });

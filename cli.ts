@@ -69,7 +69,7 @@ Arguments:
   <file|target>        Source file (image, doc, .token file, or tokens.zip archive) [required]
 
 Options:
-  -f, --field <name>   Extract single field: uuid, merkle, dims, flags, ts, sizes, vq, model, ocr, dino, bge, tags
+  -f, --field <name>   Extract single field: uuid, merkle, cid, dims, flags, ts, sizes, vq, model, ocr, dino, bge, tags
   --format <fmt>       Output format: table (default), csv, json, raw-hex
   --decode-meta        On-demand Section II QuickLZ metadata unpack (only when needed)
   --limit <n>          Maximum tokens to inspect when target is an archive or directory
@@ -279,7 +279,9 @@ async function handleStructCommand(
         return;
       case "merkle":
       case "merkleroot":
-        process.stdout.write(`${insp.merkleRootHex}\n`);
+      case "cid":
+      case "contentid":
+        process.stdout.write(`${insp.contentId || insp.merkleRootHex}\n`);
         return;
       case "dims":
       case "dimensions":
@@ -361,7 +363,7 @@ async function handleStructCommand(
             return;
           }
         }
-        console.error(`Unknown field: "${args.field}". Available: uuid, merkle, dims, flags, ts, sizes, vq, model, ocr, filename, tags, dino, bge.`);
+        console.error(`Unknown field: "${args.field}". Available: uuid, merkle, cid, dims, flags, ts, sizes, vq, model, ocr, filename, tags, dino, bge.`);
         process.exit(1);
     }
   }
@@ -389,6 +391,7 @@ async function handleStructCommand(
       height: insp.height,
       page: insp.page,
       previewFormat: insp.previewFormatLabel,
+      contentId: insp.contentId || insp.merkleRootHex,
       merkleRootHex: insp.merkleRootHex,
       shardBlockId: insp.shardBlockId,
       shardIndex: insp.shardIndex,
@@ -437,6 +440,7 @@ async function handleStructCommand(
   console.log(`  Section II (Metadata):  ${insp.metaLength.toLocaleString()} bytes (Offset: ${insp.metaOffset})`);
   console.log(`  Section III (Preview):  ${insp.previewLength.toLocaleString()} bytes (Offset: ${insp.previewOffset})`);
   console.log(`  Total Envelope:         ${insp.totalTokenBytes.toLocaleString()} bytes / 25,600 max (${insp.envelopeBoundsValid ? "\x1b[32mBOUNDS VALID\x1b[0m" : "\x1b[31mMISMATCH\x1b[0m"})`);
+  console.log(`  Content ID (CID):       ${insp.contentId || insp.merkleRootHex}`);
   console.log(`  Merkle Root:            ${insp.merkleRootHex}`);
   console.log(`  Embedding Model ID:     ${embeddingModelToString(insp.embeddingModelId)}`);
   console.log(`  RS Shard Coordinates:   Block ${insp.shardBlockId}, Index ${insp.shardIndex}`);
@@ -528,6 +532,7 @@ async function handleArchiveStructCommand(
     const list = inspections.map(({ entryName, insp }) => ({
       entryName,
       uuid: insp.uuidHex,
+      contentId: insp.contentId || insp.merkleRootHex,
       dims: `${insp.width}x${insp.height}`,
       previewFormat: insp.previewFormatLabel,
       metaBytes: insp.metaLength,
@@ -790,7 +795,8 @@ async function main() {
     console.log(`  Timestamp (UTC):        ${insp.timestampUtc} (${insp.timestampMs} ms)`);
     console.log(`  Embedding Model:        ${embeddingModelToString(insp.embeddingModelId)}`);
     console.log(`  RS Shard Coordinates:   Block ${insp.shardBlockId}, Index ${insp.shardIndex}`);
-    console.log(`  Merkle Root:            ${insp.merkleRootHex}`);
+    console.log(`  Content ID (CID):       ${insp.contentId || insp.merkleRootHex}`);
+  console.log(`  Merkle Root:            ${insp.merkleRootHex}`);
     console.log(`  GF(2^8) Reed-Solomon:   HEALTHY (3 lanes, 64-byte parity)`);
 
     console.log(`\n[Section II: Metadata & OCR Payload]`);
