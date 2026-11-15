@@ -85,7 +85,7 @@ describe("TinyToken GF(2^8) + VQ + SHARK/SNARK Pipeline", () => {
   });
 
   test("QuickLZ compresses and decompresses OCR text losslessly", () => {
-    const sample = "Compressed Token Index Specification V2 • GF(2^8) Reed-Solomon + VQ 16x16. ".repeat(12);
+    const sample = "Compressed Token Index Specification V1 • GF(2^8) Reed-Solomon + VQ 16x16. ".repeat(12);
     const raw = new TextEncoder().encode(sample);
     const compressed = QuickLZ.compress(raw);
     expect(compressed.length).toBeLessThan(raw.length);
@@ -189,7 +189,7 @@ describe("TinyToken GF(2^8) + VQ + SHARK/SNARK Pipeline", () => {
     const authorityKeys = await getAuthorityAttestationKeys();
     const decodedNoTrustedKey = await decodeBinaryToken(tokenBytes);
     expect(decodedNoTrustedKey.magic).toBe("GF28");
-    expect(decodedNoTrustedKey.version).toBe(2);
+    expect(decodedNoTrustedKey.version).toBe(1);
     expect(decodedNoTrustedKey.rsParityValid).toBe(true);
     expect(decodedNoTrustedKey.rsCorrectedErrors).toBe(0);
     expect(decodedNoTrustedKey.snarkAttestation.protocol).toBe("ED25519-MERKLE-GF28-v3");
@@ -1318,7 +1318,7 @@ describe("TinyToken GF(2^8) + VQ + SHARK/SNARK Pipeline", () => {
     badVersionToken[5] = 0;
     badVersionToken.set(encodeHeaderParity64(badVersionToken.subarray(0, 640)), 640);
     expect(decodeBinaryToken(badVersionToken)).rejects.toThrow(
-      "Unsupported token version: expected 2, found 99",
+      "Unsupported token version: expected 1, found 99",
     );
   });
 
@@ -1708,7 +1708,7 @@ describe("TinyToken GF(2^8) + VQ + SHARK/SNARK Pipeline", () => {
 
     expect(elapsedUs).toBeLessThan(500);
     expect(insp.magic).toBe("GF28");
-    expect(insp.version).toBe(2);
+    expect(insp.version).toBe(1);
     expect(insp.previewFormat).toBe(PreviewFormat.WEBP);
     expect(insp.previewFormatLabel).toBe("WEBP");
     expect(insp.width).toBe(520);

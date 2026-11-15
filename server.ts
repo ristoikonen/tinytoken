@@ -29,12 +29,12 @@ const physicalStackPageFile = Bun.file("./pages/physical-stack.html");
 
 // Configuration
 const isTest = Bun.env.NODE_ENV === "test";
-const DATA_DIR = Bun.env.DATA_DIR ?? "./data";
-const ZIP_ARCHIVE_PATH = Bun.env.ZIP_ARCHIVE_PATH ?? `${DATA_DIR}/tokens.zip`;
+const APP_DATA_DIR = Bun.env.APP_DATA_DIR ?? "./data";
+const ZIP_ARCHIVE_PATH = Bun.env.ZIP_ARCHIVE_PATH ?? `${APP_DATA_DIR}/tokens.zip`;
 const IMAGE_DIR = getAppImageDir(isTest ? undefined : Bun.argv[2]);
 const DOCUMENT_DIR = getAppDocumentDir();
 const SQLITE_DB_PATH = getAppSqliteDbPath();
-const INDEXED_DIR_STAMP = `${DATA_DIR}/.indexed_dir`;
+const INDEXED_DIR_STAMP = `${APP_DATA_DIR}/.indexed_dir`;
 const useZip = Bun.env.APP_ZIP_USE !== "false";
 const port = isTest ? 0 : Number(Bun.env.APP_PORT ?? Bun.env.PORT ?? 3000);
 const host = Bun.env.APP_HOST ?? "localhost";
@@ -57,7 +57,7 @@ async function getPipeline(): Promise<Win11TokenPipeline> {
       sourceDirectory: IMAGE_DIR,
       documentDirectory: DOCUMENT_DIR,
       outputZipPath: ZIP_ARCHIVE_PATH,
-      dataDirectory: DATA_DIR,
+      dataDirectory: APP_DATA_DIR,
       useZip,
       allowedExtensions: AllowedFileTypes.list(),
       maxTokenSizeKb: 25,
@@ -80,7 +80,7 @@ const pipeline: Win11TokenPipeline = {
 // Core Engines
 const searchEngine = new CompressedTokenSearchEngine(ZIP_ARCHIVE_PATH, {
   useZip,
-  dataDirPath: DATA_DIR,
+  dataDirPath: APP_DATA_DIR,
 });
 const invertedIndex = new VqInvertedIndexEngine(SQLITE_DB_PATH);
 const archiveManager = new ArchiveManager(searchEngine, ZIP_ARCHIVE_PATH, invertedIndex);
@@ -178,7 +178,7 @@ async function ensureDataDirectory(targetDir: string, zipPath: string): Promise<
 }
 
 async function initIndex(): Promise<void> {
-  await ensureDataDirectory(DATA_DIR, ZIP_ARCHIVE_PATH);
+  await ensureDataDirectory(APP_DATA_DIR, ZIP_ARCHIVE_PATH);
   const t0 = Bun.nanoseconds();
   const isZip = searchEngine.isZipMode();
   const zipFile = Bun.file(ZIP_ARCHIVE_PATH);
@@ -191,7 +191,7 @@ async function initIndex(): Promise<void> {
   if (!isZip) {
     try {
       const glob = new Bun.Glob("*.token");
-      for await (const _ of glob.scan({ cwd: DATA_DIR })) {
+      for await (const _ of glob.scan({ cwd: APP_DATA_DIR })) {
         tokensExist = true;
         break;
       }
@@ -218,7 +218,7 @@ async function initIndex(): Promise<void> {
     await searchEngine.buildIndex();
     await invertedIndex.syncTokens(searchEngine.getAllEntries());
     const totalMs = ((Bun.nanoseconds() - t0) / 1e6).toFixed(2);
-    const storageLabel = isZip ? "archive" : `*.token files in ${DATA_DIR}`;
+    const storageLabel = isZip ? "archive" : `*.token files in ${APP_DATA_DIR}`;
     console.log(
       `Indexed ${searchEngine.getCount()} tokens into RAM in ${totalMs} ms (${(searchEngine.archiveSizeBytes / 1024).toFixed(1)} KB, ${storageLabel})`,
     );

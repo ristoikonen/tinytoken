@@ -1,5 +1,5 @@
 /**
- * TinyToken Binary Token Specification V2 (GF28 + VQ + SNARK/SHARK)
+ * TinyToken Binary Token Specification V1 (GF28 + VQ + SNARK/SHARK)
  * Fixed 25 KB (25,600 bytes max) hybrid token envelope:
  * - Section I   (0..703, 704 B): Header, 256B SNARK/SHARK Attestation Stub, 256B VQ 16x16 Grid, 64B GF(2^8) RS Parity
  * - Section II  (704..4799, up to 4,096 B): Compact Metadata & OCR Text (QuickLZ / UTF-8 JSON)
@@ -7,7 +7,7 @@
  */
 
 export const TOKEN_MAGIC = "GF28";
-export const TOKEN_VERSION = 2;
+export const TOKEN_VERSION = 1;
 
 export const MAX_TOKEN_BYTES = 25 * 1024; // 25,600 bytes
 export const SECTION1_HEADER_BYTES = 704;

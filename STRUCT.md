@@ -1,8 +1,8 @@
-# STRUCT.md — Formal TinyToken Binary Specification (Version 2)
+# STRUCT.md — Formal TinyToken Binary Specification (Version 1)
 
 > **Specification Authority**: TinyToken GF(2^8) + VQ-VAE + DINOv3 + Ed25519 Binary Container Standard  
 > **Container File Identifier**: `GF28` (`0x47, 0x46, 0x32, 0x38`)  
-> **Specification Version**: 2  
+> **Specification Version**: 1  
 > **Maximum Container Size**: 25,600 bytes (25.0 KB strict)  
 > **Reference Implementation**: Bun v1.4+ / TypeScript ([`utils/tokenCodec.ts`](, [`utils/galois.ts`]([`utils/galois.ts`]), [`utils/snarkAttest.ts`]))
 
@@ -14,7 +14,7 @@ A TinyToken is a fixed-envelope binary token with a strict maximum size of **25,
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────────────────┐
-│                                 TINYTOKEN V2 BINARY ENVELOPE                          │
+│                                 TINYTOKEN V1 BINARY ENVELOPE                          │
 │                                (Maximum: 25,600 Bytes)                                 │
 ├──────────────────────────┬─────────────────────────────┬───────────────────────────────┤
 │ Section I: Fixed Header  │ Section II: Metadata & OCR  │ Section III: Preview Payload  │
@@ -47,7 +47,7 @@ Section I is exactly **704 bytes** in length. All multi-byte numeric fields are 
 | Offset Range | Size | Type | Field Name | Valid Range / Format | Mutability | Description |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | `0 .. 3` | 4 B | ASCII | `magic` | `"GF28"` (`0x47, 0x46, 0x32, 0x38`) | **Constant** | Binary container magic identifier. |
-| `4 .. 5` | 2 B | Uint16LE | `version` | `2` (`0x0002`) | **Constant** | Specification version number. |
+| `4 .. 5` | 2 B | Uint16LE | `version` | `1` (`0x0001`) | **Constant** | Specification version number. |
 | `6 .. 7` | 2 B | Uint16LE | `flags` | Bitmask (`0x0000..0xFFFF`) | **Mutable** | Operational decoding hints and capability flags. |
 | `8 .. 23` | 16 B | Raw Bytes | `uuid` | 128-bit UUID (RFC 4122) | **Signed** | Unique immutable asset identifier. |
 | `24 .. 27` | 4 B | Uint32LE | `originalFileSize`| $0 \dots 2^{32}-1$ bytes | **Signed** | Source uncompressed file size in bytes. |
@@ -390,13 +390,12 @@ sequenceDiagram
 
 | Version | Header Size | RS Layout | Attestation Protocol | Merkle Leaves |
 | :--- | :--- | :--- | :--- | :--- |
-| **V1** | 1,024 Bytes | Flat 64B parity | Keyless hash stub | 2 leaves |
-| **V2 (Current)**| **704 Bytes** | **3-Lane RS (22B+21B+21B)** | **Ed25519 (`ED25`) + Key ID** | **4 leaves (Origin, Preview, Meta, VQ)** |
+| **V1 (Current)**| **704 Bytes** | **3-Lane RS (22B+21B+21B)** | **Ed25519 (`ED25`) + Key ID** | **4 leaves (Origin, Preview, Meta, VQ)** |
 
 ### Migration Rules for Decoders
 1. Decoders must inspect `version` at offset `4..5`.
-2. V1 tokens encounter rejection with an explicit version error rather than memory corruption or out-of-bounds slicing.
-3. V2 gains **+320 bytes of additional preview headroom** by compressing the Section I header from 1,024 B to 704 B.
+2. Unsupported version numbers encounter rejection with an explicit version error rather than memory corruption or out-of-bounds slicing.
+3. V1 provides **+320 bytes of additional preview headroom** by keeping the Section I header at 704 B.
 
 ---
 
@@ -439,4 +438,4 @@ $$g(x) = \mathtt{0x01}x^4 + \mathtt{0x0F}x^3 + \mathtt{0x36}x^2 + \mathtt{0x78}x
   `c5f22f2ab4735d185130605f9e01297f40317300b29ac99a31c3bff668342ba9`
 * **Signer Key ID**: `37aa7cfddc67488f`
 * **First 10 Parity Bytes (`640..649`)**:
-  `[0x37, 0x9F, 0x27, 0x37, 0x4D, 0xD8, 0xEF, 0x69, 0xBD, 0xF3]`
+  `[0xDB, 0x34, 0x53, 0xBC, 0x30, 0xB4, 0x33, 0x4C, 0xD8, 0x74]`

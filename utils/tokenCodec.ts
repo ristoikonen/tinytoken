@@ -1,6 +1,6 @@
 /**
  * 25 KB Binary Token Packer & Unpacker (utils/tokenCodec.ts)
- * Implements the 3-section GF28 V2 specification (Option C Trimmed Parity Layout):
+ * Implements the 3-section GF28 V1 specification (Option C Trimmed Parity Layout):
  * - Section I   (0..703,     704 B): Header + 256B SNARK/SHARK Stub + 256B VQ Grid + 64B GF(2^8) RS Parity
  * - Section II  (704..704+metaLen, <= 4,096 B): QuickLZ/UTF-8 JSON Metadata & OCR Text
  * - Section III (704+metaLen..,     <= 20,800 B): Embedded 220x220 Preview Image
