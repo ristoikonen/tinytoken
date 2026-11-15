@@ -13,6 +13,7 @@ import {
   EmbeddingModelId,
   MAX_TOKEN_BYTES,
   PreviewFormat,
+  previewFormatToLabel,
   RS_PARITY_BYTES,
   RS_PARITY_OFFSET,
   SECTION1_HEADER_BYTES,
@@ -354,27 +355,7 @@ export function inspectBinaryTokenHeader(rawBytes: Uint8Array): TokenHeaderInspe
   if (flags & TokenFlags.HAS_DINO_EMBEDDING) flagNames.push("HAS_DINO_EMBEDDING");
   if (flags & TokenFlags.HAS_BGE_EMBEDDING) flagNames.push("HAS_BGE_EMBEDDING");
 
-  let previewFormatLabel = "UNKNOWN";
-  switch (previewFormat) {
-    case PreviewFormat.AVIF:
-      previewFormatLabel = "AVIF";
-      break;
-    case PreviewFormat.WEBP:
-      previewFormatLabel = "WEBP";
-      break;
-    case PreviewFormat.JPEG:
-      previewFormatLabel = "JPEG";
-      break;
-    case PreviewFormat.PNG:
-      previewFormatLabel = "PNG";
-      break;
-    case PreviewFormat.BMP:
-      previewFormatLabel = "BMP";
-      break;
-    case PreviewFormat.SVG:
-      previewFormatLabel = "SVG";
-      break;
-  }
+  const previewFormatLabel = previewFormatToLabel(previewFormat);
 
   return {
     magic,

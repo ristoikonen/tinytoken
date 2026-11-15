@@ -12,14 +12,27 @@
 
 import { PDFiumLibrary } from "@hyzyla/pdfium";
 import sharp from "sharp";
-import { EmbeddingModelId, PreviewFormat, getClipTextLimit } from "../models/token";
+import {
+  DINO_DECODE_DIMENSION,
+  EmbeddingModelId,
+  MAX_PREVIEW_BYTES,
+  PDF_RENDER_SCALE,
+  PREVIEW_PDF_FALLBACK_HEIGHT,
+  PREVIEW_PDF_FALLBACK_WIDTH,
+  PREVIEW_PDF_TARGET_HEIGHT,
+  PREVIEW_PDF_TARGET_WIDTH,
+  PreviewFormat,
+  WEBP_EFFORT,
+  WEBP_FALLBACK_QUALITY,
+  WEBP_PRIMARY_QUALITY,
+  WEBP_SMART_SUBSAMPLE,
+  getClipTextLimit,
+  getMaxPagesPerDoc,
+} from "../models/token";
 import { extractRealDinoEmbedding } from "./dinoEmbedding";
 import { extractRealBgeEmbedding } from "./bgeEmbedding";
 import { boxDownsampleRgbTo16x16 } from "./imagePreview";
 import { encodeRgb16x16ToVqGrid } from "./vqCodebook";
-
-const MAX_PAGES = 3;
-const MAX_PREVIEW_BYTES = 16384;
 
 export interface RenderedPdfPageBundle {
   page: number; // 1-indexed page number
@@ -56,7 +69,7 @@ async function getPdfiumLibrary(): Promise<PDFiumLibrary> {
  * Selects which 0-indexed pages of a PDF to tokenize so large books (e.g. 448 pages)
  * don't block startup while still generating real multi-page tokens.
  */
-export function selectPdfPageIndices(totalPages: number, maxPagesPerDoc = 3): number[] {
+export function selectPdfPageIndices(totalPages: number, maxPagesPerDoc = getMaxPagesPerDoc()): number[] {
   const count = Math.max(1, totalPages);
   const cap = Math.max(1, Math.min(count, maxPagesPerDoc));
   if (count <= cap) {
@@ -79,7 +92,7 @@ export function selectPdfPageIndices(totalPages: number, maxPagesPerDoc = 3): nu
  */
 export async function renderPdfPagesWithPdfium(
   pdfBytes: Uint8Array,
-  maxPagesPerDoc = MAX_PAGES,
+  maxPagesPerDoc = getMaxPagesPerDoc(),
   maxPreviewBytes = MAX_PREVIEW_BYTES,
 ): Promise<RenderedPdfPageBundle[]> {
   const library = await getPdfiumLibrary();
@@ -103,7 +116,7 @@ export async function renderPdfPagesWithPdfium(
       let bitmapWidth = 612;
       let bitmapHeight = 792;
       const rendered = await page.render({
-        scale: 1.5,
+        scale: PDF_RENDER_SCALE,
         render: async (options) => {
           bitmapWidth = options.width;
           bitmapHeight = options.height;
@@ -125,7 +138,7 @@ export async function renderPdfPagesWithPdfium(
       // 1. Single decode: resize and flatten PDF page to 384x384 raw RGB buffer with cubic resampling
       const dinoRgbResult = await sharp(rawRgba, rawInput)
         .flatten({ background: { r: 255, g: 255, b: 255 } })
-        .resize(384, 384, { fit: "inside", withoutEnlargement: true, kernel: "cubic" })
+        .resize(DINO_DECODE_DIMENSION, DINO_DECODE_DIMENSION, { fit: "inside", withoutEnlargement: true, kernel: "cubic" })
         .removeAlpha()
         .raw()
         .toBuffer({ resolveWithObject: true });
@@ -138,8 +151,8 @@ export async function renderPdfPagesWithPdfium(
           channels: 3,
         },
       })
-        .resize(320, 452, { fit: "inside", withoutEnlargement: true })
-        .webp({ quality: 78, smartSubsample: false, effort: 2 })
+        .resize(PREVIEW_PDF_TARGET_WIDTH, PREVIEW_PDF_TARGET_HEIGHT, { fit: "inside", withoutEnlargement: true })
+        .webp({ quality: WEBP_PRIMARY_QUALITY, smartSubsample: WEBP_SMART_SUBSAMPLE, effort: WEBP_EFFORT })
         .toBuffer();
 
       if (finalWebp.byteLength > maxPreviewBytes) {
@@ -150,8 +163,8 @@ export async function renderPdfPagesWithPdfium(
             channels: 3,
           },
         })
-          .resize(240, 340, { fit: "inside", withoutEnlargement: true })
-          .webp({ quality: 68, smartSubsample: false, effort: 2 })
+          .resize(PREVIEW_PDF_FALLBACK_WIDTH, PREVIEW_PDF_FALLBACK_HEIGHT, { fit: "inside", withoutEnlargement: true })
+          .webp({ quality: WEBP_FALLBACK_QUALITY, smartSubsample: WEBP_SMART_SUBSAMPLE, effort: WEBP_EFFORT })
           .toBuffer();
       }
       const sharpNs = Bun.nanoseconds() - tSharp0;

@@ -11,11 +11,21 @@
 
 import sharp from "sharp";
 import {
+  DEFAULT_DOC_PAGE_HEIGHT,
+  DEFAULT_DOC_PAGE_WIDTH,
+  DINO_DECODE_DIMENSION,
   EmbeddingModelId,
+  MAX_PREVIEW_BYTES,
+  PREVIEW_FALLBACK_DIMENSION,
   PREVIEW_TARGET_DIMENSION,
   PREVIEW_TARGET_HEIGHT,
   PREVIEW_TARGET_WIDTH,
   PreviewFormat,
+  previewFormatToLabel,
+  WEBP_EFFORT,
+  WEBP_FALLBACK_QUALITY,
+  WEBP_PRIMARY_QUALITY,
+  WEBP_SMART_SUBSAMPLE,
 } from "../models/token";
 import {
   extractColorHogFallbackFromRgb224,
@@ -71,24 +81,7 @@ export function previewFormatToMime(format: PreviewFormat): string {
   }
 }
 
-export function previewFormatToLabel(format: PreviewFormat): string {
-  switch (format) {
-    case PreviewFormat.AVIF:
-      return "AVIF";
-    case PreviewFormat.WEBP:
-      return "WEBP";
-    case PreviewFormat.JPEG:
-      return "JPEG";
-    case PreviewFormat.PNG:
-      return "PNG";
-    case PreviewFormat.BMP:
-      return "BMP";
-    case PreviewFormat.SVG:
-      return "SVG-VQ";
-    default:
-      return "RAW";
-  }
-}
+export { previewFormatToLabel };
 
 /**
  * Extracts SVG dimensions (`viewBox` or `width`/`height`) and any embedded `<text>`/`<title>` strings.
@@ -351,7 +344,7 @@ export async function rasterizeAssetToWebpAndTensors(
   page = 1,
   totalPages = 1,
   docDimensions?: { width: number; height: number; excerpt?: string },
-  maxPreviewBytes = 16384,
+  maxPreviewBytes = MAX_PREVIEW_BYTES,
 ): Promise<RasterizedAssetBundle> {
   const lowerExt = ext.toLowerCase();
   const isText =
@@ -474,10 +467,10 @@ export async function rasterizeAssetToWebpAndTensors(
     const meta = await pipeline.metadata();
     const isRotated90or270 = (meta.orientation ?? 1) >= 5 && (meta.orientation ?? 1) <= 8;
     const width = isDocument
-      ? (docDimensions?.width ?? 1240)
+      ? (docDimensions?.width ?? DEFAULT_DOC_PAGE_WIDTH)
       : (isRotated90or270 ? (meta.height ?? fallbackHeader.height) : (meta.width ?? fallbackHeader.width));
     const height = isDocument
-      ? (docDimensions?.height ?? 1754)
+      ? (docDimensions?.height ?? DEFAULT_DOC_PAGE_HEIGHT)
       : (isRotated90or270 ? (meta.width ?? fallbackHeader.width) : (meta.height ?? fallbackHeader.height));
 
     const tSharp0 = Bun.nanoseconds();
@@ -486,7 +479,7 @@ export async function rasterizeAssetToWebpAndTensors(
     const dinoRgbResult = await sharp(inputBuffer, { failOn: "none" })
       .rotate()
       .flatten({ background: { r: 255, g: 255, b: 255 } })
-      .resize(384, 384, { fit: "inside", withoutEnlargement: true, kernel: "cubic" })
+      .resize(DINO_DECODE_DIMENSION, DINO_DECODE_DIMENSION, { fit: "inside", withoutEnlargement: true, kernel: "cubic" })
       .removeAlpha()
       .raw()
       .toBuffer({ resolveWithObject: true });
@@ -500,7 +493,7 @@ export async function rasterizeAssetToWebpAndTensors(
       },
     })
       .resize(PREVIEW_TARGET_WIDTH, PREVIEW_TARGET_HEIGHT, { fit: "inside" })
-      .webp({ quality: 78, smartSubsample: false, effort: 2 })
+      .webp({ quality: WEBP_PRIMARY_QUALITY, smartSubsample: WEBP_SMART_SUBSAMPLE, effort: WEBP_EFFORT })
       .toBuffer();
 
     if (finalWebp.byteLength > maxPreviewBytes) {
@@ -511,8 +504,8 @@ export async function rasterizeAssetToWebpAndTensors(
           channels: 3,
         },
       })
-        .resize(240, 240, { fit: "inside", withoutEnlargement: true })
-        .webp({ quality: 68, smartSubsample: false, effort: 2 })
+        .resize(PREVIEW_FALLBACK_DIMENSION, PREVIEW_FALLBACK_DIMENSION, { fit: "inside", withoutEnlargement: true })
+        .webp({ quality: WEBP_FALLBACK_QUALITY, smartSubsample: WEBP_SMART_SUBSAMPLE, effort: WEBP_EFFORT })
         .toBuffer();
     }
     const sharpNs = Bun.nanoseconds() - tSharp0;
@@ -607,7 +600,7 @@ export function buildCompactPreviewPayload(
   vqGrid: Uint8Array,
   label: string,
   page: number,
-  maxBytes = 16384,
+  maxBytes = MAX_PREVIEW_BYTES,
 ): { previewBytes: Uint8Array<ArrayBuffer>; previewFormat: PreviewFormat } {
   if (
     sourceBytes.length > 0 &&

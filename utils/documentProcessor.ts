@@ -8,7 +8,17 @@
  * 4. Fallback binary document handler
  */
 
-import { AllowedFileTypes, EmbeddingModelId, PreviewFormat, getClipTextLimit } from "../models/token";
+import {
+  AllowedFileTypes,
+  DEFAULT_DOC_PAGE_HEIGHT,
+  DEFAULT_DOC_PAGE_WIDTH,
+  EmbeddingModelId,
+  PreviewFormat,
+  getClipTextLimit,
+  getMaxDecompressedDocxBytes,
+  getMaxDocxMb,
+  getMaxPagesPerDoc,
+} from "../models/token";
 import { extensionToMimeType, rasterizeAssetToWebpAndTensors } from "./imagePreview";
 import { type PageBundle, renderPdfPagesWithPdfium } from "./pdfEngine";
 import { extractRealBgeEmbedding } from "./bgeEmbedding";
@@ -16,8 +26,9 @@ import { extractRealBgeEmbedding } from "./bgeEmbedding";
 
 /**
  * Maximum decompressed size ceiling for DOCX `word/document.xml` to prevent zip-bomb attacks.
+ * Configurable via APP_MAX_DOCX_MB in .env (defaults to 20 MB).
  */
-export const MAXIMUM_DECOMPRESSED_DOCX = 20 * 1024 * 1024; // 20 MB
+export const MAXIMUM_DECOMPRESSED_DOCX = getMaxDecompressedDocxBytes();
 export const maximum_decompressed_DOCX = MAXIMUM_DECOMPRESSED_DOCX;
 
 export type { PageBundle };
@@ -101,14 +112,14 @@ export class PdfDocumentProcessor implements DocumentProcessor {
 
     return {
       totalPages: 1,
-      width: 1240,
-      height: 1754,
+      width: DEFAULT_DOC_PAGE_WIDTH,
+      height: DEFAULT_DOC_PAGE_HEIGHT,
       extractedText: `PDF Document: ${filename}`,
     };
   }
 
   public async renderPages(bytes: Uint8Array, maxPages?: number): Promise<PageBundle[]> {
-    return renderPdfPagesWithPdfium(bytes, maxPages ?? 3);
+    return renderPdfPagesWithPdfium(bytes, maxPages ?? getMaxPagesPerDoc());
   }
 
   public async embedText(bytes: Uint8Array, filename: string): Promise<TextEmbeddingResult | null> {
@@ -142,10 +153,12 @@ export class DocxDocumentProcessor implements DocumentProcessor {
       const dataStart = ptr + 30 + nameLen + extraLen;
 
       if (entryName === "word/document.xml" && dataStart + compSize <= bytes.length) {
+        const maxDocxBytes = getMaxDecompressedDocxBytes();
+        const maxDocxMb = getMaxDocxMb();
         // Zip-bomb guard: check claimed uncompressed size
-        if (uncompSize > MAXIMUM_DECOMPRESSED_DOCX) {
+        if (uncompSize > maxDocxBytes) {
           isOversized = true;
-          docxText = `DOCX uncompressed size over max size (${(uncompSize / (1024 * 1024)).toFixed(1)} MB > 20 MB) | DOCX uncomressed size over max size`;
+          docxText = `DOCX uncompressed size over max size (${(uncompSize / (1024 * 1024)).toFixed(1)} MB > ${maxDocxMb} MB) | DOCX uncomressed size over max size`;
           break;
         }
 
@@ -171,8 +184,8 @@ export class DocxDocumentProcessor implements DocumentProcessor {
 
     return {
       totalPages: pageEstimate,
-      width: 1240,
-      height: 1754,
+      width: DEFAULT_DOC_PAGE_WIDTH,
+      height: DEFAULT_DOC_PAGE_HEIGHT,
       extractedText: docxText || `DOCX Document asset: ${filename}`,
       isOversized,
     };
@@ -252,8 +265,8 @@ export class TextDocumentProcessor implements DocumentProcessor {
 
     return {
       totalPages,
-      width: 1240,
-      height: 1754,
+      width: DEFAULT_DOC_PAGE_WIDTH,
+      height: DEFAULT_DOC_PAGE_HEIGHT,
       extractedText: cleanSnippet || `Text Document: ${filename}`,
     };
   }
@@ -322,8 +335,8 @@ export class FallbackDocumentProcessor implements DocumentProcessor {
 
     return {
       totalPages: 1,
-      width: 1240,
-      height: 1754,
+      width: DEFAULT_DOC_PAGE_WIDTH,
+      height: DEFAULT_DOC_PAGE_HEIGHT,
       extractedText: textPreview || `Document asset: ${filename}`,
     };
   }

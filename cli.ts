@@ -18,6 +18,7 @@ import {
   AllowedFileTypes,
   EmbeddingModelId,
   PreviewFormat,
+  previewFormatToLabel,
   SECTION1_HEADER_BYTES,
   SECTION2_MAX_META_BYTES,
   SECTION3_MAX_PREVIEW_BYTES,
@@ -176,22 +177,7 @@ function parseArgs(args: string[]): CliArgs {
 }
 
 function previewFormatToString(format: PreviewFormat): string {
-  switch (format) {
-    case PreviewFormat.AVIF:
-      return "AVIF";
-    case PreviewFormat.WEBP:
-      return "WEBP";
-    case PreviewFormat.JPEG:
-      return "JPEG";
-    case PreviewFormat.PNG:
-      return "PNG";
-    case PreviewFormat.BMP:
-      return "BMP";
-    case PreviewFormat.SVG:
-      return "SVG";
-    default:
-      return "UNKNOWN";
-  }
+  return previewFormatToLabel(format);
 }
 
 function decodeFlagsToStrings(flags: number): string[] {

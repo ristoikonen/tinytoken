@@ -13,10 +13,29 @@ export const MAX_TOKEN_BYTES = 25 * 1024; // 25,600 bytes
 export const SECTION1_HEADER_BYTES = 704;
 export const SECTION2_MAX_META_BYTES = 4096;
 export const SECTION2_MAX_UNCOMPRESSED_META_BYTES = SECTION2_MAX_META_BYTES * 8; // 32,768 bytes (32 KB)
-export const SECTION3_MAX_PREVIEW_BYTES = 20800; // 25,600 - 704 - 4,096
+export const MAX_PREVIEW_BYTES = 16 * 1024; // 16,384 bytes (16 KB global preview byte cap)
+export const SECTION3_MAX_PREVIEW_BYTES = MAX_PREVIEW_BYTES;
+
+/**
+ * Single centralized source of truth for WebP encoding, preview dimensions, and rasterization settings.
+ */
 export const PREVIEW_TARGET_DIMENSION = 320;
 export const PREVIEW_TARGET_WIDTH = 320;
 export const PREVIEW_TARGET_HEIGHT = 320;
+export const PREVIEW_FALLBACK_DIMENSION = 240;
+export const PREVIEW_PDF_TARGET_WIDTH = 320;
+export const PREVIEW_PDF_TARGET_HEIGHT = 452;
+export const PREVIEW_PDF_FALLBACK_WIDTH = 240;
+export const PREVIEW_PDF_FALLBACK_HEIGHT = 340;
+export const PDF_RENDER_SCALE = 1.5;
+export const DEFAULT_DOC_PAGE_WIDTH = 1240;
+export const DEFAULT_DOC_PAGE_HEIGHT = 1754;
+export const DINO_DECODE_DIMENSION = 384;
+export const WEBP_PRIMARY_QUALITY = 78;
+export const WEBP_FALLBACK_QUALITY = 68;
+export const WEBP_WARNING_QUALITY = 75;
+export const WEBP_EFFORT = 2;
+export const WEBP_SMART_SUBSAMPLE = false;
 
 export const SNARK_STUB_OFFSET = 128;
 export const SNARK_STUB_BYTES = 256; // 128..383
@@ -55,6 +74,25 @@ export enum PreviewFormat {
   SVG = 6,
 }
 
+export function previewFormatToLabel(format: PreviewFormat): string {
+  switch (format) {
+    case PreviewFormat.AVIF:
+      return "AVIF";
+    case PreviewFormat.WEBP:
+      return "WEBP";
+    case PreviewFormat.JPEG:
+      return "JPEG";
+    case PreviewFormat.PNG:
+      return "PNG";
+    case PreviewFormat.BMP:
+      return "BMP";
+    case PreviewFormat.SVG:
+      return "SVG";
+    default:
+      return "UNKNOWN";
+  }
+}
+
 export enum EmbeddingModelId {
   NONE = 0x00,
   COLOR_HOG_FALLBACK = 0x01, // Synchronous 384B Color/HOG fallback descriptor
@@ -64,6 +102,31 @@ export enum EmbeddingModelId {
 }
 
 export const DEFAULT_CLIP_TEXT_LIMIT = 2200;
+export const DEFAULT_MAX_DOCX_MB = 20;
+export const DEFAULT_MAX_PAGES_PER_DOC = 4;
+export const DEFAULT_WORKER_COUNT = 4;
+
+export function getMaxDocxMb(): number {
+  const raw = Bun.env.APP_MAX_DOCX_MB;
+  const num = raw ? Number(raw) : NaN;
+  return Number.isFinite(num) && num > 0 ? num : DEFAULT_MAX_DOCX_MB;
+}
+
+export function getMaxDecompressedDocxBytes(): number {
+  return getMaxDocxMb() * 1024 * 1024;
+}
+
+export function getMaxPagesPerDoc(): number {
+  const raw = Bun.env.APP_MAX_PAGES_PER_DOC;
+  const num = raw ? Number.parseInt(raw, 10) : NaN;
+  return Number.isFinite(num) && num > 0 ? num : DEFAULT_MAX_PAGES_PER_DOC;
+}
+
+export function getWorkerCount(): number {
+  const raw = Bun.env.APP_WORKER_COUNT;
+  const num = raw ? Number.parseInt(raw, 10) : NaN;
+  return Number.isFinite(num) && num > 0 ? num : DEFAULT_WORKER_COUNT;
+}
 
 /**
  * Centralized Paths, Directories & Model Identifiers (configurable via .env).

@@ -15,11 +15,18 @@ import {
   ALLOWED_IMAGE_EXTENSIONS,
   ALLOWED_TEXT_DOCUMENT_EXTENSIONS,
   AllowedFileTypes,
+  DEFAULT_DOC_PAGE_HEIGHT,
+  DEFAULT_DOC_PAGE_WIDTH,
   EmbeddingModelId,
   getAppDocumentDir,
+  getMaxPagesPerDoc,
+  getWorkerCount,
+  PREVIEW_TARGET_HEIGHT,
+  PREVIEW_TARGET_WIDTH,
   PreviewFormat,
   redactImageDirForDisplay,
   type TokenMetadataPayload,
+  WEBP_WARNING_QUALITY,
   type ZipTokenIndexEntry,
 } from "../models/token";
 import {
@@ -89,7 +96,6 @@ export type ArchiveTokenItem = {
   >;
 };
 
-const WORKER_COUNT = 4;
 const IMAGE_EXTENSIONS = AllowedFileTypes.IMAGE_SET;
 const DOCUMENT_EXTENSIONS = AllowedFileTypes.DOCUMENT_SET;
 
@@ -253,8 +259,8 @@ export class Win11TokenPipeline {
     </svg>`;
 
     const previewWebp = await sharp(new TextEncoder().encode(svgWarning))
-      .resize(320, 320)
-      .webp({ quality: 75 })
+      .resize(PREVIEW_TARGET_WIDTH, PREVIEW_TARGET_HEIGHT)
+      .webp({ quality: WEBP_WARNING_QUALITY })
       .toBuffer();
 
     const ocrText = `File size over max size: ${filename} (${fileSizeMb} MB > ${maxFileMb} MB limit) | Source path: ${redactImageDirForDisplay(fullPath)}`;
@@ -267,8 +273,8 @@ export class Win11TokenPipeline {
       mimeType: extensionToMimeType(ext),
       page: 1,
       totalPages: 1,
-      width: 1240,
-      height: 1754,
+      width: DEFAULT_DOC_PAGE_WIDTH,
+      height: DEFAULT_DOC_PAGE_HEIGHT,
       colorDepth: 24,
       createdAt,
       ocrText,
@@ -278,8 +284,8 @@ export class Win11TokenPipeline {
 
     const tokenBytes = await encodeBinaryToken({
       originalFileSize: fileSize,
-      width: 1240,
-      height: 1754,
+      width: DEFAULT_DOC_PAGE_WIDTH,
+      height: DEFAULT_DOC_PAGE_HEIGHT,
       page: 1,
       previewFormat: PreviewFormat.WEBP,
       shardBlockId: Math.floor((tokenCounter - 1) / 64),
@@ -304,8 +310,8 @@ export class Win11TokenPipeline {
         mimeType: metadata.mimeType,
         page: 1,
         totalPages: 1,
-        width: 1240,
-        height: 1754,
+        width: DEFAULT_DOC_PAGE_WIDTH,
+        height: DEFAULT_DOC_PAGE_HEIGHT,
         originalFileSize: fileSize,
         previewFormat: PreviewFormat.WEBP,
         flags: decoded.flags,
@@ -519,7 +525,7 @@ export class Win11TokenPipeline {
     const dotIdx = filename.lastIndexOf(".");
     const ext = dotIdx !== -1 ? filename.slice(dotIdx).toLowerCase() : ".pdf";
     const createdAt = new Date(bunFile.lastModified || Date.now()).toISOString();
-    const maxPagesPerDoc = this.config.maxPagesPerDocument ?? 3;
+    const maxPagesPerDoc = this.config.maxPagesPerDocument ?? getMaxPagesPerDoc();
 
     // Requirement 4 & 5: Validate file size against APP_MAX_FILE_SIZE
     const maxFileMb = Number(Bun.env.APP_MAX_FILE_SIZE) || 10;
@@ -935,7 +941,7 @@ export class Win11TokenPipeline {
         const expectedPages = isPdf
           ? Math.min(
             orderedMatches[0]!.totalPages,
-            this.config.maxPagesPerDocument ?? 3,
+            this.config.maxPagesPerDocument ?? getMaxPagesPerDoc(),
           )
           : 1;
         if (
@@ -971,8 +977,8 @@ export class Win11TokenPipeline {
     let imageTokens = 0;
     let documentTokens = 0;
 
-    // Concurrent worker pool (C = WORKER_COUNT) for faster multi-core image throughput
-    const imageConcurrency = Math.min(WORKER_COUNT, imagePaths.length || 1);
+    // Concurrent worker pool (C = APP_WORKER_COUNT) for faster multi-core image throughput
+    const imageConcurrency = Math.min(getWorkerCount(), imagePaths.length || 1);
     let pathIndex = 0;
     const imageItemsByIndex: (ArchiveTokenItem | null)[] = new Array(imagePaths.length);
 
