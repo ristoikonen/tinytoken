@@ -839,7 +839,7 @@
            LAYER 1: HEADER (Green Sidebar as requested)
            ================================================================== -->
       <section class="stack-tier-card" id="card-layer-1"
-        style="--tier-sidebar: var(--glow-emerald); --tier-light: var(--glow-emerald-light); --tier-border: var(--glow-emerald-border);">
+        style="--tier-sidebar: var(--glow-blue); --tier-light: var(--glow-blue-light); --tier-border: var(--glow-blue-border);">
         <div class="tier-header">
           <div class="tier-left-wrap">
             <span class="tier-ball ball-blue">1</span>
@@ -983,7 +983,8 @@
 
         <p class="tier-desc">
           QuickLZ Level-1 compressed semantic core. Holds asset taxonomy, full OCR text transcripts,
-          illumination-invariant Meta DINOv3 ViT-S/16 visual vectors, BGE-small-en-v1.5 semantic text embeddings, and geographic coordinates. Decompressed strictly on
+          illumination-invariant Meta DINOv3 ViT-S/16 visual vectors, BGE-small-en-v1.5 semantic text embeddings, and
+          geographic coordinates. Decompressed strictly on
           demand.
         </p>
 
@@ -1034,10 +1035,10 @@
            LAYER 4: PREVIEW
            ================================================================== -->
       <section class="stack-tier-card" id="card-layer-4"
-        style="--tier-sidebar: var(--glow-purple); --tier-light: var(--glow-purple-light); --tier-border: var(--glow-purple-border);">
+        style="--tier-sidebar: var(--glow-emerald); --tier-light: var(--glow-emerald-light); --tier-border: var(--glow-emerald-border);">
         <div class="tier-header">
           <div class="tier-left-wrap">
-            <span class="tier-ball ball-purple">4</span>
+            <span class="tier-ball ball-emerald">4</span>
             <h2 class="tier-large-caption">Preview</h2>
           </div>
           <div class="tier-meta-strip">
@@ -1060,18 +1061,11 @@
                 id="val-l4-fmt-title">
                 320 &times; 320 px Lossy WebP Thumbnail
               </div>
-              <div style="font-size: 12.5px; color: var(--text-muted); line-height: 1.5;">
-                Extracted via zero-copy binary slicing directly into HTTP responses. Bounded by the 25,600-byte hard
-                container ceiling.
-              </div>
+
             </div>
             <div style="margin-left: auto; text-align: right;">
-              <div style="font-family: var(--font-mono); font-size: 18px; font-weight: 800; color: var(--glow-purple);"
+              <div style="font-family: var(--font-mono); font-size: 18px; font-weight: 800; color: var(--glow-emerald);"
                 id="val-l4-byte-readout">
-                8,656 B
-              </div>
-              <div style="font-size: 11px; color: var(--text-faint); text-transform: uppercase;">
-                Binary Payload
               </div>
             </div>
           </div>
@@ -1197,7 +1191,7 @@
       document.getElementById("val-l4-range").innerText = d.previewRange;
       document.getElementById("val-l4-size").innerText = `${d.previewSize.toLocaleString()} Bytes`;
       document.getElementById("val-l4-fmt-title").innerText = d.previewFormat;
-      document.getElementById("val-l4-byte-readout").innerText = `${d.previewSize.toLocaleString()} B`;
+      //document.getElementById("val-l4-byte-readout").innerText = `${d.previewSize.toLocaleString()} B`;
 
       const img = document.getElementById("val-l4-img");
       img.src = d.previewUrl;
@@ -1221,7 +1215,7 @@
       switch (segIndex) {
         case 1:
           document.getElementById("bar-seg-1").classList.add("active-seg");
-          ballClass = "ball-emerald";
+          ballClass = "ball-blue";
           label = "Header 88 B";
           break;
         case 2:
@@ -1236,7 +1230,7 @@
           break;
         case 4:
           document.getElementById("bar-seg-4").classList.add("active-seg");
-          ballClass = "ball-purple";
+          ballClass = "ball-emerald";
           label = `Preview ${d.previewSize.toLocaleString()} B`;
           break;
         case 5:

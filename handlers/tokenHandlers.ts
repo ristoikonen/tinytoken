@@ -73,6 +73,7 @@ export class TokenApiHandlers {
       snarkVerifiedCount,
       archivePath: this.engine.getZipFilePath(),
       sourceDirectory: redactImageDirForDisplay(this.imageDir),
+      imageDirectory: this.imageDir,
       documentDirectory: this.documentDir,
       archiveSizeBytes: this.engine.archiveSizeBytes,
       totalTokenUncompressedBytes,
@@ -578,6 +579,8 @@ export class TokenApiHandlers {
       return jsonResponse({
         success: true,
         sourceDirectory: redactImageDirForDisplay(this.imageDir),
+        imageDirectory: this.imageDir,
+        documentDirectory: this.documentDir,
         totalTokens: buildRes.totalTokens,
         imageTokens: buildRes.imageTokens,
         documentTokens: buildRes.documentTokens,
@@ -695,8 +698,10 @@ export class TokenApiHandlers {
       return jsonResponse({
         success: true,
         mode: "folders",
-        folders: resolvedFolders.map((f) => redactImageDirForDisplay(f)),
+        folders: resolvedFolders,
         sourceDirectory: redactImageDirForDisplay(this.imageDir),
+        imageDirectory: this.imageDir,
+        documentDirectory: this.documentDir,
         totalTokens: buildRes.totalTokens,
         imageTokens: buildRes.imageTokens,
         documentTokens: buildRes.documentTokens,

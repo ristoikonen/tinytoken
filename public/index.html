@@ -1149,6 +1149,11 @@
     const elViewerImg = document.getElementById('viewer-img');
     const elViewerPdf = document.getElementById('viewer-pdf');
     const elViewerCanvas = document.getElementById('viewer-vq-canvas');
+    const elCreatePanel = document.getElementById('create-archive-panel');
+    const elBtnCreateArchive = document.getElementById('btn-create-archive');
+    const elFoldersList = document.getElementById('create-folders-list');
+    let createFolderPaths = ['./images', './documents'];
+    let createFoldersInitializedFromServer = false;
 
     function escapeHtml(str) {
       if (str === null || str === undefined) return '';
@@ -1246,6 +1251,21 @@
         ]);
 
         if (statsRes) {
+          const actualImgDir =
+            statsRes.imageDirectory ||
+            (statsRes.sourceDirectory && statsRes.sourceDirectory !== 'APP_IMAGE_DIR'
+              ? statsRes.sourceDirectory
+              : './images');
+          if (!createFoldersInitializedFromServer && actualImgDir) {
+            createFolderPaths = [
+              actualImgDir,
+              statsRes.documentDirectory || './documents',
+            ];
+            createFoldersInitializedFromServer = true;
+            if (elCreatePanel && elCreatePanel.style.display === 'flex') {
+              renderCreateFoldersList();
+            }
+          }
           if (statsRes.useMyGooglePhotos) {
             const btnGp = document.getElementById('btn-index-google-photos');
             if (btnGp) btnGp.style.display = 'inline-flex';
@@ -1927,7 +1947,7 @@ No object recipe associated with this token yet. Click [✎ Label] to teach.`;
       btn.textContent = '⏳ Indexing...';
       btn.disabled = true;
       try {
-        logDebug('[INDEX] Rebuilding tokens from APP_IMAGE_DIR...', 'cyan');
+        logDebug(`[INDEX] Rebuilding tokens from ${createFolderPaths[0] || './images'}...`, 'cyan');
         const res = await fetch('/api/index/rebuild', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -1935,7 +1955,7 @@ No object recipe associated with this token yet. Click [✎ Label] to teach.`;
         });
         const rebuildRes = await res.json().catch(() => null);
         if (rebuildRes?.success) {
-          logDebug(`[INDEX] Rebuilt ${rebuildRes.totalTokens} tokens from ${rebuildRes.sourceDirectory || 'APP_IMAGE_DIR'} (${rebuildRes.buildElapsedMs}ms)`, 'success');
+          logDebug(`[INDEX] Rebuilt ${rebuildRes.totalTokens} tokens from ${rebuildRes.imageDirectory || rebuildRes.sourceDirectory || createFolderPaths[0]} (${rebuildRes.buildElapsedMs}ms)`, 'success');
         }
         await loadStatsAndCodebook();
         await runSearch();
@@ -1948,11 +1968,6 @@ No object recipe associated with this token yet. Click [✎ Label] to teach.`;
     document.getElementById('btn-rebuild').onclick = () => triggerRebuild();
 
     // Create Archive Panel (1..N folders or Current Filtered View)
-    const elCreatePanel = document.getElementById('create-archive-panel');
-    const elBtnCreateArchive = document.getElementById('btn-create-archive');
-    const elFoldersList = document.getElementById('create-folders-list');
-    let createFolderPaths = ['APP_IMAGE_DIR', './documents'];
-
     function renderCreateFoldersList() {
       if (!elFoldersList) return;
       elFoldersList.innerHTML = '';
@@ -1962,9 +1977,10 @@ No object recipe associated with this token yet. Click [✎ Label] to teach.`;
         const input = document.createElement('input');
         input.type = 'text';
         input.className = 'search-input mono';
-        input.placeholder = idx === 0 ? 'Folder 1 (e.g. APP_IMAGE_DIR or ./images)' : `Folder ${idx + 1} (e.g. ./documents)`;
+        input.placeholder = idx === 0 ? 'Folder 1 (e.g. ./images)' : `Folder ${idx + 1} (e.g. ./documents)`;
         input.value = folderVal;
         input.oninput = (ev) => {
+          createFoldersInitializedFromServer = true;
           createFolderPaths[idx] = ev.target.value;
         };
         row.appendChild(input);
