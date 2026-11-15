@@ -39,18 +39,13 @@ const useZip = Bun.env.APP_ZIP_USE !== "false";
 const port = isTest ? 0 : Number(Bun.env.APP_PORT ?? Bun.env.PORT ?? 3000);
 const host = Bun.env.APP_HOST ?? "localhost";
 
-// Cached HTML template
-let cachedHtml: string | null = null;
+// Live HTML template reader (always serves latest public/index.html)
 async function getIndexHtml(): Promise<string> {
-  if (!cachedHtml) {
-    const f1 = Bun.file("./public/index.html");
-    if (await f1.exists()) {
-      cachedHtml = await f1.text();
-    } else {
-      cachedHtml = "<!DOCTYPE html><html><body>TinyToken</body></html>";
-    }
+  const f1 = Bun.file("./public/index.html");
+  if (await f1.exists()) {
+    return await f1.text();
   }
-  return cachedHtml;
+  return "<!DOCTYPE html><html><body>TinyToken</body></html>";
 }
 
 // Lazy indexer pipeline loader
