@@ -16,7 +16,9 @@ import {
   ALLOWED_TEXT_DOCUMENT_EXTENSIONS,
   AllowedFileTypes,
   EmbeddingModelId,
+  getAppDocumentDir,
   PreviewFormat,
+  redactImageDirForDisplay,
   type TokenMetadataPayload,
   type ZipTokenIndexEntry,
 } from "../models/token";
@@ -165,6 +167,7 @@ export class Win11TokenPipeline {
       filterSet ?? new Set(this.config.allowedExtensions!.map((e) => e.toLowerCase()));
 
     let totalSeen = 0;
+    const displayDir = redactImageDirForDisplay(dir);
     try {
       const glob = new Bun.Glob("**/*");
       for await (const relPath of glob.scan({ cwd: dir, onlyFiles: true })) {
@@ -180,19 +183,19 @@ export class Win11TokenPipeline {
       }
 
       if (totalSeen === 0) {
-        console.info(`[SCAN_EMPTY] Directory "${dir}" is empty (0 files found).`);
+        console.info(`[SCAN_EMPTY] Directory "${displayDir}" is empty (0 files found).`);
       } else if (matchedFiles.length === 0) {
         console.info(
-          `[SCAN_NO_MATCH] Directory "${dir}" contains ${totalSeen} file(s), but none matched the allowed extensions filter.`,
+          `[SCAN_NO_MATCH] Directory "${displayDir}" contains ${totalSeen} file(s), but none matched the allowed extensions filter.`,
         );
       } else {
         console.info(
-          `[SCAN_SUCCESS] Scanned directory "${dir}": found ${matchedFiles.length} matching file(s) (out of ${totalSeen} total).`,
+          `[SCAN_SUCCESS] Scanned directory "${displayDir}": found ${matchedFiles.length} matching file(s) (out of ${totalSeen} total).`,
         );
       }
     } catch (err) {
       console.error(
-        `[SCAN_FAILED] Failed to scan directory "${dir}": ${err instanceof Error ? err.message : String(err)}`,
+        `[SCAN_FAILED] Failed to scan directory "${displayDir}": ${redactImageDirForDisplay(err instanceof Error ? err.message : String(err))}`,
       );
     }
 
@@ -204,7 +207,7 @@ export class Win11TokenPipeline {
    * Scans `documentDirectory` (`./documents`) for existing PDF/DOCX documents.
    */
   public async scanDocumentDirectory(): Promise<string[]> {
-    const docDir = this.config.documentDirectory ?? "./documents";
+    const docDir = this.config.documentDirectory ?? getAppDocumentDir();
     const hasExplicitExtensions =
       Array.isArray(this.config.allowedExtensions) &&
       this.config.allowedExtensions.length > 0;
@@ -254,7 +257,7 @@ export class Win11TokenPipeline {
       .webp({ quality: 75 })
       .toBuffer();
 
-    const ocrText = `File size over max size: ${filename} (${fileSizeMb} MB > ${maxFileMb} MB limit) | Source path: ${fullPath}`;
+    const ocrText = `File size over max size: ${filename} (${fileSizeMb} MB > ${maxFileMb} MB limit) | Source path: ${redactImageDirForDisplay(fullPath)}`;
     const fallbackDino = extractColorHogFallbackFromRgb224(new Uint8Array(224 * 224 * 3).fill(128));
 
     const metadata: TokenMetadataPayload = {
@@ -494,7 +497,7 @@ export class Win11TokenPipeline {
       sourcePath: `/api/image/${encodeURIComponent(filename)}`,
       mimeType: bunFile.type || extensionToMimeType(ext),
       tags: ["local-image", ext.replace(".", ""), "dinov3-vit-s16", "webp-preview", "verified"],
-      ocrNote: `Source path: ${fullPath}`,
+      ocrNote: `Source path: ${redactImageDirForDisplay(fullPath)}`,
       benchmark,
     });
   }
@@ -586,7 +589,7 @@ export class Win11TokenPipeline {
         const snippetPart = pg.extractedText ? ` | Page Text: ${pg.extractedText}` : "";
         const ocrText =
           `${ext === ".pdf" ? "PDF" : "Document"} Page ${pg.page}/${pg.totalPages}: ${filename} (${(rawBytes.length / 1024).toFixed(1)} KB, ${pg.width}x${pg.height}px)` +
-          `${snippetPart} | Source path: ${fullPath}`;
+          `${snippetPart} | Source path: ${redactImageDirForDisplay(fullPath)}`;
 
         const metadata: TokenMetadataPayload = {
           id,
@@ -723,7 +726,7 @@ export class Win11TokenPipeline {
       : "";
     const ocrText =
       `${failurePrefix}Document: ${filename} (${docInfo.totalPages} pages, ${(rawBytes.length / 1024).toFixed(1)} KB, ${docInfo.width}x${docInfo.height}px @ 150 DPI)` +
-      `${snippetPart} | Source path: ${fullPath}`;
+      `${snippetPart} | Source path: ${redactImageDirForDisplay(fullPath)}`;
 
     const tags = [
       "local-document",
@@ -917,7 +920,11 @@ export class Win11TokenPipeline {
       const key = JSON.stringify([filename, file.size, isDocument]);
       const matches = existingTokens
         .get(key)
-        ?.filter((entry) => entry.sourceHash === sourceHash);
+        ?.filter(
+          (entry) =>
+            entry.sourceHash === sourceHash &&
+            entry.embeddingModelId === EmbeddingModelId.DINOV3_VITS16_Q8,
+        );
       if (!existingEngine || scannedSourceCounts.get(key) !== 1 || !matches?.length) return null;
       const orderedMatches = [...matches].sort((a, b) => a.page - b.page);
 

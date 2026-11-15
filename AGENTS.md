@@ -98,7 +98,7 @@ export interface AbstractObjectRecipe {
 
 ### Store 3: `learning_evidence.json` (Observation Ledger)
 * **Purpose**: Append-oriented log recording concrete, grounded sightings on specific image tokens.
-* **Fields**: Every sighting references the observed token, the bounding box, covered centroids, geographic coordinates (with default Sydney NSW coordinates `-33.8688, 151.2093`), UTC timestamp, and confidence.
+* **Fields**: Every sighting references the observed token, the bounding box, covered centroids, geographic coordinates (with default Canberra ACT coordinates `-35.1843, 149.1328`), UTC timestamp, and confidence.
 
 ```typescript
 export interface LearningEvidenceRecord {
@@ -110,8 +110,8 @@ export interface LearningEvidenceRecord {
   sourceArchiveHash?: string;  // CRC-32 of active tokens.zip
   boundingBox: [number, number, number, number]; // [ymin, xmin, ymax, xmax] 0..1
   observedCentroids: number[]; // Centroid IDs covered by bounding box
-  latitude: number;            // Default: -33.8688
-  longitude: number;           // Default: 151.2093
+  latitude: number;            // Default: -35.1843
+  longitude: number;           // Default: 149.1328
   utcTimestamp: string;        // ISO 8601 UTC timestamp
   observedAt: string;          // Preserved local/ISO timestamp
   source: LearningSource;      // "human_verified" | "human_suggested" | "model_cluster"
@@ -216,15 +216,7 @@ In a new environment, lighting or camera white balance will shift raw RGB values
 
 Histogram Intersection (VQ Overlap): Measures whether the same material/color pigments (e.g. umber charcoal #222, terracotta clay #97) are present in the new scene.
 DINOv3 Cosine Similarity: Invariant to illumination and viewpoint changes; ensures the candidate actually has the shape and semantic structure of the entity.
-Set 
-𝛼
-=
-0.60
-α=0.60 for illumination-robust matching, or 
-𝛼
-=
-0.30
-α=0.30 when material color fidelity is critical.
+Set $\alpha = 0.85$ (`HYBRID_SIMILARITY_ALPHA = 0.85` in `models/token.ts`) as the default illumination-robust hybrid similarity weight (or $\alpha = 0.30$ when material color fidelity is critical).
 Step 2. Operational Evaluation Protocol
 
 After hot-swapping to a new tokens.zip via the Ingest Archive button:
@@ -329,7 +321,7 @@ Fused Score=α⋅DINOv3_Cosine+(1−α)⋅VQ_Overlap
 
 DINOv3 provides illumination-invariant shape and semantic understanding ("this is a kangaroo").
 Spatial VQ Overlap verifies material and pigment fidelity ("it has the red-ochre fur pattern of an Australian Red Kangaroo, not the grey coat of an Eastern Grey").
-Setting 𝛼 = 0.60 allows robust detection across changing daylight or camera white balances.
+Setting $\alpha = 0.85$ (`HYBRID_SIMILARITY_ALPHA = 0.85`) allows robust detection across changing daylight or camera white balances.
 4. Fast Unsupervised Clustering & Scene Classification
 
 Because every token maps into a fixed 256-dimensional discrete vector (

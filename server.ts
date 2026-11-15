@@ -1,7 +1,13 @@
 import { serve, type BunRequest } from "bun";
 import { LearningHandlers } from "./handlers/learningHandlers";
 import { TokenApiHandlers } from "./handlers/tokenHandlers";
-import { AllowedFileTypes } from "./models/token";
+import {
+  AllowedFileTypes,
+  getAppDocumentDir,
+  getAppImageDir,
+  getAppSqliteDbPath,
+  redactImageDirForDisplay,
+} from "./models/token";
 import { ArchiveManager } from "./utils/archiveManager";
 import type { Win11TokenPipeline } from "./utils/indexer";
 import { errorResponse, jsonResponse, verifySameOriginMutation, corsResponse } from "./utils/response";
@@ -22,17 +28,15 @@ const howItWorksPageFile = Bun.file("./pages/how-it-works.html");
 const physicalStackPageFile = Bun.file("./pages/physical-stack.html");
 
 // Configuration
+const isTest = Bun.env.NODE_ENV === "test";
 const DATA_DIR = Bun.env.DATA_DIR ?? "./data";
 const ZIP_ARCHIVE_PATH = Bun.env.ZIP_ARCHIVE_PATH ?? `${DATA_DIR}/tokens.zip`;
-const IMAGE_DIR =
-  Bun.env.IMAGE_DIR ??
-  Bun.argv[2] ??
-  "C:/Users/risto/OneDrive/Pictures/Nikon/toke";
-const DOCUMENT_DIR = "./documents";
+const IMAGE_DIR = getAppImageDir(isTest ? undefined : Bun.argv[2]);
+const DOCUMENT_DIR = getAppDocumentDir();
+const SQLITE_DB_PATH = getAppSqliteDbPath();
 const INDEXED_DIR_STAMP = `${DATA_DIR}/.indexed_dir`;
 const useZip = Bun.env.APP_ZIP_USE !== "false";
-const isTest = Bun.env.NODE_ENV === "test";
-const port = isTest ? 0 : Number(Bun.env.PORT ?? 3000);
+const port = isTest ? 0 : Number(Bun.env.APP_PORT ?? Bun.env.PORT ?? 3000);
 const host = Bun.env.APP_HOST ?? "localhost";
 
 // Cached HTML template
@@ -79,7 +83,7 @@ const searchEngine = new CompressedTokenSearchEngine(ZIP_ARCHIVE_PATH, {
   useZip,
   dataDirPath: DATA_DIR,
 });
-const invertedIndex = new VqInvertedIndexEngine(":memory:");
+const invertedIndex = new VqInvertedIndexEngine(SQLITE_DB_PATH);
 const archiveManager = new ArchiveManager(searchEngine, ZIP_ARCHIVE_PATH, invertedIndex);
 const learningHandlers = new LearningHandlers(archiveManager, visualTraitRegistry);
 const apiHandlers = new TokenApiHandlers(
@@ -197,10 +201,10 @@ async function initIndex(): Promise<void> {
     }
   }
 
-  const shouldRebuild = (!tokensExist && imageDirValid) || (dirChanged && imageDirValid);
+  const shouldRebuild = (!tokensExist && imageDirValid) || (!isTest && dirChanged && imageDirValid);
 
   if (shouldRebuild) {
-    console.log(`Building tokens from ${IMAGE_DIR} and ${DOCUMENT_DIR} (ZIP=${isZip})...`);
+    console.log(`Building tokens from ${redactImageDirForDisplay(IMAGE_DIR)} and ${DOCUMENT_DIR} (ZIP=${isZip})...`);
     await (await getPipeline()).buildTokenArchive(IMAGE_DIR);
     try {
       await Bun.write(INDEXED_DIR_STAMP, IMAGE_DIR);

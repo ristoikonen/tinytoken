@@ -21,7 +21,7 @@
  */
 
 import { env, pipeline } from "@huggingface/transformers";
-import { EmbeddingModelId } from "../models/token";
+import { BGE_MODEL_ID, EmbeddingModelId, getTransformersCacheDir } from "../models/token";
 import {
     quantizeFloat32ToInt8,
     computeDinoCosineSimilarity,
@@ -29,11 +29,10 @@ import {
 
 export const BGE_EMBEDDING_DIMS = 384;
 export const BGE_MAX_TOKENS = 512;
-export const BGE_MODEL =
-    "Xenova/bge-small-en-v1.5";
+export const BGE_MODEL = BGE_MODEL_ID;
 
 
-env.cacheDir = "./.cache/transformers";
+env.cacheDir = getTransformersCacheDir();
 
 export interface BgeEmbeddingResult {
     embedding: Int8Array<ArrayBuffer>;
@@ -200,6 +199,18 @@ export function computeBgeCosineSimilarity(
     }
 
     return computeDinoCosineSimilarity(a, b);
+}
+
+/**
+ * Scales BGE cosine similarity [-1, 1] into a normalized [0, 100] percentage
+ * rounded consistently to 2 decimal places across all search paths.
+ */
+export function computeBgeSimilarityPct(
+    a: Int8Array,
+    b: Int8Array,
+): number {
+    const cosine = computeBgeCosineSimilarity(a, b);
+    return Math.round(Math.max(0, Math.min(1, (cosine + 1) / 2)) * 10000) / 100;
 }
 
 /**

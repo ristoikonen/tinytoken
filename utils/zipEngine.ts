@@ -15,13 +15,16 @@
 import {
   type ContentId,
   EmbeddingModelId,
+  getHybridSimilarityAlpha,
   PreviewFormat,
   type SearchHitDTO,
+  TokenFlags,
   type ZipTokenIndexEntry,
 } from "../models/token";
 import {
   bgeEmbeddingToHex,
   computeBgeCosineSimilarity,
+  computeBgeSimilarityPct,
   hexToBgeEmbedding,
 } from "./bgeEmbedding";
 import { dinoEmbeddingToHex, hexToDinoEmbedding } from "./dinoEmbedding";
@@ -31,6 +34,7 @@ import { decodeBinaryToken } from "./tokenCodec";
 import {
   adcDistanceToSimilarityPct,
   computeHybridVisualSimilarity,
+  computeVqAdcDistance,
   hexToVqGrid,
   vqGridToHex,
 } from "./vqCodebook";
@@ -716,19 +720,29 @@ export class CompressedTokenSearchEngine {
     return results;
   }
 
+  private isDocumentEntry(entry: ZipTokenIndexEntry): boolean {
+    return (
+      entry.sourcePath.startsWith("/api/document/") ||
+      (entry.flags & TokenFlags.MULTI_PAGE_DOC) !== 0 ||
+      (entry.flags & TokenFlags.HAS_BGE_EMBEDDING) !== 0 ||
+      Boolean(entry.bgeEmbedding && entry.bgeEmbedding.length > 0)
+    );
+  }
+
   /**
    * Sub-millisecond Hybrid DINOv3 (384B ViT-S/16 Int8) + VQ (256B 16x16 ADC) visual similarity search.
-   * Ranks all indexed tokens by semantic DINOv3 cosine + perceptual VQ distance to `targetId`.
+   * Enforces strict modality separation (images match images; documents match documents with BGE+VQ fusion).
    */
   public searchSimilarVQ(
     targetIdOrVqGrid: string | Uint8Array,
     textFilter = "",
-    limit = 50,
+    limit = 100,
   ): SearchHitDTO[] {
     let queryGrid: Uint8Array;
     let queryDino: Int8Array | undefined;
     let queryBge: Int8Array | undefined;
     let queryModelId: EmbeddingModelId | undefined;
+    let queryIsDocument: boolean | undefined;
     let targetId = "";
 
     if (typeof targetIdOrVqGrid === "string") {
@@ -739,6 +753,7 @@ export class CompressedTokenSearchEngine {
       queryDino = targetEntry.dinoEmbedding;
       queryBge = targetEntry.bgeEmbedding;
       queryModelId = targetEntry.embeddingModelId;
+      queryIsDocument = this.isDocumentEntry(targetEntry);
     } else {
       queryGrid = targetIdOrVqGrid;
     }
@@ -748,8 +763,10 @@ export class CompressedTokenSearchEngine {
     }
 
     const lowerFilter = textFilter.trim().toLowerCase();
+    const alpha = getHybridSimilarityAlpha();
     const scored: Array<{
       entry: ZipTokenIndexEntry;
+      sameModality: boolean;
       similarityScore: number;
       adcDistance: number;
       dinoSimilarity: number | null;
@@ -768,10 +785,29 @@ export class CompressedTokenSearchEngine {
       if (targetId && item.id === targetId) {
         scored.push({
           entry: item,
+          sameModality: true,
           similarityScore: 100,
           adcDistance: 0,
           dinoSimilarity: item.dinoEmbedding && item.dinoEmbedding.length > 0 ? 100 : null,
           bgeSimilarity: item.bgeEmbedding && item.bgeEmbedding.length > 0 ? 100 : null,
+        });
+        continue;
+      }
+
+      const sameModality =
+        queryIsDocument === undefined || this.isDocumentEntry(item) === queryIsDocument;
+
+      if (!sameModality) {
+        // Cross-modality (Image vs Document): no semantic overlap (dino/bge = null, similarityScore = 0),
+        // listed at the bottom ordered by raw VQ ADC distance.
+        const adcDistance = computeVqAdcDistance(queryGrid, item.vqIndices);
+        scored.push({
+          entry: item,
+          sameModality: false,
+          similarityScore: 0,
+          adcDistance,
+          dinoSimilarity: null,
+          bgeSimilarity: null,
         });
         continue;
       }
@@ -787,20 +823,30 @@ export class CompressedTokenSearchEngine {
 
       let bgeSimilarity: number | null = null;
       if (queryBge && queryBge.length === 384 && item.bgeEmbedding && item.bgeEmbedding.length === 384) {
-        const cosine = computeBgeCosineSimilarity(queryBge, item.bgeEmbedding);
-        bgeSimilarity = Math.round(Math.max(0, (cosine + 1) / 2) * 1000) / 10;
+        bgeSimilarity = computeBgeSimilarityPct(queryBge, item.bgeEmbedding);
       }
+
+      const finalSimilarityScore =
+        queryIsDocument && bgeSimilarity !== null
+          ? Math.round((bgeSimilarity * alpha + sim.similarityScore * (1 - alpha)) * 100) / 100
+          : sim.similarityScore;
 
       scored.push({
         entry: item,
-        similarityScore: sim.similarityScore,
+        sameModality: true,
+        similarityScore: finalSimilarityScore,
         adcDistance: sim.adcDistance,
         dinoSimilarity: sim.dinoSimilarityPct,
         bgeSimilarity,
       });
     }
 
-    scored.sort((a, b) => b.similarityScore - a.similarityScore || a.adcDistance - b.adcDistance);
+    scored.sort(
+      (a, b) =>
+        Number(b.sameModality) - Number(a.sameModality) ||
+        b.similarityScore - a.similarityScore ||
+        a.adcDistance - b.adcDistance,
+    );
     return scored.slice(0, limit).map(({ entry, similarityScore, adcDistance, dinoSimilarity, bgeSimilarity }) =>
       this.toSearchHitDTO(entry, adcDistance, similarityScore, dinoSimilarity, bgeSimilarity),
     );
@@ -858,8 +904,7 @@ export class CompressedTokenSearchEngine {
         continue;
       }
 
-      const cosine = computeBgeCosineSimilarity(queryEmbedding, item.bgeEmbedding);
-      const similarityPct = Math.round(Math.max(0, (cosine + 1) / 2) * 10000) / 100;
+      const similarityPct = computeBgeSimilarityPct(queryEmbedding, item.bgeEmbedding);
       scored.push({
         entry: item,
         bgeSimilarity: similarityPct,

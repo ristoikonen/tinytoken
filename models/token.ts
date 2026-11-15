@@ -3,7 +3,7 @@
  * Fixed 25 KB (25,600 bytes max) hybrid token envelope:
  * - Section I   (0..703, 704 B): Header, 256B SNARK/SHARK Attestation Stub, 256B VQ 16x16 Grid, 64B GF(2^8) RS Parity
  * - Section II  (704..4799, up to 4,096 B): Compact Metadata & OCR Text (QuickLZ / UTF-8 JSON)
- * - Section III (4800..25599, up to 20,800 B): High-Efficiency 220x220 Preview Image
+ * - Section III (4800..25599, up to 20,800 B): High-Efficiency 320x320 Preview Image
  */
 
 export const TOKEN_MAGIC = "GF28";
@@ -14,6 +14,9 @@ export const SECTION1_HEADER_BYTES = 704;
 export const SECTION2_MAX_META_BYTES = 4096;
 export const SECTION2_MAX_UNCOMPRESSED_META_BYTES = SECTION2_MAX_META_BYTES * 8; // 32,768 bytes (32 KB)
 export const SECTION3_MAX_PREVIEW_BYTES = 20800; // 25,600 - 704 - 4,096
+export const PREVIEW_TARGET_DIMENSION = 320;
+export const PREVIEW_TARGET_WIDTH = 320;
+export const PREVIEW_TARGET_HEIGHT = 320;
 
 export const SNARK_STUB_OFFSET = 128;
 export const SNARK_STUB_BYTES = 256; // 128..383
@@ -61,6 +64,90 @@ export enum EmbeddingModelId {
 }
 
 export const DEFAULT_CLIP_TEXT_LIMIT = 2200;
+
+/**
+ * Centralized Paths, Directories & Model Identifiers (configurable via .env).
+ */
+export const DEFAULT_IMAGE_DIR = "./images";
+export const DEFAULT_DOCUMENT_DIR = "./documents";
+export const DEFAULT_SQLITE_DB_PATH = ":memory:";
+export const DEFAULT_TRANSFORMERS_CACHE_DIR = "./.cache/transformers";
+export const DINO_MODEL_ID = "onnx-community/dinov3-vits16-pretrain-lvd1689m-ONNX";
+export const BGE_MODEL_ID = "Xenova/bge-small-en-v1.5";
+
+export function getAppImageDir(cliOverride?: string): string {
+  return (
+    Bun.env.APP_IMAGE_DIR ??
+    Bun.env.IMAGE_DIR ??
+    cliOverride ??
+    DEFAULT_IMAGE_DIR
+  );
+}
+
+export function getAppDocumentDir(): string {
+  return (
+    Bun.env.APP_DOCUMENT_DIR ??
+    Bun.env.DOCUMENT_DIR ??
+    DEFAULT_DOCUMENT_DIR
+  );
+}
+
+export function getAppSqliteDbPath(): string {
+  return (
+    Bun.env.APP_SQLITE_DB_PATH ??
+    Bun.env.SQLITE_DB_PATH ??
+    DEFAULT_SQLITE_DB_PATH
+  );
+}
+
+export function getTransformersCacheDir(): string {
+  return Bun.env.APP_TRANSFORMERS_CACHE_DIR ?? DEFAULT_TRANSFORMERS_CACHE_DIR;
+}
+
+/**
+ * Redacts the configured APP_IMAGE_DIR filesystem path to the literal label "APP_IMAGE_DIR"
+ * for debug logging, UI responses, and OCR source notes.
+ */
+export function redactImageDirForDisplay(text: string): string {
+  if (!text) return text;
+  const rawAppImageDir = (Bun.env.APP_IMAGE_DIR ?? "").trim().replace(/[\\/]+$/, "");
+  if (!rawAppImageDir || rawAppImageDir === "." || rawAppImageDir === "./images") {
+    return text;
+  }
+  const forwardVariant = rawAppImageDir.replace(/\\/g, "/");
+  const backVariant = rawAppImageDir.replace(/\//g, "\\");
+  let out = text;
+  if (forwardVariant) {
+    out = out.split(forwardVariant).join("APP_IMAGE_DIR");
+  }
+  if (backVariant && backVariant !== forwardVariant) {
+    out = out.split(backVariant).join("APP_IMAGE_DIR");
+  }
+  return out;
+}
+
+/**
+ * Default Canberra ACT / Australia geographic coordinates when asset metadata lacks GPS.
+ */
+export const DEFAULT_GEO_LATITUDE = -35.1843;
+export const DEFAULT_GEO_LONGITUDE = 149.1328;
+
+/**
+ * Dual-Score Hybrid Visual Similarity Weight (α = 0.85):
+ * Fused Score = α · DINOv3_Cosine + (1 - α) · VQ_Overlap
+ */
+export const HYBRID_SIMILARITY_ALPHA = 0.85;
+
+export function getHybridSimilarityAlpha(): number {
+  const raw = Bun.env.APP_HYBRID_SIMILARITY_ALPHA;
+  if (raw !== undefined) {
+    const parsed = Number(raw);
+    if (Number.isFinite(parsed) && parsed >= 0 && parsed <= 1) {
+      return parsed;
+    }
+  }
+  return HYBRID_SIMILARITY_ALPHA;
+}
 
 /**
  * Single centralized registry of allowed asset file extensions across the server, indexer, CLI, and document processors.

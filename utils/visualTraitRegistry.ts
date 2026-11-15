@@ -14,6 +14,7 @@ import type {
   LearningEvidenceRecord,
   LearningSource,
 } from "../models/learning";
+import { DEFAULT_GEO_LATITUDE, DEFAULT_GEO_LONGITUDE } from "../models/token";
 import { VQ_CODEBOOK } from "./vqCodebook";
 
 export type {
@@ -60,9 +61,9 @@ export interface EvaluatedTrait {
   rgb: { r: number; g: number; b: number };
 }
 
-// Default observation coordinates (Sydney / NSW baseline)
-export const DEFAULT_OBSERVATION_LATITUDE = -33.8688;
-export const DEFAULT_OBSERVATION_LONGITUDE = 151.2093;
+// Default observation coordinates (Canberra ACT / Australia baseline)
+export const DEFAULT_OBSERVATION_LATITUDE = DEFAULT_GEO_LATITUDE;
+export const DEFAULT_OBSERVATION_LONGITUDE = DEFAULT_GEO_LONGITUDE;
 
 export class VisualTraitRegistry {
   private registry = new Map<number, TokenTraitMetadata>();

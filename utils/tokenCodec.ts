@@ -8,6 +8,8 @@
 
 import {
   type ContentId,
+  DEFAULT_GEO_LATITUDE,
+  DEFAULT_GEO_LONGITUDE,
   EmbeddingModelId,
   MAX_TOKEN_BYTES,
   PreviewFormat,
@@ -228,7 +230,7 @@ export async function encodeBinaryToken(
   const tokenBuffer = new Uint8Array(totalTokenSize);
   const view = new DataView(tokenBuffer.buffer);
 
-  // --- Section I: 1,024-Byte Fixed Header ---
+  // --- Section I: 704-Byte Fixed Header ---
   // 0..3: Magic "GF28"
   tokenBuffer[0] = 0x47; // 'G'
   tokenBuffer[1] = 0x46; // 'F'
@@ -721,12 +723,12 @@ export async function generateMockTinyTokenBuffer(
     height: 768,
     colorDepth: 24,
     createdAt: new Date(1793345600 * 1000).toISOString(),
-    ocrText: `Automated Pipeline Asset Synthesis Engine • Class: ${environmentClass} • Canberra Locale (-35.1764, 149.1311)`,
+    ocrText: `Automated Pipeline Asset Synthesis Engine • Class: ${environmentClass} • Canberra Locale (${DEFAULT_GEO_LATITUDE}, ${DEFAULT_GEO_LONGITUDE})`,
     tags: ["synthetic", environmentClass, "canberra"],
     environmentClass,
     geoCoordinates: {
-      latitude: -35.1764,
-      longitude: 149.1311,
+      latitude: DEFAULT_GEO_LATITUDE,
+      longitude: DEFAULT_GEO_LONGITUDE,
     },
   };
 

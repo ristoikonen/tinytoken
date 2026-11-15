@@ -12,14 +12,15 @@
  */
 
 import { env, pipeline, RawImage } from "@huggingface/transformers";
-import { EmbeddingModelId } from "../models/token";
+import { DINO_MODEL_ID, EmbeddingModelId, getTransformersCacheDir } from "../models/token";
 
 export const DINO_EMBEDDING_DIMS = 384;
 export const DINO_IMAGE_SIZE = 224;
 export const DINO_PATCH_SIZE = 16;
 export const DINO_PATCH_GRID = 14;
+export { DINO_MODEL_ID };
 
-env.cacheDir = "./.cache/transformers";
+env.cacheDir = getTransformersCacheDir();
 
 // Singleton ONNX feature-extraction pipeline promise
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -29,7 +30,7 @@ async function getDinoV3Extractor() {
   if (!dinoExtractorPromise) {
     dinoExtractorPromise = pipeline(
       "image-feature-extraction",
-      "onnx-community/dinov3-vits16-pretrain-lvd1689m-ONNX",
+      DINO_MODEL_ID,
       {
         dtype: "q8",
       },

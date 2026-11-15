@@ -4,7 +4,10 @@ import {
   ALLOWED_EXTENSIONS,
   AllowedFileTypes,
   type ContentId,
+  DEFAULT_GEO_LATITUDE,
+  DEFAULT_GEO_LONGITUDE,
   EmbeddingModelId,
+  HYBRID_SIMILARITY_ALPHA,
   MAX_TOKEN_BYTES,
   PreviewFormat,
   SECTION1_HEADER_BYTES,
@@ -390,8 +393,9 @@ describe("TinyToken GF(2^8) + VQ + SHARK/SNARK Pipeline", () => {
     expect(decoded.rsParityValid).toBe(true);
     expect(decoded.snarkAttestation.valid).toBe(true);
     expect(decoded.metadata.environmentClass).toBe("grassland_synthetic");
-    expect(decoded.metadata.geoCoordinates?.latitude).toBeCloseTo(-35.1764, 4);
-    expect(decoded.metadata.geoCoordinates?.longitude).toBeCloseTo(149.1311, 4);
+    expect(decoded.metadata.geoCoordinates?.latitude).toBeCloseTo(DEFAULT_GEO_LATITUDE, 4);
+    expect(decoded.metadata.geoCoordinates?.longitude).toBeCloseTo(DEFAULT_GEO_LONGITUDE, 4);
+    expect(HYBRID_SIMILARITY_ALPHA).toBe(0.85);
   });
 
   test("CORS and cross-origin POST guards block untrusted origins and CSRF attacks", async () => {
@@ -757,7 +761,7 @@ describe("TinyToken GF(2^8) + VQ + SHARK/SNARK Pipeline", () => {
     expect(unknownModelRes.dinoSimilarityPct).toBeNull();
     expect(unknownModelRes.similarityScore).toBe(100);
 
-    // Different model IDs (e.g. 1 vs 2) -> incompatible -> dinoSimilarityPct: null
+    // Different model IDs (e.g. 1 vs 2) -> incompatible -> dinoSimilarityPct: null & penalized by (1 - α)
     const mismatchModelRes = computeHybridVisualSimilarity(
       gridA,
       gridB,
@@ -767,6 +771,7 @@ describe("TinyToken GF(2^8) + VQ + SHARK/SNARK Pipeline", () => {
       2,
     );
     expect(mismatchModelRes.dinoSimilarityPct).toBeNull();
+    expect(mismatchModelRes.similarityScore).toBe(15);
 
     // Known matching model IDs (2 vs 2) -> compatible -> dinoSimilarityPct calculated
     const matchingModelRes = computeHybridVisualSimilarity(

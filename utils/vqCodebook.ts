@@ -8,7 +8,10 @@
  *    embeddings with the 256x256 VQ centroid distance LUT to rank tokens in microseconds.
  */
 
+import { HYBRID_SIMILARITY_ALPHA, getHybridSimilarityAlpha } from "../models/token";
 import { computeDinoCosineSimilarity } from "./dinoEmbedding";
+
+export { HYBRID_SIMILARITY_ALPHA, getHybridSimilarityAlpha };
 
 export interface VqCentroidRGB {
   r: number;
@@ -273,18 +276,46 @@ export function computeVqAdcDistance(queryGrid: Uint8Array, candidateGrid: Uint8
 export const MAX_CELL_ADC_DISTANCE = 65025; // 255^2, max distance between #252 (0,0,0) and #255 (255,255,255)
 export const MAX_ADC_DISTANCE = 256 * MAX_CELL_ADC_DISTANCE; // 16,646,400 for 16x16 grid (256 cells)
 
+const histBufA = new Uint16Array(256);
+const histBufB = new Uint16Array(256);
+
+/**
+ * Computes normalized 256-centroid histogram intersection (0..1) between two 16x16 VQ grids
+ * with zero heap allocations using preallocated Uint16Array buffers.
+ */
+export function computeVqHistogramOverlap(queryGrid: Uint8Array, candidateGrid: Uint8Array): number {
+  validateVqGrid(queryGrid);
+  validateVqGrid(candidateGrid);
+  histBufA.fill(0);
+  histBufB.fill(0);
+  for (let i = 0; i < 256; i++) {
+    histBufA[queryGrid[i]!]!++;
+    histBufB[candidateGrid[i]!]!++;
+  }
+  let intersection = 0;
+  for (let c = 0; c < 256; c++) {
+    const a = histBufA[c]!;
+    const b = histBufB[c]!;
+    if (a > 0 && b > 0) {
+      intersection += a < b ? a : b;
+    }
+  }
+  return intersection / 256;
+}
+
 /**
  * Converts raw ADC distance into a normalized 0..100% spatial color similarity score
  * grounded in the theoretical upper bound MAX_ADC_DISTANCE of the perceptual distance metric.
  */
 export function adcDistanceToSimilarityPct(adcDist: number): number {
   const norm = Math.max(0, 1 - adcDist / MAX_ADC_DISTANCE);
-  return Math.round(norm * 1000) / 10;
+  return Math.round(norm * 10000) / 100;
 }
 
 /**
- * Hybrid DINOv3 (384B ViT-S/16 Int8) + 16x16 VQ Perceptual Color-Layout Similarity.
- * When both models are known and compatible, combines 90% semantic DINO cosine similarity with 10% VQ spatial palette similarity.
+ * Hybrid DINOv3 (384B ViT-S/16 Int8) + 16x16 VQ Perceptual Color-Layout & Centroid Overlap Similarity.
+ * When both models are known and compatible, combines α (default 0.85) semantic DINO cosine similarity
+ * with (1 - α) VQ spatial/centroid-overlap similarity.
  * When DINO embeddings are absent or models are not verified compatible, returns VQ-only similarity and dinoSimilarityPct: null.
  */
 export function computeHybridVisualSimilarity(
@@ -304,7 +335,9 @@ export function computeHybridVisualSimilarity(
     return { similarityScore: 100, adcDistance: 0, dinoSimilarityPct: null };
   }
 
-  const vqSim01 = Math.max(0, 1 - adcDistance / MAX_ADC_DISTANCE);
+  const adcSim01 = Math.max(0, 1 - adcDistance / MAX_ADC_DISTANCE);
+  const histOverlap01 = computeVqHistogramOverlap(queryVq, candidateVq);
+  const vqSim01 = adcSim01 * histOverlap01;
 
   // An unknown model ID is not evidence of compatibility.
   // Only calculate DINO similarity when both model identifiers are known and match.
@@ -325,16 +358,30 @@ export function computeHybridVisualSimilarity(
       return { similarityScore: 100, adcDistance: 0, dinoSimilarityPct: 100 };
     }
     const dinoSim01 = Math.max(0, Math.min(1, cosine));
-    const hybrid01 = dinoSim01 * 0.9 + vqSim01 * 0.1;
+    const alpha = getHybridSimilarityAlpha();
+    const hybrid01 = dinoSim01 * alpha + vqSim01 * (1 - alpha);
     return {
-      similarityScore: Math.round(hybrid01 * 1000) / 10,
+      similarityScore: Math.round(hybrid01 * 10000) / 100,
       adcDistance,
-      dinoSimilarityPct: Math.round(dinoSim01 * 1000) / 10,
+      dinoSimilarityPct: Math.round(dinoSim01 * 10000) / 100,
+    };
+  }
+
+  // If the query carries a known semantic embedding model (e.g. DINOv3 0x02),
+  // a candidate with a mismatched or missing semantic embedding cannot claim semantic match (dinoSim = 0)
+  // and receives only the (1 - α) VQ spatial component instead of an unpenalized 100% VQ score.
+  if (queryModelId !== undefined && queryDino && queryDino.length > 0) {
+    const alpha = getHybridSimilarityAlpha();
+    const penalized01 = vqSim01 * (1 - alpha);
+    return {
+      similarityScore: Math.round(penalized01 * 10000) / 100,
+      adcDistance,
+      dinoSimilarityPct: null,
     };
   }
 
   return {
-    similarityScore: Math.round(vqSim01 * 1000) / 10,
+    similarityScore: Math.round(vqSim01 * 10000) / 100,
     adcDistance,
     dinoSimilarityPct: null,
   };

@@ -1170,7 +1170,7 @@
             if (btnGp) btnGp.style.display = 'inline-flex';
             logDebug('[ENV] USE_MY_GOOGLE_PHOTOS enabled. Ingestion button armed.', 'cyan');
           }
-          logDebug(`[SYS] TinyToken active • ${statsRes.tokenCount || 0} tokens in RAM (${((statsRes.archiveSizeBytes || 0) / 1024).toFixed(1)} KB)`);
+          logDebug(`[SYS] TinyToken active • ${statsRes.tokenCount || 0} tokens in RAM (${((statsRes.archiveSizeBytes || 0) / 1024).toFixed(1)} KB) • Source: ${statsRes.sourceDirectory || 'APP_IMAGE_DIR'}`);
         }
 
         if (cbRes && Array.isArray(cbRes.centroids) && cbRes.centroids.length === 256) {
@@ -1189,7 +1189,7 @@
     async function runSearch({ selectFirstSimilar = false } = {}) {
       try {
         const q = elSearch.value.trim();
-        const params = new URLSearchParams({ q, limit: '80' });
+        const params = new URLSearchParams({ q, limit: '200' });
         if (activeSimilarTo) {
           params.set('mode', 'vq');
           params.set('similarTo', activeSimilarTo);
@@ -1846,11 +1846,16 @@ No object recipe associated with this token yet. Click [✎ Label] to teach.`;
       btn.textContent = '⏳ Indexing...';
       btn.disabled = true;
       try {
-        await fetch('/api/index/rebuild', {
+        logDebug('[INDEX] Rebuilding tokens from APP_IMAGE_DIR...', 'cyan');
+        const res = await fetch('/api/index/rebuild', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({})
         });
+        const rebuildRes = await res.json().catch(() => null);
+        if (rebuildRes?.success) {
+          logDebug(`[INDEX] Rebuilt ${rebuildRes.totalTokens} tokens from ${rebuildRes.sourceDirectory || 'APP_IMAGE_DIR'} (${rebuildRes.buildElapsedMs}ms)`, 'success');
+        }
         await loadStatsAndCodebook();
         await runSearch();
       } finally {

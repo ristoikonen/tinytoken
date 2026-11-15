@@ -65,8 +65,8 @@ export interface LearningEvidenceRecord {
   sourceArchiveHash?: string; // CRC-32 or hash of active tokens.zip when observed
   boundingBox: [number, number, number, number]; // [normX, normY, normW, normH]
   observedCentroids: number[]; // Centroids found within the bounding box
-  latitude: number; // Default: -33.8688
-  longitude: number; // Default: 151.2093
+  latitude: number; // Default: -35.1843 (Canberra ACT)
+  longitude: number; // Default: 149.1328 (Canberra ACT)
   utcTimestamp: string; // ISO 8601 UTC timestamp
   observedAt: string; // Preserved observation timestamp
   source: LearningSource; // "human_verified" | "human_suggested" | "model_cluster"

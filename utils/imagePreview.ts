@@ -10,7 +10,13 @@
  */
 
 import sharp from "sharp";
-import { EmbeddingModelId, PreviewFormat } from "../models/token";
+import {
+  EmbeddingModelId,
+  PREVIEW_TARGET_DIMENSION,
+  PREVIEW_TARGET_HEIGHT,
+  PREVIEW_TARGET_WIDTH,
+  PreviewFormat,
+} from "../models/token";
 import {
   extractColorHogFallbackFromRgb224,
   extractRealDinoEmbedding,
@@ -96,14 +102,14 @@ export function parseSvgMetadataAndText(svgBytes: Uint8Array): {
     svgBytes.subarray(0, Math.min(svgBytes.length, 65536)),
   );
 
-  let width = 220;
-  let height = 220;
+  let width = PREVIEW_TARGET_WIDTH;
+  let height = PREVIEW_TARGET_HEIGHT;
   const viewBoxMatch = text.match(
     /viewBox\s*=\s*["']\s*([-\d.]+)\s+([-\d.]+)\s+([\d.]+)\s+([\d.]+)\s*["']/i,
   );
   if (viewBoxMatch) {
-    const vw = Number.parseFloat(viewBoxMatch[3] ?? "220");
-    const vh = Number.parseFloat(viewBoxMatch[4] ?? "220");
+    const vw = Number.parseFloat(viewBoxMatch[3] ?? String(PREVIEW_TARGET_WIDTH));
+    const vh = Number.parseFloat(viewBoxMatch[4] ?? String(PREVIEW_TARGET_HEIGHT));
     if (vw > 0 && vh > 0) {
       width = Math.round(vw);
       height = Math.round(vh);
@@ -334,7 +340,7 @@ export function boxDownsampleRgbTo16x16(
 
 /**
  * Decodes any image or SVG (or synthesized document cover) via `sharp` into:
- * - A lean 220x220 WebP preview (`PreviewFormat.WEBP`, typically 2.5 - 9 KB)
+ * - A lean 320x320 WebP preview (`PreviewFormat.WEBP`, typically 2.5 - 9 KB)
  * - A true decoded 16x16 RGB VQ codebook grid (`256 B`)
  * - A 224x224 RGB ViT-16 tensor -> 384-byte `Int8Array(384)` DINOv3 embedding
  */
@@ -382,11 +388,13 @@ export async function rasterizeAssetToWebpAndTensors(
     const lines = rawText.split(/\r?\n/).slice(0, 13);
     const escapedLines = lines.map((l) =>
       l
+        .replace(/[^\x20-\x7E]/g, " ")
+        .slice(0, 36)
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;")
-        .slice(0, 36),
+        .replace(/'/g, "&apos;"),
     );
 
     const safeTitle = label.replace(/[<>&"']/g, "").slice(0, 26);
@@ -491,7 +499,7 @@ export async function rasterizeAssetToWebpAndTensors(
         channels: 3,
       },
     })
-      .resize(320, 320, { fit: "inside" })
+      .resize(PREVIEW_TARGET_WIDTH, PREVIEW_TARGET_HEIGHT, { fit: "inside" })
       .webp({ quality: 78, smartSubsample: false, effort: 2 })
       .toBuffer();
 
@@ -625,16 +633,17 @@ export function buildCompactPreviewPayload(
   const safeLabel = label.replace(/[<>&"']/g, "").slice(0, 22);
 
   let cellsSvg = "";
+  const cellSize = PREVIEW_TARGET_DIMENSION / 8; // 40px for 320x320
   for (let gy = 0; gy < 8; gy++) {
     for (let gx = 0; gx < 8; gx++) {
       const vqIdx = vqGrid[gy * 2 * 16 + gx * 2] ?? 0;
       const c = VQ_CODEBOOK[vqIdx] ?? { r: 20, g: 33, b: 61 };
       const hex = `#${c.r.toString(16).padStart(2, "0")}${c.g.toString(16).padStart(2, "0")}${c.b.toString(16).padStart(2, "0")}`;
-      cellsSvg += `<rect x="${gx * 27.5}" y="${gy * 27.5}" width="28" height="28" fill="${hex}" fill-opacity="0.72"/>`;
+      cellsSvg += `<rect x="${gx * cellSize}" y="${gy * cellSize}" width="${cellSize}" height="${cellSize}" fill="${hex}" fill-opacity="0.72"/>`;
     }
   }
 
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 220" width="220" height="220">
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${PREVIEW_TARGET_WIDTH} ${PREVIEW_TARGET_HEIGHT}" width="${PREVIEW_TARGET_WIDTH}" height="${PREVIEW_TARGET_HEIGHT}">
   <defs>
     <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0%" stop-color="rgb(${c0.r},${c0.g},${c0.b})"/>
@@ -642,12 +651,12 @@ export function buildCompactPreviewPayload(
       <stop offset="100%" stop-color="rgb(${c2.r},${c2.g},${c2.b})"/>
     </linearGradient>
   </defs>
-  <rect width="220" height="220" fill="url(#g)"/>
+  <rect width="${PREVIEW_TARGET_WIDTH}" height="${PREVIEW_TARGET_HEIGHT}" fill="url(#g)"/>
   <g>${cellsSvg}</g>
-  <rect x="8" y="8" width="204" height="204" rx="10" fill="none" stroke="rgb(${c3.r},${c3.g},${c3.b})" stroke-opacity="0.55" stroke-width="1.5"/>
-  <rect x="12" y="164" width="196" height="44" rx="6" fill="#14213D" fill-opacity="0.86" stroke="#38bdf8" stroke-opacity="0.4"/>
-  <text x="20" y="183" fill="#E5E5E5" font-family="monospace" font-size="11" font-weight="bold">${safeLabel}</text>
-  <text x="20" y="199" fill="#38bdf8" font-family="monospace" font-size="9.5">${headerInfo.width}x${headerInfo.height} • P.${page} • GF28+VQ</text>
+  <rect x="8" y="8" width="${PREVIEW_TARGET_WIDTH - 16}" height="${PREVIEW_TARGET_HEIGHT - 16}" rx="10" fill="none" stroke="rgb(${c3.r},${c3.g},${c3.b})" stroke-opacity="0.55" stroke-width="1.5"/>
+  <rect x="12" y="${PREVIEW_TARGET_HEIGHT - 56}" width="${PREVIEW_TARGET_WIDTH - 24}" height="44" rx="6" fill="#14213D" fill-opacity="0.86" stroke="#38bdf8" stroke-opacity="0.4"/>
+  <text x="20" y="${PREVIEW_TARGET_HEIGHT - 37}" fill="#E5E5E5" font-family="monospace" font-size="11" font-weight="bold">${safeLabel}</text>
+  <text x="20" y="${PREVIEW_TARGET_HEIGHT - 21}" fill="#38bdf8" font-family="monospace" font-size="9.5">${headerInfo.width}x${headerInfo.height} • P.${page} • GF28+VQ</text>
 </svg>`;
 
   const encoded = new TextEncoder().encode(svg);

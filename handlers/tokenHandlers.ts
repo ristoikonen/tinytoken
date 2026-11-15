@@ -4,7 +4,13 @@
  * SNARK/SHARK provenance verification, and homomorphic GF(2^8) state mutation.
  */
 
-import { PreviewFormat, TokenFlags } from "../models/token";
+import {
+  getAppDocumentDir,
+  getAppImageDir,
+  PreviewFormat,
+  redactImageDirForDisplay,
+  TokenFlags,
+} from "../models/token";
 import { applyHomomorphicMaskGF28 } from "../utils/galois";
 import { previewFormatToLabel, previewFormatToMime } from "../utils/imagePreview";
 import type { Win11TokenPipeline } from "../utils/indexer";
@@ -35,9 +41,9 @@ export class TokenApiHandlers {
   constructor(
     private engine: CompressedTokenSearchEngine,
     private pipeline: Win11TokenPipeline,
-    private imageDir = "./images",
+    private imageDir = getAppImageDir(),
     private invertedIndex?: VqInvertedIndexEngine,
-    private documentDir = "./documents",
+    private documentDir = getAppDocumentDir(),
   ) { }
 
   /**
@@ -55,18 +61,20 @@ export class TokenApiHandlers {
 
     const vqRamBytes = entries.length * 256;
     const dinoRamBytes = entries.length * 384;
+    const bgeRamBytes = entries.length * 384;
 
     return jsonResponse({
       success: true,
-      engine: "TinyToken GF(2^8) + DINOv3-384B + VQ-16x16 + SHARK/SNARK v2",
+      engine: "TinyToken GF(2^8) + DINOv3-384B + BGE-384B + VQ-16x16 + SHARK/SNARK v2",
       tokenCount: entries.length,
       snarkVerifiedCount,
       archivePath: this.engine.getZipFilePath(),
-      sourceDirectory: this.imageDir,
+      sourceDirectory: redactImageDirForDisplay(this.imageDir),
       archiveSizeBytes: this.engine.archiveSizeBytes,
       totalTokenUncompressedBytes,
       vqRamFootprintBytes: vqRamBytes,
       dinoRamFootprintBytes: dinoRamBytes,
+      bgeRamFootprintBytes: bgeRamBytes,
       bootIndexTimeMs: this.engine.lastBootIndexMs,
       codebookSize: VQ_CODEBOOK.length,
       useMyGooglePhotos: Bun.env.USE_MY_GOOGLE_PHOTOS === "true",
@@ -93,7 +101,7 @@ export class TokenApiHandlers {
     const q = url.searchParams.get("q") ?? "";
     const similarTo = url.searchParams.get("similarTo") ?? "";
     const mode = url.searchParams.get("mode") ?? (similarTo ? "vq" : "ocr");
-    const limit = Math.min(250, Math.max(1, Number(url.searchParams.get("limit") ?? 60)));
+    const limit = Math.min(250, Math.max(1, Number(url.searchParams.get("limit") ?? 200)));
 
     let hits;
     if (mode === "vq" && similarTo) {
@@ -120,15 +128,20 @@ export class TokenApiHandlers {
 
     const elapsedMs = Math.round(((Bun.nanoseconds() - t0) / 1e6) * 1000) / 1000;
 
+    const sanitizedHits = hits.map((h) => ({
+      ...h,
+      ocrSnippet: h.ocrSnippet ? redactImageDirForDisplay(h.ocrSnippet) : h.ocrSnippet,
+    }));
+
     return jsonResponse({
       success: true,
       mode: mode === "vq" && similarTo ? "vq-adc" : "ocr-index",
       query: q,
       similarTo: similarTo || null,
-      count: hits.length,
+      count: sanitizedHits.length,
       totalIndexed: this.engine.getCount(),
       searchTimeMs: elapsedMs,
-      hits,
+      hits: sanitizedHits,
     });
   }
 
@@ -217,6 +230,7 @@ export class TokenApiHandlers {
           homomorphicMasked: (decoded.flags & TokenFlags.HOMOMORPHIC_MASKED) !== 0,
           multiPageDoc: (decoded.flags & TokenFlags.MULTI_PAGE_DOC) !== 0,
           hasDinoEmbedding: (decoded.flags & TokenFlags.HAS_DINO_EMBEDDING) !== 0,
+          hasBgeEmbedding: (decoded.flags & TokenFlags.HAS_BGE_EMBEDDING) !== 0,
         },
         uuidHex: decoded.uuidHex,
         originalFileSize: decoded.originalFileSize,
@@ -227,15 +241,20 @@ export class TokenApiHandlers {
         previewMimeType: previewFormatToMime(decoded.previewFormat),
         previewUrl: `/api/token/${encodeURIComponent(decoded.id)}/preview`,
         merkleRootHex: decoded.merkleRootHex,
+        contentId: decoded.contentId,
         shardBlockId: decoded.shardBlockId,
         shardIndex: decoded.shardIndex,
         homomorphicTagHex: `0x${decoded.homomorphicTag.toString(16).padStart(2, "0").toUpperCase()}`,
         embeddingModelId: decoded.embeddingModelId,
+        bgeModelId: decoded.metadata.bgeModelId ?? null,
         rsParityValid: decoded.rsParityValid,
         rsCorrectedErrors: decoded.rsCorrectedErrors,
         snarkAttestation: decoded.snarkAttestation,
         vqHex: vqGridToHex(decoded.vqIndices),
-        metadata: decoded.metadata,
+        metadata: {
+          ...decoded.metadata,
+          ocrText: redactImageDirForDisplay(decoded.metadata.ocrText),
+        },
         byteMap: decoded.byteMap,
         traits: visualTraitRegistry.evaluateGrid(decoded.vqIndices),
         headerHexPreview,
@@ -554,7 +573,7 @@ export class TokenApiHandlers {
 
       return jsonResponse({
         success: true,
-        sourceDirectory: this.imageDir,
+        sourceDirectory: redactImageDirForDisplay(this.imageDir),
         totalTokens: buildRes.totalTokens,
         imageTokens: buildRes.imageTokens,
         documentTokens: buildRes.documentTokens,
