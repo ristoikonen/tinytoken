@@ -375,14 +375,27 @@ export async function rasterizeAssetToWebpAndTensors(
       mimeType: "image/svg+xml",
     };
   } else if (isText) {
-    const rawText =
-      docDimensions?.excerpt ||
-      new TextDecoder("utf-8", { fatal: false }).decode(sourceBytes.subarray(0, 4096));
-    const lines = rawText.split(/\r?\n/).slice(0, 13);
-    const escapedLines = lines.map((l) =>
+    const decodedSource = new TextDecoder("utf-8", { fatal: false }).decode(
+      sourceBytes.subarray(0, 4096),
+    );
+    const rawText = decodedSource.includes("\n")
+      ? decodedSource
+      : docDimensions?.excerpt || decodedSource;
+    const rawLines = rawText.split(/\r?\n/);
+    const wrappedLines: string[] = [];
+    for (const rawLine of rawLines) {
+      const clean = rawLine.replace(/[^\x20-\x7E]/g, " ");
+      if (clean.length <= 36) {
+        wrappedLines.push(clean);
+      } else {
+        for (let pos = 0; pos < clean.length && wrappedLines.length < 13; pos += 36) {
+          wrappedLines.push(clean.slice(pos, pos + 36));
+        }
+      }
+      if (wrappedLines.length >= 13) break;
+    }
+    const escapedLines = wrappedLines.slice(0, 13).map((l) =>
       l
-        .replace(/[^\x20-\x7E]/g, " ")
-        .slice(0, 36)
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;")
@@ -429,9 +442,29 @@ export async function rasterizeAssetToWebpAndTensors(
     const hueA = hash % 360;
     const hueB = (hash >> 8) % 360;
     const safeTitle = label.replace(/[<>&"']/g, "").slice(0, 26);
-    const safeSub = (docDimensions?.excerpt ?? "PDF Document")
-      .replace(/[<>&"']/g, "")
-      .slice(0, 32);
+    const excerptText = (docDimensions?.excerpt ?? "PDF Document").replace(/[^\x20-\x7E]/g, " ").trim();
+    const docLines: string[] = [];
+    for (let pos = 0; pos < excerptText.length && docLines.length < 9; pos += 34) {
+      const chunk = excerptText
+        .slice(pos, pos + 34)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&apos;");
+      docLines.push(chunk);
+    }
+    const bodySvg =
+      docLines.length > 0
+        ? docLines
+            .map(
+              (l, i) =>
+                `<text x="50" y="${112 + i * 16}" fill="#334155" font-family="monospace" font-size="10">${l}</text>`,
+            )
+            .join("\n")
+        : `<rect x="54" y="102" width="174" height="10" rx="4" fill="#334155"/>
+      <rect x="54" y="124" width="206" height="7" rx="3" fill="#64748b"/>
+      <rect x="54" y="142" width="194" height="7" rx="3" fill="#64748b"/>`;
 
     const docCoverSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320" width="320" height="320">
       <defs>
@@ -442,15 +475,11 @@ export async function rasterizeAssetToWebpAndTensors(
       </defs>
       <rect width="320" height="320" fill="url(#bg)"/>
       <rect x="38" y="20" width="244" height="280" rx="8" fill="#f8fafc" stroke="#38bdf8" stroke-width="2.5"/>
-      <rect x="38" y="20" width="244" height="52" rx="8" fill="hsl(${hueA}, 70%, 35%)"/>
-      <text x="52" y="52" fill="#ffffff" font-family="sans-serif" font-size="15" font-weight="bold">DOC • ${totalPages} PAGES</text>
-      <rect x="54" y="92" width="174" height="10" rx="4" fill="#334155"/>
-      <rect x="54" y="114" width="206" height="7" rx="3" fill="#64748b"/>
-      <rect x="54" y="132" width="194" height="7" rx="3" fill="#64748b"/>
-      <rect x="54" y="150" width="160" height="7" rx="3" fill="#94a3b8"/>
-      <rect x="54" y="178" width="206" height="52" rx="6" fill="hsl(${hueB}, 45%, 88%)"/>
-      <text x="52" y="256" fill="#0f172a" font-family="monospace" font-size="12.5" font-weight="bold">${safeTitle}</text>
-      <text x="52" y="278" fill="#475569" font-family="sans-serif" font-size="11.5">${safeSub}</text>
+      <rect x="38" y="20" width="244" height="44" rx="8" fill="hsl(${hueA}, 70%, 35%)"/>
+      <text x="50" y="47" fill="#ffffff" font-family="sans-serif" font-size="13" font-weight="bold">${lowerExt.replace(".", "").toUpperCase()} • ${totalPages} PAGE${totalPages > 1 ? "S" : ""}</text>
+      <text x="50" y="84" fill="#0f172a" font-family="monospace" font-size="11.5" font-weight="bold">${safeTitle}</text>
+      <line x1="50" y1="92" x2="268" y2="92" stroke="#cbd5e1" stroke-width="1"/>
+      ${bodySvg}
     </svg>`;
     inputBuffer = new TextEncoder().encode(docCoverSvg);
     fallbackHeader = {

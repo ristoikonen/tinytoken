@@ -74,6 +74,7 @@ export {
 export interface IndexerConfig {
   sourceDirectory: string;
   documentDirectory?: string;
+  folders?: string[];
   outputZipPath: string;
   dataDirectory?: string;
   useZip?: boolean;
@@ -565,7 +566,7 @@ export class Win11TokenPipeline {
       }
     } else {
       try {
-        pageBundles = await processor.renderPages(rawBytes);
+        pageBundles = await processor.renderPages(rawBytes, maxPagesPerDoc, filename);
       } catch (err) {
         console.warn(`Document processor fallback for ${filename}:`, err);
       }
@@ -835,9 +836,14 @@ export class Win11TokenPipeline {
 
   /**
    * Tokenizes all real files in `sourceDirectory` (`./images`) and `documentDirectory` (`./documents`)
+   * (or across an arbitrary list of `folders`, routing both images and documents automatically)
    * and writes the packed ZIP container to `outputZipPath`.
    */
-  public async buildTokenArchive(overrideSourceDir?: string): Promise<{
+  public async buildTokenArchive(
+    overrideOrOptions?:
+      | string
+      | { folders?: string[]; sourceDirectory?: string; documentDirectory?: string },
+  ): Promise<{
     totalTokens: number;
     imageTokens: number;
     documentTokens: number;
@@ -846,9 +852,31 @@ export class Win11TokenPipeline {
     elapsedMs: number;
     benchmarkReport?: PipelineBenchmarkReport;
   }> {
-    if (overrideSourceDir) {
-      this.config.sourceDirectory = overrideSourceDir;
+    if (typeof overrideOrOptions === "string" && overrideOrOptions.trim()) {
+      this.config.sourceDirectory = overrideOrOptions.trim();
+      this.config.folders = undefined;
+    } else if (overrideOrOptions && typeof overrideOrOptions === "object") {
+      if (Array.isArray(overrideOrOptions.folders)) {
+        const cleaned = overrideOrOptions.folders
+          .map((f) => String(f || "").trim().replace(/\\/g, "/"))
+          .filter(Boolean);
+        if (cleaned.length > 0) {
+          this.config.folders = cleaned;
+          this.config.sourceDirectory = cleaned[0]!;
+        }
+      } else {
+        this.config.folders = undefined;
+        if (overrideOrOptions.sourceDirectory) {
+          this.config.sourceDirectory = overrideOrOptions.sourceDirectory.trim().replace(/\\/g, "/");
+        }
+        if (overrideOrOptions.documentDirectory) {
+          this.config.documentDirectory = overrideOrOptions.documentDirectory
+            .trim()
+            .replace(/\\/g, "/");
+        }
+      }
     }
+
     const benchmark = new PipelineBenchmark();
     const t0 = performance.now();
     const sourceDir = this.config.sourceDirectory;
@@ -864,12 +892,48 @@ export class Win11TokenPipeline {
       )
       : IMAGE_EXTENSIONS;
 
-    const imagePaths =
-      hasExplicitExtensions && imageFilter.size === 0
-        ? []
-        : await this.scanDirectory(sourceDir, imageFilter);
+    const docFilter = hasExplicitExtensions
+      ? new Set(
+        this.config.allowedExtensions!
+          .map((e) => e.toLowerCase())
+          .filter((e) => DOCUMENT_EXTENSIONS.has(e)),
+      )
+      : DOCUMENT_EXTENSIONS;
 
-    const documentPaths = await this.scanDocumentDirectory();
+    let imagePaths: string[] = [];
+    let documentPaths: string[] = [];
+
+    if (this.config.folders && this.config.folders.length > 0) {
+      const seenImages = new Set<string>();
+      const seenDocs = new Set<string>();
+      for (const dir of this.config.folders) {
+        if (!hasExplicitExtensions || imageFilter.size > 0) {
+          const imgs = await this.scanDirectory(dir, imageFilter);
+          for (const p of imgs) {
+            if (!seenImages.has(p)) {
+              seenImages.add(p);
+              imagePaths.push(p);
+            }
+          }
+        }
+        if (!hasExplicitExtensions || docFilter.size > 0) {
+          const docs = await this.scanDirectory(dir, docFilter);
+          for (const p of docs) {
+            if (!seenDocs.has(p)) {
+              seenDocs.add(p);
+              documentPaths.push(p);
+            }
+          }
+        }
+      }
+    } else {
+      imagePaths =
+        hasExplicitExtensions && imageFilter.size === 0
+          ? []
+          : await this.scanDirectory(sourceDir, imageFilter);
+
+      documentPaths = await this.scanDocumentDirectory();
+    }
 
     const existingTokens = new Map<string, ZipTokenIndexEntry[]>();
     let existingEngine: CompressedTokenSearchEngine | null = null;
@@ -956,7 +1020,7 @@ export class Win11TokenPipeline {
       for (const entry of orderedMatches) {
         // get token
         const tokenBytes = await existingEngine.extractToken(entry.id);
-        if (!tokenBytes) return null;
+        if (!tokenBytes || tokenBytes.length < 704) return null;
         const {
           localHeaderOffset: _localHeaderOffset,
           dataOffset: _dataOffset,

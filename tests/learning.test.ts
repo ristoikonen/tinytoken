@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { LearningHandlers } from "../handlers/learningHandlers";
+import { TokenApiHandlers } from "../handlers/tokenHandlers";
 import { ArchiveManager } from "../utils/archiveManager";
 import {
   VisualTraitRegistry,
@@ -315,5 +316,58 @@ describe("Persistent Knowledge Layer & Transactional Archive Ingestion", () => {
     expect(data.archive.totalTokens).toBe(3);
     expect(data.knowledge.totalObjectRecipes).toBeGreaterThanOrEqual(2);
     expect(data.knowledge.totalEvidenceObservations).toBeGreaterThanOrEqual(4);
+  });
+
+  test("Export archive (full and subset) and Create archive from selected tokenIds", async () => {
+    const mockPipeline = {
+      buildTokenArchive: async () => ({
+        totalTokens: 0,
+        imageTokens: 0,
+        documentTokens: 0,
+        reusedTokens: 0,
+        archiveBytes: 0,
+        elapsedMs: 1,
+      }),
+    } as any;
+    const tokenHandlers = new TokenApiHandlers(searchEngine, mockPipeline);
+
+    // 1. Full archive export
+    const fullExportRes = await tokenHandlers.handleExportArchive(
+      new URL("http://localhost:3000/api/archive/export"),
+    );
+    expect(fullExportRes.status).toBe(200);
+    expect(fullExportRes.headers.get("Content-Type")).toBe("application/zip");
+    const fullZipBytes = new Uint8Array(await fullExportRes.arrayBuffer());
+    const fullValidation = await archiveManager.validateArchive(fullZipBytes);
+    expect(fullValidation.valid).toBe(true);
+    expect(fullValidation.tokenCount).toBe(3);
+
+    // 2. Subset archive export (?ids=tok_gamma,tok_delta)
+    const subsetExportRes = await tokenHandlers.handleExportArchive(
+      new URL("http://localhost:3000/api/archive/export?ids=tok_gamma,tok_delta"),
+    );
+    expect(subsetExportRes.status).toBe(200);
+    const subsetZipBytes = new Uint8Array(await subsetExportRes.arrayBuffer());
+    const subsetValidation = await archiveManager.validateArchive(subsetZipBytes);
+    expect(subsetValidation.valid).toBe(true);
+    expect(subsetValidation.tokenCount).toBe(2);
+
+    // 3. Create archive from selected tokenIds
+    const createReq = new Request("http://localhost:3000/api/archive/create", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tokenIds: ["tok_gamma", "tok_epsilon"] }),
+    });
+    const createRes = await tokenHandlers.handleCreateArchive(createReq);
+    expect(createRes.status).toBe(200);
+    const createBody = (await createRes.json()) as {
+      success: boolean;
+      mode: string;
+      totalTokens: number;
+    };
+    expect(createBody.success).toBe(true);
+    expect(createBody.mode).toBe("selection");
+    expect(createBody.totalTokens).toBe(2);
+    expect(searchEngine.getCount()).toBe(2);
   });
 });

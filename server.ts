@@ -67,9 +67,13 @@ async function getPipeline(): Promise<Win11TokenPipeline> {
 }
 
 const pipeline: Win11TokenPipeline = {
-  buildTokenArchive: async (dir?: string) => {
+  buildTokenArchive: async (
+    overrideOrOptions?:
+      | string
+      | { folders?: string[]; sourceDirectory?: string; documentDirectory?: string },
+  ) => {
     const p = await getPipeline();
-    return p.buildTokenArchive(dir);
+    return p.buildTokenArchive(overrideOrOptions);
   },
 } as unknown as Win11TokenPipeline;
 
@@ -232,6 +236,8 @@ async function handleApiRoute(path: string, req: BunRequest, url: URL): Promise<
   if (path === "/api/search") return apiHandlers.handleSearch(url);
   if (path === "/api/search/pattern") return apiHandlers.handlePatternSearch(url);
   if (path === "/api/index/rebuild" && req.method === "POST") return apiHandlers.handleRebuildIndex(req);
+  if (path === "/api/archive/create" && req.method === "POST") return apiHandlers.handleCreateArchive(req);
+  if (path === "/api/archive/export" && req.method === "GET") return apiHandlers.handleExportArchive(url);
   if (path === "/api/archive/swap" && req.method === "POST") return learningHandlers.handleArchiveSwap(req);
   if (path === "/api/archive/status") return learningHandlers.handleArchiveStatus();
   if (path === "/api/learning/recipes") return learningHandlers.handleGetRecipes();

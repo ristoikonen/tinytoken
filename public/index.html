@@ -213,6 +213,39 @@
       padding: 0.38rem 0.6rem;
     }
 
+    .create-archive-panel {
+      background: rgba(10, 16, 30, 0.92);
+      border: 1px solid var(--border-light);
+      border-radius: 7px;
+      padding: 0.55rem 0.65rem;
+      display: none;
+      flex-direction: column;
+      gap: 0.4rem;
+      margin-top: 0.15rem;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+    }
+
+    .create-archive-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.66rem;
+      font-weight: 600;
+      color: var(--cyan-bright);
+      letter-spacing: 0.04em;
+    }
+
+    .folder-row {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .folder-row .search-input {
+      padding: 0.32rem 0.55rem;
+      font-size: 0.72rem;
+    }
+
     .search-input {
       flex: 1;
       width: 100%;
@@ -915,7 +948,7 @@
         </div>
         <div class="toolbar-actions">
           <span class="archive-row-label mono">Archive:</span>
-          <button id="btn-create-archive" class="btn mono" type="button" title="Create archive from folder">
+          <button id="btn-create-archive" class="btn mono" type="button" title="Create archive from folders or current filter">
             Create
           </button>
           <label id="btn-upload-archive" for="archive-file-input" class="btn mono"
@@ -924,12 +957,30 @@
             Open
           </label>
           <input type="file" id="archive-file-input" accept=".zip" style="display:none;" />
-          <button id="btn-export-archive" class="btn mono" type="button" title="Export active archive">
+          <button id="btn-export-archive" class="btn mono" type="button" title="Save As / Export active archive (.zip)">
             Export
           </button>
           <button id="btn-rebuild" class="btn mono" type="button" title="Re-scan and rebuild ./data/tokens.zip">
             Re-Index
           </button>
+        </div>
+        <div id="create-archive-panel" class="create-archive-panel mono">
+          <div class="create-archive-header">
+            <span>CREATE ARCHIVE (IMAGES &amp; DOCS)</span>
+            <div style="display:flex;gap:0.3rem;align-items:center;">
+              <button id="btn-add-folder" class="btn mono" type="button" style="padding:0.18rem 0.45rem;font-size:0.65rem;" title="Add another source folder">+ Folder</button>
+              <button id="btn-close-create-panel" class="popover-close" type="button" title="Close">✕</button>
+            </div>
+          </div>
+          <div id="create-folders-list" style="display:flex;flex-direction:column;gap:0.35rem;"></div>
+          <div style="display:flex;gap:0.35rem;justify-content:space-between;align-items:center;margin-top:0.1rem;">
+            <button id="btn-create-from-view" class="btn mono" type="button" style="font-size:0.66rem;padding:0.28rem 0.55rem;" title="Create archive containing only currently listed tokens">
+              From Current View
+            </button>
+            <button id="btn-submit-create-archive" class="btn btn-action-cyan mono" type="button" style="font-size:0.68rem;padding:0.28rem 0.7rem;">
+              ✓ Build Archive
+            </button>
+          </div>
         </div>
       </div>
 
@@ -1895,6 +1946,213 @@ No object recipe associated with this token yet. Click [✎ Label] to teach.`;
     }
 
     document.getElementById('btn-rebuild').onclick = () => triggerRebuild();
+
+    // Create Archive Panel (1..N folders or Current Filtered View)
+    const elCreatePanel = document.getElementById('create-archive-panel');
+    const elBtnCreateArchive = document.getElementById('btn-create-archive');
+    const elFoldersList = document.getElementById('create-folders-list');
+    let createFolderPaths = ['APP_IMAGE_DIR', './documents'];
+
+    function renderCreateFoldersList() {
+      if (!elFoldersList) return;
+      elFoldersList.innerHTML = '';
+      createFolderPaths.forEach((folderVal, idx) => {
+        const row = document.createElement('div');
+        row.className = 'folder-row';
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'search-input mono';
+        input.placeholder = idx === 0 ? 'Folder 1 (e.g. APP_IMAGE_DIR or ./images)' : `Folder ${idx + 1} (e.g. ./documents)`;
+        input.value = folderVal;
+        input.oninput = (ev) => {
+          createFolderPaths[idx] = ev.target.value;
+        };
+        row.appendChild(input);
+
+        if (createFolderPaths.length > 1) {
+          const rmBtn = document.createElement('button');
+          rmBtn.type = 'button';
+          rmBtn.className = 'btn mono';
+          rmBtn.style.padding = '0.28rem 0.5rem';
+          rmBtn.title = 'Remove folder';
+          rmBtn.textContent = '✕';
+          rmBtn.onclick = () => {
+            createFolderPaths.splice(idx, 1);
+            renderCreateFoldersList();
+          };
+          row.appendChild(rmBtn);
+        }
+        elFoldersList.appendChild(row);
+      });
+    }
+
+    function toggleCreatePanel(force) {
+      if (!elCreatePanel) return;
+      const isOpen = force !== undefined ? force : elCreatePanel.style.display !== 'flex';
+      elCreatePanel.style.display = isOpen ? 'flex' : 'none';
+      elBtnCreateArchive?.classList.toggle('btn-active', isOpen);
+      if (isOpen) {
+        renderCreateFoldersList();
+        const btnFromView = document.getElementById('btn-create-from-view');
+        if (btnFromView) {
+          btnFromView.textContent = `From View (${currentHits.length})`;
+        }
+      }
+    }
+
+    elBtnCreateArchive?.addEventListener('click', () => toggleCreatePanel());
+    document.getElementById('btn-close-create-panel')?.addEventListener('click', () => toggleCreatePanel(false));
+    document.getElementById('btn-add-folder')?.addEventListener('click', () => {
+      createFolderPaths.push('');
+      renderCreateFoldersList();
+    });
+
+    document.getElementById('btn-submit-create-archive')?.addEventListener('click', async () => {
+      const folders = createFolderPaths.map(f => f.trim()).filter(Boolean);
+      if (folders.length === 0) {
+        alert('Please enter at least one folder path.');
+        return;
+      }
+      const btn = document.getElementById('btn-submit-create-archive');
+      const prevText = btn.textContent;
+      btn.textContent = '⏳ Building...';
+      btn.disabled = true;
+      try {
+        logDebug(`[ARCHIVE] Creating archive from ${folders.length} folder(s): ${folders.join(', ')}...`, 'cyan');
+        const res = await fetch('/api/archive/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ folders }),
+        }).then(r => r.json());
+
+        if (res.success) {
+          logDebug(
+            `[ARCHIVE] Created ${res.totalTokens} tokens (${res.imageTokens ?? 0} img, ${res.documentTokens ?? 0} doc, ${(res.archiveBytes / 1024).toFixed(1)} KB) in ${res.buildElapsedMs}ms`,
+            'success'
+          );
+          toggleCreatePanel(false);
+          await loadStatsAndCodebook();
+          await runSearch();
+        } else {
+          logDebug(`[ERROR] Create archive failed: ${res.error || 'Unknown error'}`, 'error');
+          alert(`Create archive failed: ${res.error || 'Unknown error'}`);
+        }
+      } catch (err) {
+        logDebug(`[ERROR] Create archive error: ${err.message || String(err)}`, 'error');
+      } finally {
+        btn.textContent = prevText;
+        btn.disabled = false;
+      }
+    });
+
+    document.getElementById('btn-create-from-view')?.addEventListener('click', async () => {
+      const tokenIds = currentHits.map(h => h.id);
+      if (tokenIds.length === 0) {
+        alert('No tokens in the current view to build an archive from.');
+        return;
+      }
+      const btn = document.getElementById('btn-create-from-view');
+      const prevText = btn.textContent;
+      btn.textContent = '⏳ Packing...';
+      btn.disabled = true;
+      try {
+        logDebug(`[ARCHIVE] Creating archive from current view (${tokenIds.length} tokens)...`, 'cyan');
+        const res = await fetch('/api/archive/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tokenIds }),
+        }).then(r => r.json());
+
+        if (res.success) {
+          logDebug(
+            `[ARCHIVE] Packed ${res.totalTokens} tokens (${(res.archiveBytes / 1024).toFixed(1)} KB) in ${res.buildElapsedMs}ms`,
+            'success'
+          );
+          toggleCreatePanel(false);
+          await loadStatsAndCodebook();
+          await runSearch();
+        } else {
+          logDebug(`[ERROR] Create from view failed: ${res.error || 'Unknown error'}`, 'error');
+          alert(`Create archive failed: ${res.error || 'Unknown error'}`);
+        }
+      } catch (err) {
+        logDebug(`[ERROR] Create from view error: ${err.message || String(err)}`, 'error');
+      } finally {
+        btn.textContent = prevText;
+        btn.disabled = false;
+      }
+    });
+
+    // Export Archive (Save As .zip via File System Access API or direct download fallback)
+    document.getElementById('btn-export-archive')?.addEventListener('click', async () => {
+      const btn = document.getElementById('btn-export-archive');
+      const prevText = btn.textContent;
+      btn.textContent = '⏳ Exporting...';
+      btn.disabled = true;
+
+      try {
+        let exportUrl = '/api/archive/export';
+        let suggestedName = 'tokens.zip';
+        const isFiltered = Boolean(elSearch.value.trim() || activeSimilarTo);
+
+        if (isFiltered && currentHits.length > 0) {
+          const onlyFiltered = confirm(
+            `A search/similarity filter is active (${currentHits.length} matching tokens).\n\nClick OK to export ONLY these ${currentHits.length} tokens, or Cancel to export the FULL archive.`
+          );
+          if (onlyFiltered) {
+            const ids = currentHits.map(h => h.id).join(',');
+            exportUrl = `/api/archive/export?ids=${encodeURIComponent(ids)}`;
+            suggestedName = `tinytoken_subset_${currentHits.length}.zip`;
+          }
+        }
+
+        const res = await fetch(exportUrl);
+        if (!res.ok) {
+          const errText = await res.text();
+          throw new Error(`Export failed (${res.status}): ${errText.slice(0, 100)}`);
+        }
+        const blob = await res.blob();
+
+        if (typeof window.showSaveFilePicker === 'function') {
+          try {
+            const handle = await window.showSaveFilePicker({
+              suggestedName,
+              types: [{
+                description: 'TinyToken ZIP Archive',
+                accept: { 'application/zip': ['.zip'] },
+              }],
+            });
+            const writable = await handle.createWritable();
+            await writable.write(blob);
+            await writable.close();
+            logDebug(`[ARCHIVE] Saved archive (${(blob.size / 1024).toFixed(1)} KB) via Save As dialog.`, 'success');
+            return;
+          } catch (pickerErr) {
+            if (pickerErr && pickerErr.name === 'AbortError') {
+              logDebug('[ARCHIVE] Export cancelled by user.', 'info');
+              return;
+            }
+          }
+        }
+
+        // Standard browser download fallback
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = suggestedName;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 2000);
+        logDebug(`[ARCHIVE] Downloaded ${suggestedName} (${(blob.size / 1024).toFixed(1)} KB).`, 'success');
+      } catch (err) {
+        logDebug(`[ERROR] Export archive error: ${err.message || String(err)}`, 'error');
+        alert(`Export failed: ${err.message || String(err)}`);
+      } finally {
+        btn.textContent = prevText;
+        btn.disabled = false;
+      }
+    });
 
     document.getElementById('archive-file-input')?.addEventListener('change', async (e) => {
       const file = e.target.files?.[0];

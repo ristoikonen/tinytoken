@@ -83,11 +83,10 @@ export interface SerializedManifestEntry {
 }
 
 /**
- * Writes a standard random-access ZIP archive directly to disk using Bun.write().
- * Computes exact payload `dataOffset` values so each token can be sliced with zero header-parsing overhead.
+ * Builds a standard random-access ZIP archive buffer in memory containing 25 KB .token entries
+ * and a trailing `_index.json` fast manifest.
  */
-export async function writeNativeTokenZipArchive(
-  zipFilePath: string,
+export function buildNativeTokenZipBuffer(
   tokenEntries: Array<{
     entryName: string;
     tokenBytes: Uint8Array;
@@ -101,7 +100,7 @@ export async function writeNativeTokenZipArchive(
       | "crc32"
     >;
   }>,
-): Promise<{ totalBytes: number; tokenCount: number; writeElapsedNs: number }> {
+): Uint8Array {
   const localChunks: Uint8Array[] = [];
   const centralChunks: Uint8Array[] = [];
   const manifestRecords: SerializedManifestEntry[] = [];
@@ -258,11 +257,34 @@ export async function writeNativeTokenZipArchive(
     pos += chunk.length;
   }
   finalArchive.set(eocd, pos);
+  return finalArchive;
+}
 
+/**
+ * Writes a standard random-access ZIP archive directly to disk using Bun.write().
+ * Computes exact payload `dataOffset` values so each token can be sliced with zero header-parsing overhead.
+ */
+export async function writeNativeTokenZipArchive(
+  zipFilePath: string,
+  tokenEntries: Array<{
+    entryName: string;
+    tokenBytes: Uint8Array;
+    meta: Omit<
+      ZipTokenIndexEntry,
+      | "localHeaderOffset"
+      | "dataOffset"
+      | "compressedSize"
+      | "uncompressedSize"
+      | "compressionMethod"
+      | "crc32"
+    >;
+  }>,
+): Promise<{ totalBytes: number; tokenCount: number; writeElapsedNs: number }> {
+  const finalArchive = buildNativeTokenZipBuffer(tokenEntries);
   const tWrite0 = Bun.nanoseconds();
   await Bun.write(zipFilePath, finalArchive);
   const writeElapsedNs = Bun.nanoseconds() - tWrite0;
-  return { totalBytes: totalSize, tokenCount: tokenEntries.length, writeElapsedNs };
+  return { totalBytes: finalArchive.length, tokenCount: tokenEntries.length, writeElapsedNs };
 }
 
 export interface SearchEngineOptions {
@@ -979,34 +1001,43 @@ export class CompressedTokenSearchEngine {
       ];
       for (const cand of candidates) {
         const direct = Bun.file(cand);
-        if (await direct.exists()) {
+        if ((await direct.exists()) && direct.size >= 704) {
           return new Uint8Array(await direct.arrayBuffer());
         }
       }
       return null;
     }
 
-    // 1. Try reading *.token file from data directory
+    if (!this.isZipMode()) {
+      const individualFile = Bun.file(`${this.dataDirPath}/${meta.entryName}`);
+      if ((await individualFile.exists()) && individualFile.size >= 704) {
+        return new Uint8Array(await individualFile.arrayBuffer());
+      }
+    }
+
+    // Slice from ZIP archive
+    const file = Bun.file(this.zipFilePath);
+    if (await file.exists()) {
+      try {
+        if (meta.compressedSize > 0 && meta.dataOffset + meta.compressedSize <= file.size) {
+          const slice = file.slice(meta.dataOffset, meta.dataOffset + meta.compressedSize);
+          const rawBytes = new Uint8Array(await slice.arrayBuffer());
+          const out = meta.compressionMethod === 8 ? Bun.inflateSync(rawBytes) : rawBytes;
+          if (out.length >= 704) {
+            return out;
+          }
+        }
+      } catch {
+        // Fall through to loose file check
+      }
+    }
+
+    // Fallback: try reading *.token file from data directory
     const individualFile = Bun.file(`${this.dataDirPath}/${meta.entryName}`);
-    if (await individualFile.exists()) {
+    if ((await individualFile.exists()) && individualFile.size >= 704) {
       return new Uint8Array(await individualFile.arrayBuffer());
     }
-
-    // 2. Fall back to ZIP archive slice
-    const file = Bun.file(this.zipFilePath);
-    if (!(await file.exists())) return null;
-
-    try {
-      const slice = file.slice(meta.dataOffset, meta.dataOffset + meta.compressedSize);
-      const rawBytes = new Uint8Array(await slice.arrayBuffer());
-
-      if (meta.compressionMethod === 8) {
-        return Bun.inflateSync(rawBytes);
-      }
-      return rawBytes;
-    } catch {
-      return null;
-    }
+    return null;
   }
 
   /**

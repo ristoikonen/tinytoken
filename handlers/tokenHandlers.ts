@@ -33,7 +33,10 @@ import {
   visualTraitRegistry,
 } from "../utils/visualTraitRegistry";
 import type { VqInvertedIndexEngine } from "../utils/vqInvertedIndex";
-import type { CompressedTokenSearchEngine } from "../utils/zipEngine";
+import {
+  buildNativeTokenZipBuffer,
+  type CompressedTokenSearchEngine,
+} from "../utils/zipEngine";
 
 export class TokenApiHandlers {
   private writeLockInProgress = false;
@@ -70,6 +73,7 @@ export class TokenApiHandlers {
       snarkVerifiedCount,
       archivePath: this.engine.getZipFilePath(),
       sourceDirectory: redactImageDirForDisplay(this.imageDir),
+      documentDirectory: this.documentDir,
       archiveSizeBytes: this.engine.archiveSizeBytes,
       totalTokenUncompressedBytes,
       vqRamFootprintBytes: vqRamBytes,
@@ -585,6 +589,228 @@ export class TokenApiHandlers {
     } finally {
       this.writeLockInProgress = false;
     }
+  }
+
+  /**
+   * POST /api/archive/create
+   * Creates a new tokens.zip archive from:
+   * 1. One or more folders (`{ folders: string[] }`), scanning both images & documents in each folder, or
+   * 2. Selected/filtered token IDs (`{ tokenIds: string[] }`) sliced directly from the active index.
+   */
+  public async handleCreateArchive(req: Request): Promise<Response> {
+    const forbidden = verifySameOriginMutation(req);
+    if (forbidden) return forbidden;
+
+    if (this.writeLockInProgress) {
+      return errorResponse("Another archive write or rebuild is currently in progress", 409);
+    }
+
+    let body: { folders?: string[]; tokenIds?: string[] } = {};
+    try {
+      body = (await req.json()) as { folders?: string[]; tokenIds?: string[] };
+    } catch {
+      return errorResponse("Invalid JSON payload for /api/archive/create", 400);
+    }
+
+    const tokenIds = Array.isArray(body.tokenIds)
+      ? body.tokenIds.map((id) => String(id || "").trim()).filter(Boolean)
+      : [];
+    const rawFolders = Array.isArray(body.folders)
+      ? body.folders.map((f) => String(f || "").trim()).filter(Boolean)
+      : [];
+
+    if (tokenIds.length === 0 && rawFolders.length === 0) {
+      return errorResponse(
+        "Provide at least one folder in 'folders' or at least one token ID in 'tokenIds'",
+        400,
+      );
+    }
+
+    this.writeLockInProgress = true;
+    try {
+      const t0 = performance.now();
+
+      // Mode 1: Create archive from selected/filtered token IDs in current index
+      if (tokenIds.length > 0) {
+        const items: Array<{
+          entryName: string;
+          tokenBytes: Uint8Array;
+          meta: any;
+        }> = [];
+        for (const id of tokenIds) {
+          const entry = this.engine.getEntry(id);
+          if (!entry) continue;
+          const tokenBytes = await this.engine.extractToken(entry.id);
+          if (!tokenBytes) continue;
+          const {
+            localHeaderOffset: _localHeaderOffset,
+            dataOffset: _dataOffset,
+            compressedSize: _compressedSize,
+            uncompressedSize: _uncompressedSize,
+            compressionMethod: _compressionMethod,
+            crc32: _crc32,
+            ...meta
+          } = entry;
+          items.push({ entryName: entry.entryName, tokenBytes, meta });
+        }
+
+        if (items.length === 0) {
+          return errorResponse("None of the requested tokenIds were found in the active index", 404);
+        }
+
+        const zipBuf = buildNativeTokenZipBuffer(items);
+        await Bun.write(this.engine.getZipFilePath(), zipBuf);
+        await this.engine.buildIndex();
+        if (this.invertedIndex) {
+          await this.invertedIndex.syncTokens(this.engine.getAllEntries());
+        }
+
+        const buildElapsedMs = Math.round(performance.now() - t0);
+        return jsonResponse({
+          success: true,
+          mode: "selection",
+          totalTokens: items.length,
+          archiveBytes: zipBuf.length,
+          buildElapsedMs,
+        });
+      }
+
+      // Mode 2: Create archive from 1 or more folders (auto-routing images + documents)
+      const resolvedFolders = rawFolders.map((f) =>
+        f === "APP_IMAGE_DIR" ? getAppImageDir() : f.replace(/\\/g, "/"),
+      );
+      this.imageDir = resolvedFolders[0]!;
+
+      const buildRes = await this.pipeline.buildTokenArchive({ folders: resolvedFolders });
+      await this.engine.buildIndex();
+      if (this.invertedIndex) {
+        await this.invertedIndex.syncTokens(this.engine.getAllEntries());
+      }
+
+      try {
+        const stampPath = `${this.engine.getDataDirPath ? this.engine.getDataDirPath() : "./data"}/.indexed_dir`;
+        await Bun.write(stampPath, this.imageDir);
+      } catch {}
+
+      return jsonResponse({
+        success: true,
+        mode: "folders",
+        folders: resolvedFolders.map((f) => redactImageDirForDisplay(f)),
+        sourceDirectory: redactImageDirForDisplay(this.imageDir),
+        totalTokens: buildRes.totalTokens,
+        imageTokens: buildRes.imageTokens,
+        documentTokens: buildRes.documentTokens,
+        reusedTokens: buildRes.reusedTokens,
+        archiveBytes: buildRes.archiveBytes,
+        buildElapsedMs: buildRes.elapsedMs,
+        bootIndexTimeMs: this.engine.lastBootIndexMs,
+      });
+    } finally {
+      this.writeLockInProgress = false;
+    }
+  }
+
+  /**
+   * GET /api/archive/export
+   * Streams the active tokens.zip archive (or a filtered subset when `?ids=tok_1,tok_2` is provided)
+   * with `Content-Disposition: attachment` for browser Save As.
+   */
+  public async handleExportArchive(url: URL): Promise<Response> {
+    const idsParam = (url.searchParams.get("ids") ?? "").trim();
+
+    if (idsParam) {
+      const requestedIds = idsParam
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+      const items: Array<{
+        entryName: string;
+        tokenBytes: Uint8Array;
+        meta: any;
+      }> = [];
+      for (const id of requestedIds) {
+        const entry = this.engine.getEntry(id);
+        if (!entry) continue;
+        const tokenBytes = await this.engine.extractToken(entry.id);
+        if (!tokenBytes) continue;
+        const {
+          localHeaderOffset: _localHeaderOffset,
+          dataOffset: _dataOffset,
+          compressedSize: _compressedSize,
+          uncompressedSize: _uncompressedSize,
+          compressionMethod: _compressionMethod,
+          crc32: _crc32,
+          ...meta
+        } = entry;
+        items.push({ entryName: entry.entryName, tokenBytes, meta });
+      }
+
+      if (items.length === 0) {
+        return errorResponse("No matching tokens found for export", 404);
+      }
+
+      const zipBuf = buildNativeTokenZipBuffer(items);
+      return new Response(new Uint8Array(zipBuf), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/zip",
+          "Content-Disposition": `attachment; filename="tinytoken_subset_${items.length}.zip"`,
+          "Content-Length": String(zipBuf.length),
+          "Cache-Control": "no-store",
+        },
+      });
+    }
+
+    const zipPath = this.engine.getZipFilePath();
+    const isZip = this.engine.isZipMode ? this.engine.isZipMode() : true;
+    const zipFile = Bun.file(zipPath);
+
+    if (isZip && (await zipFile.exists()) && zipFile.size >= 22) {
+      return new Response(zipFile, {
+        status: 200,
+        headers: {
+          "Content-Type": "application/zip",
+          "Content-Disposition": `attachment; filename="tokens.zip"`,
+          "Content-Length": String(zipFile.size),
+          "Cache-Control": "no-store",
+        },
+      });
+    }
+
+    // Fallback when APP_ZIP_USE=false: pack all active entries on the fly
+    const entries = this.engine.getAllEntries();
+    if (entries.length === 0) {
+      return errorResponse("Active archive contains 0 tokens", 404);
+    }
+    const items: Array<{
+      entryName: string;
+      tokenBytes: Uint8Array;
+      meta: any;
+    }> = [];
+    for (const entry of entries) {
+      const tokenBytes = await this.engine.extractToken(entry.id);
+      if (!tokenBytes) continue;
+      const {
+        localHeaderOffset: _localHeaderOffset,
+        dataOffset: _dataOffset,
+        compressedSize: _compressedSize,
+        uncompressedSize: _uncompressedSize,
+        compressionMethod: _compressionMethod,
+        crc32: _crc32,
+        ...meta
+      } = entry;
+      items.push({ entryName: entry.entryName, tokenBytes, meta });
+    }
+    const zipBuf = buildNativeTokenZipBuffer(items);
+    return new Response(new Uint8Array(zipBuf), {
+      status: 200,
+      headers: {
+        "Content-Type": "application/zip",
+        "Content-Disposition": `attachment; filename="tokens.zip"`,
+        "Content-Length": String(zipBuf.length),
+        "Cache-Control": "no-store",
+      },
+    });
   }
 
   /**

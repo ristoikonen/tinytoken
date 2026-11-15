@@ -62,6 +62,7 @@ export interface DocumentProcessor {
   renderPages(
     bytes: Uint8Array,
     maxPages?: number,
+    filename?: string,
   ): Promise<PageBundle[]>;
 
   embedText?(
@@ -191,8 +192,12 @@ export class DocxDocumentProcessor implements DocumentProcessor {
     };
   }
 
-  public async renderPages(bytes: Uint8Array): Promise<PageBundle[]> {
-    const filename = "document.docx";
+  public async renderPages(
+    bytes: Uint8Array,
+    _maxPages?: number,
+    filenameParam?: string,
+  ): Promise<PageBundle[]> {
+    const filename = filenameParam || "document.docx";
     const info = await this.extract(bytes, filename);
     const bundle = await rasterizeAssetToWebpAndTensors(
       bytes,
@@ -271,8 +276,12 @@ export class TextDocumentProcessor implements DocumentProcessor {
     };
   }
 
-  public async renderPages(bytes: Uint8Array): Promise<PageBundle[]> {
-    const filename = "document.txt";
+  public async renderPages(
+    bytes: Uint8Array,
+    _maxPages?: number,
+    filenameParam?: string,
+  ): Promise<PageBundle[]> {
+    const filename = filenameParam || "document.txt";
     const info = await this.extract(bytes, filename);
     const bundle = await rasterizeAssetToWebpAndTensors(
       bytes,
@@ -341,8 +350,12 @@ export class FallbackDocumentProcessor implements DocumentProcessor {
     };
   }
 
-  public async renderPages(bytes: Uint8Array): Promise<PageBundle[]> {
-    const filename = "document.doc";
+  public async renderPages(
+    bytes: Uint8Array,
+    _maxPages?: number,
+    filenameParam?: string,
+  ): Promise<PageBundle[]> {
+    const filename = filenameParam || "document.doc";
     const info = await this.extract(bytes, filename);
     const bundle = await rasterizeAssetToWebpAndTensors(
       bytes,
