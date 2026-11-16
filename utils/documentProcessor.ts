@@ -159,7 +159,7 @@ export class DocxDocumentProcessor implements DocumentProcessor {
         // Zip-bomb guard: check claimed uncompressed size
         if (uncompSize > maxDocxBytes) {
           isOversized = true;
-          docxText = `DOCX uncompressed size over max size (${(uncompSize / (1024 * 1024)).toFixed(1)} MB > ${maxDocxMb} MB) | DOCX uncomressed size over max size`;
+          docxText = `DOCX uncompressed size over max size (${(uncompSize / (1024 * 1024)).toFixed(1)} MB > ${maxDocxMb} MB) | DOCX uncompressed size over max size`;
           break;
         }
 

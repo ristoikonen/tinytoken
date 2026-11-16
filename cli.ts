@@ -766,13 +766,13 @@ async function main() {
 
   // Handle archive inspection directly for struct
   if (args.struct || args.command === "struct") {
-    if (args.file.endsWith(".zip")) {
-      await handleArchiveStructCommand(args.file, args);
+    if (args.file!.endsWith(".zip")) {
+      await handleArchiveStructCommand(args.file!, args);
       return;
     }
   }
 
-  const resolvedPath = await resolveInputFile(args.file);
+  const resolvedPath = await resolveInputFile(args.file!);
   if (!resolvedPath) {
     console.error(`Error: File not found: "${args.file}"`);
     process.exit(1);
@@ -969,7 +969,7 @@ async function main() {
     console.log(`  Embedding Model:        ${embeddingModelToString(insp.embeddingModelId)}`);
     console.log(`  RS Shard Coordinates:   Block ${insp.shardBlockId}, Index ${insp.shardIndex}`);
     console.log(`  Content ID (CID):       ${insp.contentId || insp.merkleRootHex}`);
-  console.log(`  Merkle Root:            ${insp.merkleRootHex}`);
+    console.log(`  Merkle Root:            ${insp.merkleRootHex}`);
     console.log(`  GF(2^8) Reed-Solomon:   HEALTHY (3 lanes, 64-byte parity)`);
 
     console.log(`\n[Section II: Metadata & OCR Payload]`);

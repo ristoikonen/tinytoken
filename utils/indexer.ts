@@ -621,7 +621,7 @@ export class Win11TokenPipeline {
             "dinov3-vit-s16",
             ...(bgeEmbeddingHex ? ["bge-small-en-v15"] : []),
             "verified",
-            ...(pg.extractedText.includes("DOCX uncomressed size over max size")
+            ...(pg.extractedText.includes("DOCX uncompressed size over max size")
               ? ["docx-oversized", "uncompressed-size-over-max"]
               : []),
           ],

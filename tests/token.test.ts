@@ -1143,7 +1143,7 @@ describe("TinyToken GF(2^8) + VQ + SHARK/SNARK Pipeline", () => {
     }
   });
 
-  test("DOCX uncompressed size ceiling (maximum_decompressed_DOCX = 20MB) prevents zip-bombs and allows searchOCR('DOCX uncomressed size over max size')", async () => {
+  test("DOCX uncompressed size ceiling (maximum_decompressed_DOCX = 20MB) prevents zip-bombs and allows searchOCR('DOCX uncompressed size over max size')", async () => {
     expect(MAXIMUM_DECOMPRESSED_DOCX).toBe(20 * 1024 * 1024);
     expect(maximum_decompressed_DOCX).toBe(20 * 1024 * 1024);
 
@@ -1175,7 +1175,7 @@ describe("TinyToken GF(2^8) + VQ + SHARK/SNARK Pipeline", () => {
       expect(items.length).toBe(1);
 
       const item = items[0]!;
-      expect(item.meta.ocrText).toContain("DOCX uncomressed size over max size");
+      expect(item.meta.ocrText).toContain("DOCX uncompressed size over max size");
 
       const testZip = "./data/test_docx_search.zip";
       const { writeNativeTokenZipArchive } = await import("../utils/zipEngine");
@@ -1184,9 +1184,9 @@ describe("TinyToken GF(2^8) + VQ + SHARK/SNARK Pipeline", () => {
       const engine = new CompressedTokenSearchEngine(testZip);
       await engine.buildIndex();
 
-      const hits = engine.searchOCR("DOCX uncomressed size over max size");
+      const hits = engine.searchOCR("DOCX uncompressed size over max size");
       expect(hits.length).toBe(1);
-      expect(hits[0]!.ocrSnippet).toContain("DOCX uncomressed size over max size");
+      expect(hits[0]!.ocrSnippet).toContain("DOCX uncompressed size over max size");
 
       const zipFile = Bun.file(testZip);
       if (await zipFile.exists()) await zipFile.delete();
