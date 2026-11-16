@@ -193,12 +193,12 @@ span.brand-docs-tag,
   font-weight: 500 !important;
 }
 
-/* Center-Left: Universal Navigation (Immediately following TinyToken Docs) */
+/* Center-Left: Universal Navigation (Shifted more towards centre to make room for brand title) */
 .topbar-nav, nav.topbar-nav {
   display: flex !important;
   align-items: center !important;
   gap: 28px !important;
-  margin-left: 36px !important;
+  margin-left: clamp(64px, 9vw, 160px) !important;
   flex-shrink: 0 !important;
 }
 
@@ -230,10 +230,9 @@ span.brand-docs-tag,
   border-bottom: 2px solid var(--tt-brand-color) !important;
 }
 
-/* Right: Red Caption, shifted more towards centre */
+/* Right: Empty spacer */
 .topbar-right {
   margin-left: auto !important;
-  margin-right: clamp(48px, 15vw, 240px) !important;
   display: flex !important;
   align-items: center !important;
   gap: 16px !important;
