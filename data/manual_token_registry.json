@@ -127,7 +127,7 @@
     "updatedAt": "2026-11-03T08:07:14.752Z"
   },
   "49": {
-    "name": "Possum",
+    "name": "Magpie",
     "category": "Silhouette",
     "isManuallyVerified": true,
     "rgb": [
@@ -137,7 +137,7 @@
     ],
     "source": "human_verified",
     "confidence": 1,
-    "updatedAt": "2026-11-03T08:07:14.752Z"
+    "updatedAt": "2026-11-16T08:12:47.830Z"
   },
   "50": {
     "name": "Bogong Moth",
@@ -319,7 +319,7 @@
     "updatedAt": "2026-11-03T08:07:14.752Z"
   },
   "98": {
-    "name": "Possum",
+    "name": "Magpie",
     "category": "Silhouette",
     "isManuallyVerified": true,
     "rgb": [
@@ -329,7 +329,7 @@
     ],
     "source": "human_verified",
     "confidence": 1,
-    "updatedAt": "2026-11-03T08:07:14.752Z"
+    "updatedAt": "2026-11-16T08:12:47.830Z"
   },
   "99": {
     "name": "Risto",
@@ -358,7 +358,7 @@
     "updatedAt": "2026-11-01T09:00:56.262Z"
   },
   "104": {
-    "name": "Hector",
+    "name": "Magpie",
     "category": "Silhouette",
     "isManuallyVerified": true,
     "rgb": [
@@ -368,7 +368,7 @@
     ],
     "source": "human_verified",
     "confidence": 1,
-    "updatedAt": "2026-11-01T09:10:20.194Z"
+    "updatedAt": "2026-11-16T08:12:47.830Z"
   },
   "105": {
     "name": "Risto",
@@ -1087,9 +1087,17 @@
     "updatedAt": "2026-11-02T03:29:33.688Z"
   },
   "253": {
-    "name": "Dark Shadow & Boundary Horizon",
-    "category": "StructuralGrid",
-    "isManuallyVerified": true
+    "name": "Magpie",
+    "category": "Silhouette",
+    "isManuallyVerified": true,
+    "rgb": [
+      85,
+      85,
+      85
+    ],
+    "source": "human_verified",
+    "confidence": 1,
+    "updatedAt": "2026-11-16T08:12:47.830Z"
   },
   "254": {
     "name": "Silver Grey Document Intermediate",

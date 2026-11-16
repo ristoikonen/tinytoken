@@ -4327,5 +4327,30 @@
     "observedAt": "2026-11-04T02:41:01.451Z",
     "source": "human_verified",
     "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1794816767834_amsni",
+    "recipeId": "rcp_magpie",
+    "label": "Magpie",
+    "category": "Silhouette",
+    "observedTokenId": "tok_01867_DSCN9109.JPG",
+    "boundingBox": [
+      0.3190553046184435,
+      0.5070469387755102,
+      0.10926930474811437,
+      0.17755102040816326
+    ],
+    "observedCentroids": [
+      98,
+      104,
+      253,
+      49
+    ],
+    "latitude": -35.1843,
+    "longitude": 149.1328,
+    "utcTimestamp": "2026-11-16T08:12:47.830Z",
+    "observedAt": "2026-11-16T08:12:47.830Z",
+    "source": "human_verified",
+    "confidence": 1
   }
 ]

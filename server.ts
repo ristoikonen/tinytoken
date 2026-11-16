@@ -40,6 +40,8 @@ const INDEXED_DIR_STAMP = `${APP_DATA_DIR}/.indexed_dir`;
 const useZip = Bun.env.APP_ZIP_USE !== "false";
 const port = isTest ? 0 : Number(Bun.env.APP_PORT ?? Bun.env.PORT ?? 3000);
 const host = Bun.env.APP_HOST ?? "localhost";
+const logRequests = false;
+const logPerf = Bun.env.LOG_PERF !== "false";
 
 // Live HTML template reader (always serves latest public/index.html)
 async function getIndexHtml(): Promise<string> {
@@ -97,6 +99,16 @@ const apiHandlers = new TokenApiHandlers(
   DOCUMENT_DIR,
 );
 
+function logPerfTiming(label: string, startNs: number): void {
+  if (!logPerf) return;
+  const elapsedMs = ((Bun.nanoseconds() - startNs) / 1e6).toFixed(1);
+  const count = searchEngine.getCount();
+  const sizeKb = (searchEngine.archiveSizeBytes / 1024).toFixed(1);
+  const msg = `[PERF] ${label}: ${elapsedMs}ms | Assets: ${count} tokens | Archive: ${sizeKb} KB`;
+  console.log(msg);
+  console.debug(msg);
+}
+
 // Initialization lifecycle
 let initPromise: Promise<void> | null = null;
 export function ensureInitialized(): Promise<void> {
@@ -107,7 +119,7 @@ export function ensureInitialized(): Promise<void> {
 }
 
 // Both logs and calls request handler
-async function requestLogging(req: Request, server?: Bun.Server<any>, toConsole: boolean = true): Promise<Response> {
+async function requestLogging(req: Request, server?: Bun.Server<any>, toConsole: boolean = logRequests): Promise<Response> {
   const startNs = Bun.nanoseconds();
   const url = new URL(req.url);
   let status = 500;
@@ -227,6 +239,7 @@ async function initIndex(): Promise<void> {
     console.log(
       `Indexed ${searchEngine.getCount()} tokens into RAM in ${totalMs} ms (${(searchEngine.archiveSizeBytes / 1024).toFixed(1)} KB, ${storageLabel})`,
     );
+    logPerfTiming("Init Index", t0);
   } catch (err) {
     console.error("Warning: Could not build index/sync tokens:", err);
   }
@@ -244,8 +257,18 @@ async function handleApiRoute(path: string, req: BunRequest, url: URL): Promise<
   if (path === "/api/objects") return apiHandlers.handleGetObjectAnnotations();
   if (path === "/api/search") return apiHandlers.handleSearch(url);
   if (path === "/api/search/pattern") return apiHandlers.handlePatternSearch(url);
-  if (path === "/api/index/rebuild" && req.method === "POST") return apiHandlers.handleRebuildIndex(req);
-  if (path === "/api/archive/create" && req.method === "POST") return apiHandlers.handleCreateArchive(req);
+  if (path === "/api/index/rebuild" && req.method === "POST") {
+    const t0 = Bun.nanoseconds();
+    const res = await apiHandlers.handleRebuildIndex(req);
+    logPerfTiming("Rebuild Index", t0);
+    return res;
+  }
+  if (path === "/api/archive/create" && req.method === "POST") {
+    const t0 = Bun.nanoseconds();
+    const res = await apiHandlers.handleCreateArchive(req);
+    logPerfTiming("Create Archive", t0);
+    return res;
+  }
   if (path === "/api/archive/export" && req.method === "GET") return apiHandlers.handleExportArchive(url);
   if (path === "/api/archive/swap" && req.method === "POST") return learningHandlers.handleArchiveSwap(req);
   if (path === "/api/archive/status") return learningHandlers.handleArchiveStatus();

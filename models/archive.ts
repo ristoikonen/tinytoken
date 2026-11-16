@@ -15,7 +15,7 @@ export function getAppArchiveDir(): string {
 }
 
 export function getArchiveRegistryPath(): string {
-  const dataDir = (Bun.env.APP_DATA_DIR ?? Bun.env.DATA_DIR ?? "./data")
+  const dataDir = (Bun.env.APP_DATA_DIR ?? "./data")
     .trim()
     .replace(/\\/g, "/")
     .replace(/\/+$/, "");

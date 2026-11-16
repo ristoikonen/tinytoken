@@ -78,21 +78,22 @@
     "label": "Magpie",
     "category": "Silhouette",
     "dominantCentroidDist": {
-      "0": 0.125,
-      "49": 0.167,
-      "55": 0.125,
-      "97": 0.042,
+      "0": 0.062,
+      "49": 0.208,
+      "55": 0.062,
+      "97": 0.021,
       "98": 0.25,
-      "104": 0.125,
-      "147": 0.042,
-      "252": 0.125
+      "104": 0.187,
+      "147": 0.021,
+      "252": 0.062,
+      "253": 0.125
     },
     "source": "human_verified",
     "confidence": 1,
-    "version": 2,
+    "version": 3,
     "createdAt": "2026-11-01T02:28:44.485Z",
-    "updatedAt": "2026-11-02T03:29:33.688Z",
-    "observationCount": 3
+    "updatedAt": "2026-11-16T08:12:47.830Z",
+    "observationCount": 4
   },
   {
     "recipeId": "rcp_christine",
