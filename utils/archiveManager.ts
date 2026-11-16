@@ -8,6 +8,12 @@
  * - Readers remain pinned to the consistent active generation during staging
  */
 
+import {
+  getAppArchiveDir,
+  getArchiveRegistryPath,
+  type SerializedTokenArchive,
+  type TokenArchive,
+} from "../models/archive";
 import type {
   ArchiveGenerationState,
   ArchiveValidationResult,
@@ -16,9 +22,300 @@ import { TOKEN_MAGIC } from "../models/token";
 import type { VqInvertedIndexEngine } from "./vqInvertedIndex";
 import type { CompressedTokenSearchEngine } from "./zipEngine";
 
+export {
+  getAppArchiveDir,
+  getArchiveRegistryPath,
+  type SerializedTokenArchive,
+  type TokenArchive,
+};
+
+export interface FreezeArchiveOptions {
+  label?: string;
+  archiveDir?: string;
+  registryPath?: string;
+  filename?: string;
+}
+
+export interface FreezeArchiveResult {
+  success: boolean;
+  error?: string;
+  archive?: TokenArchive;
+}
+
 const ZIP_EOCD_SIG = 0x06054b50;
 const ZIP_LOCAL_HEADER_SIG = 0x04034b50;
 const ZIP_CENTRAL_DIR_SIG = 0x02014b50;
+
+/**
+ * In-memory archive registry (stable archive ID -> approved TokenArchive record),
+ * backed by `archive_registry.json` and synchronized with `APP_ARCHIVE_DIR`.
+ */
+const archiveRegistry = new Map<string, TokenArchive>();
+let syncedArchiveDir: string | null = null;
+
+function sanitizeArchiveId(rawId: string): string | null {
+  const clean = rawId.trim().replace(/\.zip$/i, "");
+  if (
+    !clean ||
+    clean.includes("..") ||
+    clean.includes("/") ||
+    clean.includes("\\") ||
+    /[\x00-\x1f<>:"|?*]/.test(clean)
+  ) {
+    return null;
+  }
+  return clean;
+}
+
+async function computeFileSha256Hex(file: ReturnType<typeof Bun.file>): Promise<string> {
+  const hasher = new Bun.CryptoHasher("sha256");
+  hasher.update(await file.arrayBuffer());
+  return hasher.digest("hex");
+}
+
+async function persistArchiveRegistry(
+  records: Iterable<TokenArchive>,
+  registryPath = getArchiveRegistryPath(),
+): Promise<void> {
+  const serialized: SerializedTokenArchive[] = Array.from(records).map((r) => ({
+    id: r.id,
+    filename: r.filename,
+    path: r.path,
+    size: r.size,
+    modified: r.modified.toISOString(),
+    ...(r.label ? { label: r.label } : {}),
+    ...(r.sha256 ? { sha256: r.sha256 } : {}),
+  }));
+  await Bun.write(registryPath, JSON.stringify(serialized, null, 2));
+}
+
+/**
+ * Loads `archive_registry.json` and synchronizes it with approved `.zip` files in `APP_ARCHIVE_DIR`
+ * using `Bun.Glob`, `Bun.file`, and `Bun.CryptoHasher("sha256")`.
+ */
+export async function syncArchiveRegistry(
+  archiveDir = getAppArchiveDir(),
+  registryPath = getArchiveRegistryPath(),
+): Promise<TokenArchive[]> {
+  const normalizedDir = archiveDir.replace(/\\/g, "/").replace(/\/+$/, "");
+  const persistedById = new Map<string, SerializedTokenArchive>();
+  const regFile = Bun.file(registryPath);
+  const regFileExisted = await regFile.exists();
+
+  if (regFileExisted) {
+    try {
+      const parsed = (await regFile.json()) as SerializedTokenArchive[];
+      if (Array.isArray(parsed)) {
+        for (const item of parsed) {
+          if (item && typeof item.id === "string" && typeof item.path === "string") {
+            persistedById.set(item.id, item);
+          }
+        }
+      }
+    } catch {
+      // Ignore malformed registry file and rebuild from directory scan
+    }
+  }
+
+  const nextRegistry = new Map<string, TokenArchive>();
+  let dirty = false;
+
+  // 1. Scan APP_ARCHIVE_DIR for .zip files via Bun.Glob
+  const glob = new Bun.Glob("*.{zip,ZIP}");
+  try {
+    for await (const name of glob.scan({ cwd: normalizedDir, onlyFiles: true })) {
+      const id = sanitizeArchiveId(name);
+      if (!id) continue;
+
+      const path = `${normalizedDir}/${name}`;
+      const file = Bun.file(path);
+      if (!(await file.exists())) continue;
+
+      const size = file.size;
+      const modifiedMs = file.lastModified;
+      const prev = persistedById.get(id);
+
+      let sha256 = prev?.sha256;
+      if (!prev || prev.size !== size || prev.path !== path || !sha256) {
+        sha256 = await computeFileSha256Hex(file);
+        dirty = true;
+      }
+
+      nextRegistry.set(id, {
+        id,
+        filename: name,
+        path,
+        size,
+        modified: new Date(modifiedMs || (prev?.modified ? Date.parse(prev.modified) : Date.now())),
+        ...(prev?.label ? { label: prev.label } : {}),
+        sha256,
+      });
+    }
+  } catch {
+    // APP_ARCHIVE_DIR may not exist on disk yet
+  }
+
+  // 2. Preserve any explicitly registered archives from archive_registry.json that still exist on disk
+  for (const [id, prev] of persistedById) {
+    if (nextRegistry.has(id)) continue;
+    const safeId = sanitizeArchiveId(id);
+    if (!safeId) {
+      dirty = true;
+      continue;
+    }
+    const file = Bun.file(prev.path);
+    if (!(await file.exists())) {
+      dirty = true;
+      continue;
+    }
+    const size = file.size;
+    const sha256 =
+      prev.sha256 && prev.size === size ? prev.sha256 : await computeFileSha256Hex(file);
+    if (prev.size !== size || !prev.sha256) dirty = true;
+
+    nextRegistry.set(safeId, {
+      id: safeId,
+      filename: prev.filename || `${safeId}.zip`,
+      path: prev.path,
+      size,
+      modified: new Date(file.lastModified || (prev.modified ? Date.parse(prev.modified) : Date.now())),
+      ...(prev.label ? { label: prev.label } : {}),
+      sha256,
+    });
+  }
+
+  if (nextRegistry.size !== persistedById.size) {
+    dirty = true;
+  }
+
+  archiveRegistry.clear();
+  for (const [k, v] of nextRegistry) {
+    archiveRegistry.set(k, v);
+  }
+  syncedArchiveDir = normalizedDir;
+
+  if (dirty || (!regFileExisted && nextRegistry.size > 0)) {
+    try {
+      await persistArchiveRegistry(archiveRegistry.values(), registryPath);
+    } catch {
+      // Non-fatal if data directory is read-only
+    }
+  }
+
+  return Array.from(archiveRegistry.values()).sort(
+    (a, b) => b.modified.getTime() - a.modified.getTime(),
+  );
+}
+
+/**
+ * Registers or updates a single `.zip` archive in the persistent & in-memory registry.
+ */
+export async function registerTokenArchive(
+  archiveId: string,
+  zipPath: string,
+  labelOrRegistryPath?: string,
+  maybeRegistryPath?: string,
+): Promise<TokenArchive | null> {
+  const cleanId = sanitizeArchiveId(archiveId);
+  if (!cleanId) return null;
+
+  let label: string | undefined;
+  let registryPath = getArchiveRegistryPath();
+
+  if (labelOrRegistryPath) {
+    if (labelOrRegistryPath.endsWith(".json") && !maybeRegistryPath) {
+      registryPath = labelOrRegistryPath;
+    } else {
+      label = labelOrRegistryPath.trim();
+      if (maybeRegistryPath) {
+        registryPath = maybeRegistryPath;
+      }
+    }
+  }
+
+  const normalizedPath = zipPath.replace(/\\/g, "/");
+  const file = Bun.file(normalizedPath);
+  if (!(await file.exists())) return null;
+
+  const filename = normalizedPath.split("/").pop() || `${cleanId}.zip`;
+  const sha256 = await computeFileSha256Hex(file);
+  const record: TokenArchive = {
+    id: cleanId,
+    filename,
+    path: normalizedPath,
+    size: file.size,
+    modified: new Date(file.lastModified || Date.now()),
+    ...(label ? { label } : {}),
+    sha256,
+  };
+
+  archiveRegistry.set(cleanId, record);
+  try {
+    const recordsToPersist = new Map<string, TokenArchive>();
+    const regFile = Bun.file(registryPath);
+    if (await regFile.exists()) {
+      try {
+        const parsed = (await regFile.json()) as SerializedTokenArchive[];
+        if (Array.isArray(parsed)) {
+          for (const item of parsed) {
+            if (item && item.id) {
+              recordsToPersist.set(item.id, {
+                id: item.id,
+                filename: item.filename,
+                path: item.path,
+                size: item.size,
+                modified: new Date(item.modified),
+                ...(item.label ? { label: item.label } : {}),
+                ...(item.sha256 ? { sha256: item.sha256 } : {}),
+              });
+            }
+          }
+        }
+      } catch { }
+    } else if (registryPath === getArchiveRegistryPath()) {
+      for (const [k, v] of archiveRegistry) {
+        recordsToPersist.set(k, v);
+      }
+    }
+    recordsToPersist.set(cleanId, record);
+    await persistArchiveRegistry(recordsToPersist.values(), registryPath);
+  } catch { }
+  return record;
+}
+
+export async function listTokenArchives(
+  archiveDir = getAppArchiveDir(),
+  registryPath = getArchiveRegistryPath(),
+): Promise<TokenArchive[]> {
+  return syncArchiveRegistry(archiveDir, registryPath);
+}
+
+export async function resolveTokenArchive(
+  archiveId: string,
+  archiveDir = getAppArchiveDir(),
+  registryPath = getArchiveRegistryPath(),
+): Promise<TokenArchive | null> {
+  const cleanId = sanitizeArchiveId(archiveId);
+  if (!cleanId) return null;
+
+  const normalizedDir = archiveDir.replace(/\\/g, "/").replace(/\/+$/, "");
+  if (syncedArchiveDir !== normalizedDir || !archiveRegistry.has(cleanId)) {
+    await syncArchiveRegistry(normalizedDir, registryPath);
+  }
+
+  const record = archiveRegistry.get(cleanId);
+  if (!record) return null;
+
+  const file = Bun.file(record.path);
+  if (!(await file.exists()) || file.size !== record.size) {
+    archiveRegistry.delete(cleanId);
+    return null;
+  }
+
+  return record;
+}
+
+
 
 export class ArchiveManager {
   private generation = 1;
@@ -221,7 +518,7 @@ export class ArchiveManager {
       // Rollback: delete staging file, keep existing generation
       try {
         await Bun.file(this.stagingZipPath).delete();
-      } catch {}
+      } catch { }
       return {
         success: false,
         generation: this.generation,
@@ -237,7 +534,7 @@ export class ArchiveManager {
       await Bun.write(this.activeZipPath, archiveBytes);
       try {
         await Bun.file(this.stagingZipPath).delete();
-      } catch {}
+      } catch { }
 
       // Rebuild search engine and inverted index on active archive
       await this.searchEngine.buildIndex();
@@ -263,6 +560,82 @@ export class ArchiveManager {
         totalTokens: this.searchEngine.getCount(),
         archiveSizeBytes: this.searchEngine.archiveSizeBytes,
         error: `Swap execution error: ${err?.message || String(err)}`,
+      };
+    }
+  }
+
+  /**
+   * Freezes current active archive into APP_ARCHIVE_DIR:
+   * 1. Validates active archive structurally.
+   * 2. Names file using timestamp + token count: `tokens_YYYY-MM-DD_HHmmss_<N>tok.zip`.
+   * 3. Writes copy into archive directory using Bun.write.
+   * 4. Registers in `archive_registry.json` with stable ID, size, sha256, and optional label.
+   */
+  public async freezeActiveArchive(options?: FreezeArchiveOptions): Promise<FreezeArchiveResult> {
+    const activeFile = Bun.file(this.activeZipPath);
+    if (!(await activeFile.exists())) {
+      return { success: false, error: `Active archive not found at ${this.activeZipPath}` };
+    }
+
+    const validation = await this.validateArchive(this.activeZipPath);
+    if (!validation.valid) {
+      return {
+        success: false,
+        error: `Cannot freeze invalid archive: ${validation.error || "structural check failed"}`,
+      };
+    }
+
+    const tokenCount = validation.tokenCount ?? this.searchEngine.getCount();
+    const targetDir = (options?.archiveDir || getAppArchiveDir())
+      .replace(/\\/g, "/")
+      .replace(/\/+$/, "");
+    const registryPath = options?.registryPath || getArchiveRegistryPath();
+
+    let baseId: string;
+    let filename: string;
+    let destPath: string;
+
+    if (options?.filename) {
+      const sanitized = options.filename.trim().replace(/\\/g, "/").split("/").pop() || "";
+      const cleanName = sanitized.replace(/\.zip$/i, "");
+      const cleanId = sanitizeArchiveId(cleanName);
+      if (!cleanId) {
+        return { success: false, error: `Invalid custom filename '${options.filename}'` };
+      }
+      baseId = cleanId;
+      filename = `${cleanId}.zip`;
+      destPath = `${targetDir}/${filename}`;
+    } else {
+      const d = new Date();
+      const pad = (n: number) => String(n).padStart(2, "0");
+      const ts = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
+
+      baseId = `tokens_${ts}_${tokenCount}tok`;
+      filename = `${baseId}.zip`;
+      destPath = `${targetDir}/${filename}`;
+
+      let counter = 1;
+      while (await Bun.file(destPath).exists()) {
+        baseId = `tokens_${ts}_${tokenCount}tok_${counter++}`;
+        filename = `${baseId}.zip`;
+        destPath = `${targetDir}/${filename}`;
+      }
+    }
+
+    try {
+      const bytes = await activeFile.arrayBuffer();
+      await Bun.write(destPath, bytes);
+
+      const record = await registerTokenArchive(baseId, destPath, options?.label, registryPath);
+      if (!record) {
+        return { success: false, error: "Failed to register frozen archive record" };
+      }
+
+      return { success: true, archive: record };
+    } catch (err: any) {
+      return {
+        success: false,
+        error: `Failed to freeze archive: ${err?.message || String(err)}`,
       };
     }
   }

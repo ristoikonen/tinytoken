@@ -9,7 +9,7 @@
  */
 
 import type { LearningSource } from "../models/learning";
-import type { ArchiveManager } from "../utils/archiveManager";
+import { listTokenArchives, type ArchiveManager } from "../utils/archiveManager";
 import { errorResponse, jsonResponse, verifySameOriginMutation } from "../utils/response";
 import type { VisualTraitCategory, VisualTraitRegistry } from "../utils/visualTraitRegistry";
 
@@ -118,6 +118,52 @@ export class LearningHandlers {
         totalObjectRecipes: recipes.length,
         totalEvidenceObservations: evidence.length,
       },
+    });
+  }
+
+  /**
+   * POST /api/archive/freeze
+   * Freezes active tokens.zip into APP_ARCHIVE_DIR, registered with stable ID,
+   * timestamp + token count filename, SHA-256, and optional label.
+   */
+  public async handleArchiveFreeze(req: Request): Promise<Response> {
+    const forbidden = verifySameOriginMutation(req);
+    if (forbidden) return forbidden;
+
+    let label: string | undefined;
+    if (req.headers.get("content-type")?.includes("application/json")) {
+      try {
+        const body = (await req.json()) as { label?: string };
+        if (body && typeof body.label === "string" && body.label.trim()) {
+          label = body.label.trim();
+        }
+      } catch {
+        return errorResponse("Invalid JSON payload", 400);
+      }
+    }
+
+    const result = await this.archiveManager.freezeActiveArchive({ label });
+    if (!result.success) {
+      return jsonResponse({ success: false, error: result.error }, 400);
+    }
+
+    return jsonResponse({
+      success: true,
+      message: `Frozen archive '${result.archive?.filename}' saved to archive repository`,
+      archive: result.archive,
+    });
+  }
+
+  /**
+   * GET /api/archive/list
+   * Returns list of approved archived token collections from APP_ARCHIVE_DIR & archive_registry.json.
+   */
+  public async handleArchiveList(): Promise<Response> {
+    const archives = await listTokenArchives();
+    return jsonResponse({
+      success: true,
+      count: archives.length,
+      archives,
     });
   }
 

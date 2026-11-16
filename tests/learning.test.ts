@@ -1,7 +1,13 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { LearningHandlers } from "../handlers/learningHandlers";
 import { TokenApiHandlers } from "../handlers/tokenHandlers";
-import { ArchiveManager } from "../utils/archiveManager";
+import {
+  ArchiveManager,
+  listTokenArchives,
+  registerTokenArchive,
+  resolveTokenArchive,
+  syncArchiveRegistry,
+} from "../utils/archiveManager";
 import {
   VisualTraitRegistry,
   DEFAULT_OBSERVATION_LATITUDE,
@@ -369,5 +375,137 @@ describe("Persistent Knowledge Layer & Transactional Archive Ingestion", () => {
     expect(createBody.mode).toBe("selection");
     expect(createBody.totalTokens).toBe(2);
     expect(searchEngine.getCount()).toBe(2);
+  });
+
+  test("Archive registry: persisted JSON + startup sync with SHA-256 and path-traversal protection", async () => {
+    const testArchiveDir = "./data/test_archives_reg";
+    const testRegistryPath = "./data/test_archive_registry.json";
+    const sampleArchivePath = `${testArchiveDir}/approved_batch_01.zip`;
+
+    try {
+      const tok = await generateMockTinyTokenBuffer("tok_reg_01", "Registry Test Asset");
+      const item = createMockArchiveItem("tok_reg_01", tok, 100);
+      await writeNativeTokenZipArchive(sampleArchivePath, [item]);
+
+      // 1. Startup sync discovers .zip in APP_ARCHIVE_DIR, computes sha256, and writes registry JSON
+      const synced = await syncArchiveRegistry(testArchiveDir, testRegistryPath);
+      expect(synced.length).toBe(1);
+      expect(synced[0]!.id).toBe("approved_batch_01");
+      expect(synced[0]!.filename).toBe("approved_batch_01.zip");
+      expect(synced[0]!.size).toBeGreaterThan(22);
+      expect(synced[0]!.sha256).toMatch(/^[a-f0-9]{64}$/);
+      expect(await Bun.file(testRegistryPath).exists()).toBe(true);
+
+      // 2. O(1) resolution by stable ID works and rejects traversal attempts
+      const resolved = await resolveTokenArchive("approved_batch_01", testArchiveDir, testRegistryPath);
+      expect(resolved).not.toBeNull();
+      expect(resolved?.sha256).toBe(synced[0]!.sha256);
+
+      const traversal = await resolveTokenArchive("../tokens", testArchiveDir, testRegistryPath);
+      expect(traversal).toBeNull();
+
+      // 3. Explicit registerTokenArchive with label persists and lists cleanly
+      const regRec = await registerTokenArchive(
+        "custom_active",
+        TEST_ACTIVE_ZIP,
+        "images from summer 2025 holiday",
+        testRegistryPath,
+      );
+      expect(regRec).not.toBeNull();
+      expect(regRec?.id).toBe("custom_active");
+      expect(regRec?.label).toBe("images from summer 2025 holiday");
+      expect(regRec?.sha256).toMatch(/^[a-f0-9]{64}$/);
+
+      const allListed = await listTokenArchives(testArchiveDir, testRegistryPath);
+      expect(allListed.some((a) => a.id === "approved_batch_01")).toBe(true);
+      const foundCustom = allListed.find((a) => a.id === "custom_active");
+      expect(foundCustom).toBeDefined();
+      expect(foundCustom?.label).toBe("images from summer 2025 holiday");
+
+      // Verify label persisted into JSON file
+      const registryJson = (await Bun.file(testRegistryPath).json()) as any[];
+      const jsonItem = registryJson.find((x) => x.id === "custom_active");
+      expect(jsonItem?.label).toBe("images from summer 2025 holiday");
+    } finally {
+      for (const p of [sampleArchivePath, testRegistryPath]) {
+        const f = Bun.file(p);
+        if (await f.exists()) await f.delete();
+      }
+      Bun.spawnSync(["pwsh", "-NoProfile", "-Command", `Remove-Item -Recurse -Force "${testArchiveDir}" -ErrorAction SilentlyContinue`]);
+    }
+  });
+
+  test("Freeze active archive: creates timestamped snapshot with token count, registers in registry with label & sha256, and handles HTTP API freeze & list", async () => {
+    const testFreezeDir = "./data/test_archives_freeze";
+    const testFreezeRegPath = "./data/test_archive_registry_freeze.json";
+
+    try {
+      // 1. Direct ArchiveManager.freezeActiveArchive
+      const freezeRes = await archiveManager.freezeActiveArchive({
+        label: "holiday trip 2025",
+        archiveDir: testFreezeDir,
+        registryPath: testFreezeRegPath,
+      });
+
+      expect(freezeRes.success).toBe(true);
+      expect(freezeRes.archive).toBeDefined();
+      expect(freezeRes.archive?.label).toBe("holiday trip 2025");
+      expect(freezeRes.archive?.filename).toMatch(/^tokens_\d{4}-\d{2}-\d{2}_\d{6}_\d+tok\.zip$/);
+      expect(freezeRes.archive?.id).toMatch(/^tokens_\d{4}-\d{2}-\d{2}_\d{6}_\d+tok$/);
+      expect(freezeRes.archive?.sha256).toMatch(/^[a-f0-9]{64}$/);
+
+      // Verify physical file was written to target archive directory
+      const frozenFile = Bun.file(freezeRes.archive!.path);
+      expect(await frozenFile.exists()).toBe(true);
+      expect(frozenFile.size).toBe(freezeRes.archive!.size);
+
+      // 2. Collision avoidance in the same second generates sequenced name
+      const collisionRes = await archiveManager.freezeActiveArchive({
+        label: "duplicate second freeze",
+        archiveDir: testFreezeDir,
+        registryPath: testFreezeRegPath,
+      });
+      expect(collisionRes.success).toBe(true);
+      expect(collisionRes.archive?.id).toContain("_1");
+
+      // 3. Verify registry JSON persistence
+      const regJson = (await Bun.file(testFreezeRegPath).json()) as any[];
+      expect(regJson.length).toBe(2);
+      const firstEntry = regJson.find((x) => x.id === freezeRes.archive!.id);
+      expect(firstEntry).toBeDefined();
+      expect(firstEntry.label).toBe("holiday trip 2025");
+      expect(firstEntry.sha256).toBe(freezeRes.archive!.sha256);
+
+      // 4. Test HTTP Handlers: POST /api/archive/freeze and GET /api/archive/list
+      const httpFreezeReq = new Request("http://localhost:3000/api/archive/freeze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ label: "API Snapshot Label" }),
+      });
+      const httpFreezeRes = await learningHandlers.handleArchiveFreeze(httpFreezeReq);
+      expect(httpFreezeRes.status).toBe(200);
+      const httpFreezeBody = (await httpFreezeRes.json()) as { success: boolean; archive: any };
+      expect(httpFreezeBody.success).toBe(true);
+      expect(httpFreezeBody.archive?.label).toBe("API Snapshot Label");
+
+      const httpListRes = await learningHandlers.handleArchiveList();
+      expect(httpListRes.status).toBe(200);
+      const httpListBody = (await httpListRes.json()) as { success: boolean; count: number; archives: any[] };
+      expect(httpListBody.success).toBe(true);
+      expect(httpListBody.count).toBeGreaterThanOrEqual(1);
+      const foundInList = httpListBody.archives.find((a) => a.id === httpFreezeBody.archive.id);
+      expect(foundInList).toBeDefined();
+      expect(foundInList.label).toBe("API Snapshot Label");
+
+      // Clean up the HTTP frozen archive file created in default archive dir
+      if (httpFreezeBody.archive?.path) {
+        const f = Bun.file(httpFreezeBody.archive.path);
+        if (await f.exists()) await f.delete();
+      }
+    } finally {
+      const regFile = Bun.file(testFreezeRegPath);
+      if (await regFile.exists()) await regFile.delete();
+      Bun.spawnSync(["pwsh", "-NoProfile", "-Command", `Remove-Item -Recurse -Force "${testFreezeDir}" -ErrorAction SilentlyContinue`]);
+    }
   });
 });

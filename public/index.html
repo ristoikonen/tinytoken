@@ -960,8 +960,8 @@
           <button id="btn-export-archive" class="btn mono" type="button" title="Save As / Export active archive (.zip)">
             Export
           </button>
-          <button id="btn-rebuild" class="btn mono" type="button" title="Re-scan and rebuild ./data/tokens.zip">
-            Re-Index
+          <button id="btn-archive-mgmt" class="btn mono" type="button" title="Freeze active tokens into approved archive repository (APP_ARCHIVE_DIR)">
+            Archive
           </button>
         </div>
         <div id="create-archive-panel" class="create-archive-panel mono">
@@ -1056,9 +1056,9 @@
         <button id="btn-find-similar" class="btn btn-action-cyan mono">
           Etsi samankaltaisia
         </button>
-        <button id="btn-homomorphic" class="btn mono"
-          title="Apply blind GF(2^8) linear state mask directly on raw 25KB token slice">
-          GF(2⁸) Mask
+        <button id="btn-rebuild" class="btn mono" type="button"
+          title="Re-scan and rebuild ./data/tokens.zip from source folders">
+          Re-Index
         </button>
         <button id="btn-index-google-photos" class="btn btn-action-emerald mono" style="display:none;"
           title="Fetch and index 50 Google Photos into TinyToken">
@@ -1877,18 +1877,6 @@ No object recipe associated with this token yet. Click [✎ Label] to teach.`;
       runSearch();
     };
 
-    // Homomorphic GF(2^8) state mutation
-    document.getElementById('btn-homomorphic').onclick = async () => {
-      if (!selectedTokenId) return;
-      logDebug(`[GF28] Applying linear state mask to ${selectedTokenId}...`, 'cyan');
-      await fetch(`/api/token/${encodeURIComponent(selectedTokenId)}/mutate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ scalar: 0x5a })
-      });
-      await selectToken(selectedTokenId);
-    };
-
     // Google Photos Batch Ingestion
     const elBtnGooglePhotos = document.getElementById('btn-index-google-photos');
     if (elBtnGooglePhotos) {
@@ -2201,6 +2189,45 @@ No object recipe associated with this token yet. Click [✎ Label] to teach.`;
       } finally {
         btn.innerHTML = origText;
         e.target.value = '';
+      }
+    });
+
+    // Archive active tokens (Freeze snapshot into approved archive repository)
+    document.getElementById('btn-archive-mgmt')?.addEventListener('click', async () => {
+      const btn = document.getElementById('btn-archive-mgmt');
+      const label = prompt(
+        'Archive Active Tokens\n\nFreeze current tokens into approved archive repository (APP_ARCHIVE_DIR).\nEnter an optional label or description for this collection:\n(e.g. "images from summer 2025 holiday")',
+        ''
+      );
+      if (label === null) return; // User cancelled
+
+      const prevText = btn.textContent;
+      btn.textContent = '⏳ Freezing...';
+      btn.disabled = true;
+
+      try {
+        logDebug(`[ARCHIVE] Freezing active archive${label.trim() ? ` with label "${label.trim()}"` : ''}...`, 'cyan');
+        const res = await fetch('/api/archive/freeze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ label: label.trim() || undefined }),
+        }).then(r => r.json());
+
+        if (res.success) {
+          const arc = res.archive;
+          const msg = `✓ Successfully archived active tokens!\nFilename: ${arc.filename}\nID: ${arc.id}${arc.label ? `\nLabel: ${arc.label}` : ''}\nSHA-256: ${arc.sha256 ? arc.sha256.slice(0, 16) + '...' : 'computed'}`;
+          logDebug(`[ARCHIVE] Frozen: ${arc.filename} (${(arc.size / 1024).toFixed(1)} KB)${arc.label ? ` - "${arc.label}"` : ''}`, 'success');
+          alert(msg);
+        } else {
+          logDebug(`[ERROR] Archive freeze failed: ${res.error || 'Unknown error'}`, 'error');
+          alert(`Archive failed: ${res.error || 'Unknown error'}`);
+        }
+      } catch (err) {
+        logDebug(`[ERROR] Archive freeze error: ${err.message || String(err)}`, 'error');
+        alert(`Archive error: ${err.message || String(err)}`);
+      } finally {
+        btn.textContent = prevText;
+        btn.disabled = false;
       }
     });
 

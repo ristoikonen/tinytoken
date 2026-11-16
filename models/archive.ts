@@ -1,25 +1,43 @@
-export interface ArchiveRecord {
-    id: string;
-    path: string;
-    size: number;
-    sha256?: string;
+/**
+ * Archive Registry Models & Configuration (models/archive.ts)
+ *
+ * Defines the persisted and in-memory `TokenArchive` representation mapping
+ * stable archive IDs to approved `.zip` containers inside `APP_ARCHIVE_DIR`.
+ */
+
+export const DEFAULT_ARCHIVE_DIR = "./data/archives";
+
+export function getAppArchiveDir(): string {
+  return (Bun.env.APP_ARCHIVE_DIR ?? DEFAULT_ARCHIVE_DIR)
+    .trim()
+    .replace(/\\/g, "/")
+    .replace(/\/+$/, "");
 }
 
-export const archives = new Map<string, ArchiveRecord>([
-    [
-        "default",
-        {
-            id: "default",
-            path: "./data/tokens.zip",
-            size: 0,
-        },
-    ],
-    [
-        "november-2026",
-        {
-            id: "november-2026",
-            path: "./data/tokens-november.zip",
-            size: 0,
-        },
-    ],
-]);
+export function getArchiveRegistryPath(): string {
+  const dataDir = (Bun.env.APP_DATA_DIR ?? Bun.env.DATA_DIR ?? "./data")
+    .trim()
+    .replace(/\\/g, "/")
+    .replace(/\/+$/, "");
+  return `${dataDir}/archive_registry.json`;
+}
+
+export interface TokenArchive {
+  id: string;
+  filename: string;
+  path: string;
+  size: number;
+  modified: Date;
+  label?: string;
+  sha256?: string;
+}
+
+export interface SerializedTokenArchive {
+  id: string;
+  filename: string;
+  path: string;
+  size: number;
+  modified: string;
+  label?: string;
+  sha256?: string;
+}

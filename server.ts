@@ -8,7 +8,7 @@ import {
   getAppSqliteDbPath,
   redactImageDirForDisplay,
 } from "./models/token";
-import { ArchiveManager } from "./utils/archiveManager";
+import { ArchiveManager, syncArchiveRegistry } from "./utils/archiveManager";
 import type { Win11TokenPipeline } from "./utils/indexer";
 import { errorResponse, jsonResponse, verifySameOriginMutation, corsResponse } from "./utils/response";
 import {
@@ -179,6 +179,7 @@ async function ensureDataDirectory(targetDir: string, zipPath: string): Promise<
 
 async function initIndex(): Promise<void> {
   await ensureDataDirectory(APP_DATA_DIR, ZIP_ARCHIVE_PATH);
+  await syncArchiveRegistry();
   const t0 = Bun.nanoseconds();
   const isZip = searchEngine.isZipMode();
   const zipFile = Bun.file(ZIP_ARCHIVE_PATH);
@@ -240,6 +241,8 @@ async function handleApiRoute(path: string, req: BunRequest, url: URL): Promise<
   if (path === "/api/archive/export" && req.method === "GET") return apiHandlers.handleExportArchive(url);
   if (path === "/api/archive/swap" && req.method === "POST") return learningHandlers.handleArchiveSwap(req);
   if (path === "/api/archive/status") return learningHandlers.handleArchiveStatus();
+  if (path === "/api/archive/freeze" && req.method === "POST") return learningHandlers.handleArchiveFreeze(req);
+  if ((path === "/api/archive/list" || path === "/api/archives") && req.method === "GET") return learningHandlers.handleArchiveList();
   if (path === "/api/learning/recipes") return learningHandlers.handleGetRecipes();
   if (path === "/api/learning/evidence") {
     if (req.method === "POST") return learningHandlers.handleRecordEvidence(req);
