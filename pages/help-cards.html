@@ -9,657 +9,15 @@
 
   <!-- Fast Tailwind CSS Play CDN Script -->
   <script src="https://tailwindcss.com"></script>
-
-  <style>
-    :root {
-      --bg: #ffffff;
-      --sidebar: #fbfbfb;
-      --text: #1f2937;
-      --muted: #6b7280;
-      --border: #e5e7eb;
-      --accent: #e15e12;
-      --accent-light: #fff7ed;
-      --primary: #4f46e5;
-      --primary-light: #eef2ff;
-      --code-bg: #1e1e24;
-      --code-border: #2d2d38;
-      --card-bg: #ffffff;
-    }
-
-    * {
-      box-sizing: border-box;
-    }
-
-    html {
-      scroll-behavior: smooth;
-    }
-
-    body {
-      margin: 0;
-      background: var(--bg);
-      color: var(--text);
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-      font-size: 14px;
-      line-height: 1.6;
-    }
-
-    /* Top navigation bar */
-    .topbar {
-      height: 60px;
-      position: fixed;
-      inset: 0 0 auto 0;
-      z-index: 30;
-      display: flex;
-      align-items: center;
-      padding: 0 28px;
-      background: rgba(255, 255, 255, 0.94);
-      border-bottom: 1px solid var(--border);
-      backdrop-filter: blur(12px);
-    }
-
-    .brand {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      font-size: 18px;
-      font-weight: 700;
-      letter-spacing: -0.4px;
-    }
-
-    .brand-icon {
-      width: 40px;
-      height: 40px;
-      display: grid;
-      place-items: center;
-      border-radius: 4px;
-      background: #18181b;
-      color: white;
-      padding: 4px;
-    }
-
-    .topbar-right {
-      margin-left: auto;
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      color: var(--muted);
-      font-size: 12px;
-    }
-
-    .badge-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 3px 10px;
-      border-radius: 9999px;
-      font-size: 11px;
-      font-weight: 600;
-      background: #f3f4f6;
-      color: #374151;
-      border: 1px solid #e5e7eb;
-    }
-
-    /* Left Sidebar */
-    .sidebar {
-      position: fixed;
-      top: 60px;
-      bottom: 0;
-      left: 0;
-      width: 250px;
-      padding: 28px 16px;
-      overflow-y: auto;
-      background: var(--sidebar);
-      border-right: 1px solid var(--border);
-      z-index: 20;
-    }
-
-    .nav-heading {
-      margin: 0 0 10px 10px;
-      color: #9ca3af;
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 0.8px;
-      text-transform: uppercase;
-    }
-
-    .nav-link {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin: 3px 0;
-      padding: 8px 12px;
-      border-radius: 8px;
-      color: #4b5563;
-      text-decoration: none;
-      font-size: 13px;
-      font-weight: 500;
-      transition: all 0.15s ease;
-    }
-
-    .nav-link:hover {
-      background: #f3f4f6;
-      color: #111827;
-      transform: translateX(2px);
-    }
-
-    .nav-link.active {
-      background: var(--primary-light);
-      color: var(--primary);
-      font-weight: 600;
-    }
-
-    .nav-icon {
-      width: 20px;
-      height: 20px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border-radius: 6px;
-      font-size: 13px;
-      flex-shrink: 0;
-    }
-
-    /* 3-Column Layout Container */
-    .layout-container {
-      margin-left: 250px;
-      padding: 90px 36px 120px 48px;
-      display: flex;
-      justify-content: flex-start;
-      gap: 48px;
-      max-width: 1480px;
-    }
-
-    .main-column {
-      flex: 1;
-      min-width: 0;
-      max-width: 860px;
-    }
-
-    /* Right Table of Contents (Mintlify/Aampe Layout) */
-    .right-toc {
-      width: 220px;
-      flex-shrink: 0;
-      display: none;
-    }
-
-    @media (min-width: 1180px) {
-      .right-toc {
-        display: block;
-      }
-    }
-
-    .toc-sticky {
-      position: sticky;
-      top: 90px;
-      max-height: calc(100vh - 120px);
-      overflow-y: auto;
-    }
-
-    .toc-header {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 11.5px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.8px;
-      color: #6b7280;
-      margin-bottom: 12px;
-    }
-
-    .toc-list {
-      list-style: none;
-      margin: 0;
-      padding: 0;
-      border-left: 1px solid #e5e7eb;
-    }
-
-    .toc-item {
-      margin: 1px 0;
-    }
-
-    .toc-link {
-      display: block;
-      padding: 6px 0 6px 14px;
-      font-size: 13px;
-      color: #6b7280;
-      text-decoration: none;
-      border-left: 2px solid transparent;
-      margin-left: -1px;
-      transition: all 0.15s ease;
-      border-radius: 0 4px 4px 0;
-    }
-
-    .toc-link:hover {
-      color: #111827;
-      border-left-color: #9ca3af;
-    }
-
-    .toc-link.active {
-      color: #4f46e5;
-      border-left-color: #4f46e5;
-      font-weight: 600;
-      background: rgba(79, 70, 229, 0.04);
-    }
-
-    /* Breadcrumbs */
-    .breadcrumb {
-      margin-bottom: 20px;
-      color: #9ca3af;
-      font-size: 13px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .breadcrumb span {
-      color: #4b5563;
-      font-weight: 500;
-    }
-
-    /* Overview Header */
-    h1.hero-title {
-      font-size: 36px;
-      font-weight: 800;
-      letter-spacing: -1.2px;
-      line-height: 1.15;
-      color: #111827;
-      margin: 0 0 12px;
-    }
-
-    .intro-text {
-      font-size: 16px;
-      color: #4b5563;
-      max-width: 780px;
-      margin: 0 0 36px;
-      line-height: 1.6;
-    }
-
-    /* Aampe-style Card Grid Section */
-    .card-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-      gap: 18px;
-      margin-bottom: 56px;
-    }
-
-    .command-card {
-      position: relative;
-      background: #ffffff;
-      border: 1px solid #e5e7eb;
-      border-radius: 16px;
-      padding: 22px;
-      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-      cursor: pointer;
-      text-decoration: none;
-      color: inherit;
-      display: flex;
-      flex-direction: column;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-    }
-
-    .command-card:hover {
-      border-color: var(--primary);
-      box-shadow: 0 10px 25px -5px rgba(79, 70, 229, 0.1), 0 8px 10px -6px rgba(79, 70, 229, 0.05);
-      transform: translateY(-2px);
-    }
-
-    .card-top {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 14px;
-    }
-
-    .card-icon-box {
-      width: 42px;
-      height: 42px;
-      border-radius: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: transform 0.2s ease;
-    }
-
-    .command-card:hover .card-icon-box {
-      transform: scale(1.06);
-    }
-
-    .card-arrow {
-      color: #9ca3af;
-      transition: transform 0.2s ease, color 0.2s ease;
-    }
-
-    .command-card:hover .card-arrow {
-      color: var(--primary);
-      transform: translateX(4px);
-    }
-
-    .card-title {
-      font-size: 17px;
-      font-weight: 700;
-      color: #111827;
-      margin: 0 0 6px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .card-cmd-badge {
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-      font-size: 11px;
-      padding: 2px 6px;
-      border-radius: 6px;
-      background: #f3f4f6;
-      color: #4b5563;
-      border: 1px solid #e5e7eb;
-      font-weight: 600;
-    }
-
-    .card-desc {
-      font-size: 13px;
-      color: #6b7280;
-      line-height: 1.5;
-      margin: 0 0 14px;
-      flex-grow: 1;
-    }
-
-    .card-footer {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 11.5px;
-      color: #9ca3af;
-      padding-top: 12px;
-      border-top: 1px solid #f3f4f6;
-    }
-
-    /* Detailed Command Block Cards */
-    .detail-card {
-      background: #ffffff;
-      border: 1px solid #e5e7eb;
-      border-radius: 20px;
-      padding: 36px 40px;
-      margin-bottom: 48px;
-      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
-      position: relative;
-      scroll-margin-top: 80px;
-    }
-
-    .detail-header {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 16px;
-      margin-bottom: 24px;
-      padding-bottom: 20px;
-      border-bottom: 1px solid #f3f4f6;
-    }
-
-    .detail-title-group {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-    }
-
-    .detail-icon-wrap {
-      width: 48px;
-      height: 48px;
-      border-radius: 14px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-    }
-
-    .detail-title {
-      font-size: 24px;
-      font-weight: 800;
-      letter-spacing: -0.5px;
-      color: #111827;
-      margin: 0;
-    }
-
-    .detail-tagline {
-      font-size: 14px;
-      color: #6b7280;
-      margin: 4px 0 0;
-    }
-
-    /* Syntax Codebox */
-    .syntax-box {
-      background: var(--code-bg);
-      border: 1px solid var(--code-border);
-      border-radius: 12px;
-      padding: 18px 22px;
-      margin: 20px 0 28px;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-      font-size: 14px;
-      color: #f3f4f6;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      overflow-x: auto;
-    }
-
-    .syntax-code {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-
-    .syntax-cmd {
-      color: #a78bfa;
-      font-weight: 600;
-    }
-
-    .syntax-arg {
-      color: #34d399;
-    }
-
-    .syntax-opt {
-      color: #fbbf24;
-    }
-
-    /* Arguments and Options Table */
-    .specs-table {
-      width: 100%;
-      border-collapse: collapse;
-      margin: 16px 0 28px;
-      font-size: 13.5px;
-    }
-
-    .specs-table th {
-      text-align: left;
-      padding: 10px 14px;
-      color: #6b7280;
-      font-weight: 600;
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      border-bottom: 1px solid #e5e7eb;
-      background: #fafafa;
-    }
-
-    .specs-table td {
-      padding: 14px;
-      border-bottom: 1px solid #f3f4f6;
-      vertical-align: top;
-    }
-
-    .specs-table tr:last-child td {
-      border-bottom: none;
-    }
-
-    .param-name {
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-      font-weight: 600;
-      color: #1f2937;
-      font-size: 13px;
-      white-space: nowrap;
-    }
-
-    .param-required {
-      display: inline-block;
-      margin-left: 6px;
-      color: #dc2626;
-      font-size: 10px;
-      font-weight: 700;
-      letter-spacing: 0.5px;
-    }
-
-    /* Callouts (Aampe exact styling) */
-    .callout {
-      display: flex;
-      align-items: flex-start;
-      gap: 12px;
-      border-left: 4px solid transparent;
-      border-radius: 0 10px 10px 0;
-      padding: 14px 18px;
-      margin: 20px 0;
-      font-size: 13.5px;
-      line-height: 1.55;
-    }
-
-    .callout-icon {
-      flex-shrink: 0;
-      margin-top: 2px;
-    }
-
-    .callout-tip {
-      background-color: rgba(16, 185, 129, 0.08);
-      border-color: #10b981;
-      color: #065f46;
-    }
-
-    .callout-tip .callout-icon {
-      color: #10b981;
-    }
-
-    .callout-note {
-      background-color: rgba(59, 130, 246, 0.08);
-      border-color: #3b82f6;
-      color: #1e3a8a;
-    }
-
-    .callout-note .callout-icon {
-      color: #3b82f6;
-    }
-
-    .callout-warning {
-      background-color: rgba(245, 158, 11, 0.08);
-      border-color: #f59e0b;
-      color: #78350f;
-    }
-
-    .callout-warning .callout-icon {
-      color: #f59e0b;
-    }
-
-    /* Code Example Card */
-    .example-block {
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      overflow: hidden;
-      margin: 16px 0 24px;
-      background: #fafafa;
-    }
-
-    .example-bar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 8px 14px;
-      background: #f4f4f5;
-      border-bottom: 1px solid var(--border);
-      font-size: 12px;
-      font-weight: 600;
-      color: #4b5563;
-    }
-
-    .copy-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      padding: 4px 10px;
-      border-radius: 6px;
-      background: #ffffff;
-      border: 1px solid #d1d5db;
-      font-size: 11px;
-      font-weight: 500;
-      color: #374151;
-      cursor: pointer;
-      transition: all 0.15s ease;
-    }
-
-    .copy-btn:hover {
-      background: #f9fafb;
-      border-color: #9ca3af;
-      color: #111827;
-    }
-
-    .copy-btn.copied {
-      color: #059669;
-      border-color: #10b981;
-      background: #ecfdf5;
-    }
-
-    .example-block pre {
-      margin: 0;
-      padding: 16px 18px;
-      overflow-x: auto;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-      font-size: 13px;
-      line-height: 1.7;
-      color: #1f2937;
-      background: #fafafa;
-    }
-
-    .code-comment {
-      color: #9ca3af;
-    }
-
-    .code-cmd {
-      color: #4f46e5;
-      font-weight: 600;
-    }
-
-    .code-flag {
-      color: #d97706;
-    }
-
-    .code-arg {
-      color: #059669;
-    }
-
-    /* Responsive */
-    @media (max-width: 900px) {
-      .sidebar {
-        display: none;
-      }
-
-      .layout-container {
-        margin-left: 0;
-        padding: 85px 20px 80px;
-      }
-
-      .detail-card {
-        padding: 24px 20px;
-      }
-
-      .card-grid {
-        grid-template-columns: 1fr;
-      }
-    }
-  </style>
+  <link rel="stylesheet" href="shared.css">
+  <link rel="stylesheet" href="/pages/shared.css">
 </head>
 
 <body>
 
-  <!-- Topbar Navigation -->
+  <!-- Universal Topbar Navigation -->
   <header class="topbar">
-    <div class="brand">
+    <a href="/guide" class="brand">
       <div class="brand-icon">
         <svg version="1.0" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 128 128"
           preserveAspectRatio="xMidYMid meet">
@@ -669,28 +27,19 @@
           </g>
         </svg>
       </div>
-      <span>TinyToken <span style="color:#e15e12; font-weight:500;">Docs</span></span>
-    </div>
+      <span>TinyToken <span class="brand-docs-tag" style="color:#e15e12 !important; font-weight:500;">Docs</span></span>
+    </a>
 
     <!-- Universal Navigation -->
-    <nav style="display: flex; align-items: center; gap: 28px; margin-left: 36px;">
-      <a href="/physical-stack"
-        style="font-size: 13px; font-weight: 600; color: #71717a; text-decoration: none;">Physical Stack</a>
-      <a href="/how-it-works" style="font-size: 13px; font-weight: 600; color: #71717a; text-decoration: none;">How It
-        Works</a>
-      <a href="/structure" style="font-size: 13px; font-weight: 600; color: #71717a; text-decoration: none;">Binary
-        Spec</a>
-      <a href="/guide"
-        style="font-size: 13px; font-weight: 700; color: #09090b; text-decoration: none; border-bottom: 2px solid #09090b; padding-bottom: 2px;">CLI
-        Guide</a>
+    <nav class="topbar-nav">
+      <a href="/guide" class="active">Commands</a>
+      <a href="/how-it-works">How it Works</a>
+      <a href="/structure">Structure</a>
+      <a href="/physical-stack">Stack</a>
     </nav>
 
     <div class="topbar-right">
-      <span class="badge-pill">
-        <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-        <span>TinyToken CLI Documentation</span>
-      </span>
-      <a href="/help" class="text-xs hover:text-indigo-600 transition">Classic View</a>
+      <span class="topbar-caption" style="color:#e15e12 !important;">Commands</span>
     </div>
   </header>
 
@@ -1024,7 +373,6 @@
               <p class="detail-tagline">Core CLI foundation, environment requirements, and binary format invariants</p>
             </div>
           </div>
-          <span class="badge-pill font-mono">GF(2^8) V1 Engine</span>
         </div>
 
         <p class="text-gray-600 leading-relaxed mb-4">
@@ -1114,7 +462,6 @@
               <p class="detail-tagline">Single-token inspector, verifier, and standalone tokenizer</p>
             </div>
           </div>
-          <span class="badge-pill font-mono">cli.ts / bun tokenize</span>
         </div>
 
         <p class="text-gray-600 leading-relaxed mb-4">
@@ -1261,7 +608,6 @@
               <p class="detail-tagline">Batch token generator and archive indexing engine</p>
             </div>
           </div>
-          <span class="badge-pill font-mono">Win11TokenPipeline</span>
         </div>
 
         <p class="text-gray-600 leading-relaxed mb-4">
@@ -1364,7 +710,6 @@
               <p class="detail-tagline">Multi-modal visual, semantic, and OCR search engine</p>
             </div>
           </div>
-          <span class="badge-pill font-mono">SearchEngine</span>
         </div>
 
         <p class="text-gray-600 leading-relaxed mb-4">
@@ -1468,7 +813,6 @@
               <p class="detail-tagline">Zero-copy binary field extractor & fast slice iterator</p>
             </div>
           </div>
-          <span class="badge-pill font-mono">Zero-Copy Mmap</span>
         </div>
 
         <p class="text-gray-600 leading-relaxed mb-4">
@@ -1570,7 +914,6 @@
               <p class="detail-tagline">Real-time binary streaming pipe and live edge feed</p>
             </div>
           </div>
-          <span class="badge-pill font-mono">Binary IPC Pipe</span>
         </div>
 
         <p class="text-gray-600 leading-relaxed mb-4">
@@ -1666,7 +1009,6 @@
               <p class="detail-tagline">Freeze active tokens, manage archive collections, and verify containers</p>
             </div>
           </div>
-          <span class="badge-pill font-mono">Collection Lifecycle</span>
         </div>
 
         <p class="text-sm text-gray-600 mb-6 leading-relaxed">

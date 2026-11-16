@@ -26,6 +26,7 @@ const helpCardsPageFile = Bun.file("./pages/help-cards.html");
 const tokenStructurePageFile = Bun.file("./pages/token-structure.html");
 const howItWorksPageFile = Bun.file("./pages/how-it-works.html");
 const physicalStackPageFile = Bun.file("./pages/physical-stack.html");
+const sharedCssFile = Bun.file("./pages/shared.css");
 
 // Configuration
 const isTest = Bun.env.NODE_ENV === "test";
@@ -330,6 +331,9 @@ export async function fetchHandler(req: Request): Promise<Response> {
     if (url.pathname === "/physical-stack" || url.pathname === "/stack" || url.pathname === "/layers") {
       return new Response(physicalStackPageFile, { headers: { "Content-Type": "text/html; charset=utf-8" } });
     }
+    if (url.pathname === "/pages/shared.css" || url.pathname === "/shared.css") {
+      return new Response(sharedCssFile, { headers: { "Content-Type": "text/css; charset=utf-8" } });
+    }
     return await handleApiRoute(url.pathname, req as BunRequest, url);
   } catch (err) {
     if (err instanceof URIError) {
@@ -385,6 +389,12 @@ const server = serve({
     },
     "/layers": {
       GET: () => new Response(physicalStackPageFile, { headers: { "Content-Type": "text/html; charset=utf-8" } })
+    },
+    "/shared.css": {
+      GET: () => new Response(sharedCssFile, { headers: { "Content-Type": "text/css; charset=utf-8" } })
+    },
+    "/pages/shared.css": {
+      GET: () => new Response(sharedCssFile, { headers: { "Content-Type": "text/css; charset=utf-8" } })
     },
 
 

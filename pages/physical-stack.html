@@ -10,215 +10,10 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap"
     rel="stylesheet">
+  <link rel="stylesheet" href="shared.css">
+  <link rel="stylesheet" href="/pages/shared.css">
   <style>
-    /* ==========================================================================
-       TINYTOKEN 4-LAYER PHYSICAL ARCHITECTURE STACK
-       Style: Architectural Tech-Stack Diagram · High Contrast & Clean Space
-       Palette: Glow2 Colors on Crisp White Canvas
-       ========================================================================== */
-    :root {
-      /* Glow2 Accents */
-      --glow-blue: #0284c7;
-      --glow-blue-light: #f0f9ff;
-      --glow-blue-border: #bae6fd;
-
-      --glow-coral: #e11d48;
-      --glow-coral-light: #fff1f2;
-      --glow-coral-border: #fecdd3;
-
-      --glow-amber: #d97706;
-      --glow-amber-light: #fffbeb;
-      --glow-amber-border: #fde68a;
-
-      --glow-emerald: #059669;
-      --glow-emerald-light: #f0fdf4;
-      --glow-emerald-border: #bbf7d0;
-
-      --glow-purple: #9333ea;
-      --glow-purple-light: #faf5ff;
-      --glow-purple-border: #e9d5ff;
-
-      /* Canvas & Typography */
-      --bg-canvas: #ffffff;
-      --bg-surface: #fafafa;
-      --bg-subtle: #f4f4f5;
-      --border-subtle: #e4e4e7;
-      --border-chic: #d4d4d8;
-
-      --text-headline: #09090b;
-      --text-body: #3f3f46;
-      --text-muted: #71717a;
-      --text-faint: #a1a1aa;
-
-      --font-display: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      --font-mono: "Geist Mono", "SF Mono", Menlo, Monaco, Consolas, monospace;
-    }
-
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      -webkit-font-smoothing: antialiased;
-    }
-
-    body {
-      background-color: var(--bg-canvas);
-      color: var(--text-headline);
-      font-family: var(--font-display);
-      line-height: 1.5;
-      min-height: 100vh;
-      padding-bottom: 80px;
-    }
-
-    ::selection {
-      background: var(--glow-blue-light);
-      color: var(--glow-blue);
-    }
-
-    /* Top Sticky Header */
-    header {
-      position: sticky;
-      top: 0;
-      z-index: 50;
-      background: rgba(255, 255, 255, 0.94);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      border-bottom: 1px solid var(--border-subtle);
-      padding: 16px 48px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 24px;
-    }
-
-    .brand-cluster {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      text-decoration: none;
-      color: inherit;
-    }
-
-    /* Oksa SVG Logo Mark */
-    .brand-mark {
-      width: 46px;
-      height: 46px;
-      background: var(--bg-canvas);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 4px;
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
-      transition: transform 0.15s ease;
-    }
-
-    .brand-mark:hover {
-      transform: scale(1.05);
-    }
-
-    .brand-mark svg {
-      width: 100%;
-      height: 100%;
-      display: block;
-    }
-
-    .brand-title {
-      font-size: 18px;
-      font-weight: 700;
-      letter-spacing: -0.3px;
-    }
-
-    nav {
-      display: flex;
-      align-items: center;
-      gap: 28px;
-    }
-
-    nav a {
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--text-muted);
-      text-decoration: none;
-      transition: color 0.15s ease;
-      position: relative;
-    }
-
-    nav a:hover,
-    nav a.active {
-      color: var(--text-headline);
-    }
-
-    nav a.active::after {
-      content: "";
-      position: absolute;
-      bottom: -18px;
-      left: 0;
-      right: 0;
-      height: 2px;
-      background: #09090b;
-      border-radius: 2px;
-    }
-
-    /* Controls & Asset Switcher */
-    .controls-shelf {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .pill-group {
-      display: inline-flex;
-      align-items: center;
-      background: var(--bg-subtle);
-      padding: 3px;
-      border-radius: 9999px;
-      border: 1px solid var(--border-subtle);
-    }
-
-    .pill-btn {
-      appearance: none;
-      border: none;
-      background: transparent;
-      padding: 6px 14px;
-      border-radius: 9999px;
-      font-family: var(--font-display);
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--text-muted);
-      cursor: pointer;
-      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .pill-btn.active {
-      background: #ffffff;
-      color: var(--text-headline);
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
-    }
-
-    .dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-    }
-
-    .pill-btn.active .dot.cyan {
-      background: var(--glow-blue);
-    }
-
-    .pill-btn.active .dot.purple {
-      background: var(--glow-purple);
-    }
-
-    .asset-switcher-wrap {
-      display: flex;
-      align-items: center;
-      justify-content: flex-start;
-      margin-bottom: 20px;
-    }
-
+    /* Physical 4-layer stack visualizer styles */
     /* Container */
     .container {
       max-width: 1180px;
@@ -728,14 +523,12 @@
   </style>
 </head>
 
-<body>
+<body class="has-fixed-topbar">
 
-  <!-- Top Sticky Navigation (Physical Stack, How It Works, Binary Spec, CLI Guide) -->
-  <header>
-    <a href="/physical-stack" class="brand-cluster">
-      <div class="brand-mark">
-
-
+  <!-- Unified Top Navigation Bar -->
+  <header class="topbar">
+    <a href="/guide" class="brand">
+      <div class="brand-icon">
         <svg version="1.0" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 128 128"
           preserveAspectRatio="xMidYMid meet">
           <g transform="translate(0.0,128.0) scale(0.1,-0.1)" fill="#e15e12" stroke="none">
@@ -743,18 +536,21 @@
               d="M1130 1261 c-5 -11 -10 -25 -10 -31 0 -19 -50 -113 -73 -138 -25 -27 -155 -109 -272 -172 -44 -23 -93 -52 -109 -63 -70 -49 -301 -185 -308 -181 -4 3 23 51 60 108 l66 104 65 7 c85 9 155 53 204 127 20 29 52 68 72 85 37 33 44 65 15 71 -13 2 -64 -44 -197 -180 -55 -56 -158 -66 -165 -15 -2 12 -11 23 -20 25 -15 3 -18 -4 -18 -35 0 -30 -13 -57 -64 -133 -84 -124 -154 -210 -192 -235 -17 -11 -65 -29 -107 -39 l-77 -18 0 -55 c0 -51 1 -54 22 -48 11 4 54 8 93 8 56 0 82 -5 114 -21 23 -12 49 -22 58 -22 20 0 348 -169 407 -209 23 -16 48 -36 55 -45 8 -9 21 -16 30 -16 33 0 61 -43 61 -93 0 -40 3 -47 19 -47 16 0 20 8 23 38 4 51 26 52 125 2 65 -32 91 -40 137 -40 48 0 56 3 56 18 0 14 -24 30 -88 60 -48 23 -95 42 -105 42 -23 0 -243 114 -287 149 -19 16 -46 32 -60 36 -37 11 -300 147 -300 155 0 8 450 33 550 30 41 -1 139 -2 218 -1 140 1 142 1 142 24 0 46 -7 47 -181 48 -90 0 -295 -3 -455 -7 -198 -5 -293 -4 -297 3 -9 14 28 41 213 154 85 53 218 134 295 181 77 48 166 98 197 111 31 14 74 37 95 51 20 14 48 26 61 26 30 0 82 39 82 62 0 24 -29 23 -91 -3 -27 -12 -52 -19 -56 -16 -3 3 6 36 21 72 14 36 26 70 26 75 0 18 -39 10 -50 -9z" />
           </g>
         </svg>
-
       </div>
-      <div class="brand-title">TinyToken</div>
+      <span>TinyToken <span class="brand-docs-tag" style="color:#e15e12 !important; font-weight:500;">Docs</span></span>
     </a>
 
     <!-- Universal Navigation -->
-    <nav>
-      <a href="/physical-stack" class="active">Physical Stack</a>
-      <a href="/how-it-works">How It Works</a>
-      <a href="/structure">Binary Spec</a>
-      <a href="/guide">CLI Guide</a>
+    <nav class="topbar-nav">
+      <a href="/guide">Commands</a>
+      <a href="/how-it-works">How it Works</a>
+      <a href="/structure">Structure</a>
+      <a href="/physical-stack" class="active">Stack</a>
     </nav>
+
+    <div class="topbar-right">
+      <span class="topbar-caption" style="color:#e15e12 !important;">Stack</span>
+    </div>
   </header>
 
   <main class="container">
