@@ -86,6 +86,8 @@ const searchEngine = new CompressedTokenSearchEngine(ZIP_ARCHIVE_PATH, {
 });
 const invertedIndex = new VqInvertedIndexEngine(SQLITE_DB_PATH);
 const archiveManager = new ArchiveManager(searchEngine, ZIP_ARCHIVE_PATH, invertedIndex);
+streamingArchiveHandlers.setSearchEngine(searchEngine);
+streamingArchiveHandlers.setArchiveManager(archiveManager);
 const learningHandlers = new LearningHandlers(archiveManager, visualTraitRegistry);
 const apiHandlers = new TokenApiHandlers(
   searchEngine,
@@ -233,7 +235,7 @@ async function initIndex(): Promise<void> {
 // Unified API Route Dispatcher
 async function handleApiRoute(path: string, req: BunRequest, url: URL): Promise<Response> {
   if (path.startsWith("/api/v1/archives")) {
-    const res = streamingArchiveHandlers.handleRoute(path, req, url);
+    const res = await streamingArchiveHandlers.handleRoute(path, req, url);
     if (res) return res;
   }
   if (path === "/api/stats") return apiHandlers.handleStats();
