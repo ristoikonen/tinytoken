@@ -41,7 +41,7 @@ jobs:
           set -e
           cd /home/ubuntu/tinytoken
           git fetch origin main
-          git merge --ff-only origin/main
+          git reset --hard origin/main
           /home/ubuntu/.bun/bin/bun install --frozen-lockfile
           sudo -n /usr/bin/systemctl restart tinytoken.service
           sudo /usr/bin/systemctl is-active tinytoken.service

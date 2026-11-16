@@ -136,11 +136,15 @@ export class StreamingArchiveHandlers {
     }
 
     const limitParam = url.searchParams.get("limit");
-    const limit = limitParam ? Math.max(1, parseInt(limitParam, 10)) : undefined;
+    const isLimitZero = limitParam === "0";
+    const limit = isLimitZero ? 0 : limitParam ? Math.max(1, parseInt(limitParam, 10)) : undefined;
+    const remainingCount = Math.max(0, allEntries.length - startIndex);
     const targetEntries =
-      limit !== undefined
-        ? allEntries.slice(startIndex, startIndex + limit)
-        : allEntries.slice(startIndex);
+      limit === 0
+        ? []
+        : limit !== undefined
+          ? allEntries.slice(startIndex, startIndex + limit)
+          : allEntries.slice(startIndex);
 
     const searchEngine = this.searchEngine;
 
@@ -176,7 +180,8 @@ export class StreamingArchiveHandlers {
         "Content-Type": "application/vnd.tinytoken.stream",
         "Transfer-Encoding": "chunked",
         "X-Archive-Id": archiveId,
-        "X-Total-Tokens": String(targetEntries.length),
+        "X-Total-Tokens": String(limit === 0 ? remainingCount : targetEntries.length),
+        "X-Archive-Capacity": String(allEntries.length),
         "X-Start-Index": String(startIndex),
         "Access-Control-Allow-Origin": "*",
       },
