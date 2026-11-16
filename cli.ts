@@ -36,10 +36,19 @@ import {
   extractTokenPreviewBytes,
   inspectBinaryTokenHeader,
 } from "./utils/tokenCodec";
+import {
+  ArchiveManager,
+  listTokenArchives,
+  getAppArchiveDir,
+  getArchiveRegistryPath,
+} from "./utils/archiveManager";
 
 interface CliArgs {
-  command?: "tokenize" | "struct";
+  command?: "tokenize" | "struct" | "archive";
+  action?: "freeze" | "list" | "status" | "verify";
   file?: string;
+  label?: string;
+  archiveDir?: string;
   out?: string;
   field?: string;
   format?: "table" | "csv" | "json" | "raw-hex";
@@ -61,14 +70,17 @@ TinyToken CLI Tool (Inspect First, Decode Only When Necessary)
 Usage:
   tinytoken <file> [options]
   tinytoken struct <file|archive> [options]
+  tinytoken archive <freeze|list|status|verify> [options]
   bun tokenize <file> [options]
+  bun archive <action> [options]
 
 Commands:
-  tokenize <file>      (Default) Inspect, verify, extract preview, or encode an asset
-  struct <target>      Zero-copy binary slice extractor (inspects headers in <1 µs)
+  tokenize <file>                      (Default) Inspect, verify, extract preview, or encode an asset
+  struct <target>                      Zero-copy binary slice extractor (inspects headers in <1 µs)
+  archive <freeze|list|status|verify>  Archive repository & freeze management
 
 Arguments:
-  <file|target>        Source file (image, doc, .token file, or tokens.zip archive) [required]
+  <file|target>        Source file (image, doc, .token file, or tokens.zip archive) [required for tokenize/struct]
 
 Options:
   -f, --field <name>   Extract single field: uuid, merkle, cid, dims, flags, ts, sizes, vq, model, ocr, dino, bge, tags
@@ -76,6 +88,8 @@ Options:
   --decode-meta        On-demand Section II QuickLZ metadata unpack (only when needed)
   --limit <n>          Maximum tokens to inspect when target is an archive or directory
   --struct             Force zero-copy structural inspection mode
+  --label <text>       Human label/description when freezing an archive (e.g. "summer 2025 holiday")
+  --dir <path>         Target archive directory (defaults to APP_ARCHIVE_DIR)
   -o, --out <path>     Custom output .token path (defaults to <input_dir>/<basename>.token)
   -v, --verify         Run cryptographic Ed25519 signature + SHA-256 Merkle audit
   --info               Verbose breakdown: token size, uncompressed estimate, dates, all fields
@@ -91,6 +105,12 @@ Examples:
   tinytoken tok_00004_Henri.jpg.token -f merkle
   tinytoken tok_00004_Henri.jpg.token -f dims
   tinytoken struct ./data/tokens.zip --limit 10
+
+  # Archive repository management:
+  tinytoken archive list
+  tinytoken archive freeze --label "images from summer 2025 holiday"
+  tinytoken archive verify ./data/tokens.zip
+  tinytoken archive status
 
   # Query preview format & extract preview without decoding Section II:
   tinytoken tok_00004_Henri.jpg.token --filetype
@@ -124,6 +144,16 @@ function parseArgs(args: string[]): CliArgs {
     } else if (first === "tokenize") {
       result.command = "tokenize";
       startIndex = 1;
+    } else if (first === "archive") {
+      result.command = "archive";
+      startIndex = 1;
+      if (args.length > 1 && !args[1]!.startsWith("-")) {
+        const act = args[1]!.toLowerCase();
+        if (["freeze", "list", "status", "verify"].includes(act)) {
+          result.action = act as any;
+          startIndex = 2;
+        }
+      }
     }
   }
 
@@ -145,6 +175,14 @@ function parseArgs(args: string[]): CliArgs {
       result.struct = true;
     } else if (arg === "--decode-meta") {
       result.decodeMeta = true;
+    } else if (arg === "--label") {
+      if (i + 1 < args.length) {
+        result.label = args[++i];
+      }
+    } else if (arg === "--dir" || arg === "--archive-dir") {
+      if (i + 1 < args.length) {
+        result.archiveDir = args[++i];
+      }
     } else if (arg === "-f" || arg === "--field") {
       if (i + 1 < args.length) {
         result.field = args[++i];
@@ -570,12 +608,160 @@ async function handleArchiveStructCommand(
   console.log("-".repeat(105) + "\n");
 }
 
+async function handleArchiveCommand(args: CliArgs): Promise<void> {
+  const action = args.action || (args.file && args.file.endsWith(".zip") ? "verify" : "list");
+  const archiveDir = args.archiveDir || getAppArchiveDir();
+
+  if (action === "freeze") {
+    const activeZip = args.file || "./data/tokens.zip";
+    const dummyEngine = {
+      getCount: () => 0,
+      archiveSizeBytes: 0,
+      isZipMode: () => true,
+    } as any;
+    const mgr = new ArchiveManager(dummyEngine, activeZip);
+    const res = await mgr.freezeActiveArchive({
+      label: args.label,
+      archiveDir,
+    });
+
+    if (args.json) {
+      process.stdout.write(JSON.stringify(res, null, 2) + "\n");
+      return;
+    }
+
+    if (!res.success) {
+      console.error(`[ARCHIVE ERROR] Freeze failed: ${res.error}`);
+      process.exit(1);
+    }
+
+    const arc = res.archive!;
+    console.log(`\n` + "=".repeat(70));
+    console.log(`  TinyToken Archive: Freeze Successful`);
+    console.log("=".repeat(70));
+    console.log(`  Filename:  ${arc.filename}`);
+    console.log(`  Path:      ${arc.path}`);
+    console.log(`  ID:        ${arc.id}`);
+    if (arc.label) console.log(`  Label:     ${arc.label}`);
+    console.log(`  Size:      ${arc.size.toLocaleString()} bytes (${(arc.size / 1024).toFixed(1)} KB)`);
+    console.log(`  SHA-256:   ${arc.sha256}`);
+    console.log(`  Modified:  ${arc.modified.toISOString()}`);
+    console.log("=".repeat(70) + "\n");
+    return;
+  }
+
+  if (action === "list") {
+    const archives = await listTokenArchives(archiveDir);
+
+    if (args.json) {
+      process.stdout.write(JSON.stringify(archives, null, 2) + "\n");
+      return;
+    }
+
+    if (archives.length === 0) {
+      console.log(`\n[ARCHIVE] No archives found in '${archiveDir}'.\n`);
+      return;
+    }
+
+    console.log(`\n` + "=".repeat(105));
+    console.log(`  TinyToken Archive Registry (${archives.length} collection${archives.length === 1 ? "" : "s"} in ${archiveDir})`);
+    console.log("=".repeat(105));
+    console.log(
+      "ID".padEnd(35) +
+      "FILENAME".padEnd(38) +
+      "SIZE".padEnd(12) +
+      "LABEL"
+    );
+    console.log("-".repeat(105));
+    for (const a of archives) {
+      const sizeStr = `${(a.size / 1024).toFixed(1)} KB`;
+      const labelStr = a.label ? `"${a.label}"` : "-";
+      console.log(
+        a.id.padEnd(35) +
+        a.filename.padEnd(38) +
+        sizeStr.padEnd(12) +
+        labelStr
+      );
+    }
+    console.log("-".repeat(105) + "\n");
+    return;
+  }
+
+  if (action === "status") {
+    const activeZip = args.file || "./data/tokens.zip";
+    const file = Bun.file(activeZip);
+    const exists = await file.exists();
+    const archives = await listTokenArchives(archiveDir);
+
+    const statusObj = {
+      activeArchive: {
+        path: activeZip,
+        exists,
+        sizeBytes: exists ? file.size : 0,
+      },
+      archiveDirectory: archiveDir,
+      totalRegisteredCollections: archives.length,
+      registryPath: getArchiveRegistryPath(),
+    };
+
+    if (args.json) {
+      process.stdout.write(JSON.stringify(statusObj, null, 2) + "\n");
+      return;
+    }
+
+    console.log(`\n[ARCHIVE STATUS]`);
+    console.log(`  Active Container:      ${activeZip} (${exists ? `${file.size.toLocaleString()} bytes` : "Not Found"})`);
+    console.log(`  Archive Directory:     ${archiveDir}`);
+    console.log(`  Registry Path:         ${getArchiveRegistryPath()}`);
+    console.log(`  Collections Approved:  ${archives.length}\n`);
+    return;
+  }
+
+  if (action === "verify") {
+    const target = args.file || "./data/tokens.zip";
+    const dummyEngine = {
+      getCount: () => 0,
+      archiveSizeBytes: 0,
+      isZipMode: () => true,
+    } as any;
+    const mgr = new ArchiveManager(dummyEngine, target);
+    const res = await mgr.validateArchive(target);
+
+    if (args.json) {
+      process.stdout.write(JSON.stringify({ target, ...res }, null, 2) + "\n");
+      return;
+    }
+
+    if (!res.valid) {
+      console.error(`[ARCHIVE VERIFY FAILED] ${target}: ${res.error}`);
+      process.exit(1);
+    }
+
+    const sizeBytes = (res as any).byteSize ?? (res as any).totalSizeBytes ?? 0;
+    console.log(`\n[ARCHIVE VERIFY SUCCESS]`);
+    console.log(`  Target:       ${target}`);
+    console.log(`  Token Count:  ${res.tokenCount}`);
+    console.log(`  Total Size:   ${sizeBytes.toLocaleString()} bytes`);
+    console.log(`  CRC-32:       0x${res.crc32Hex?.toUpperCase()}`);
+    console.log(`  Magic Header: Valid GF(2^8) token container\n`);
+    return;
+  }
+
+  console.error(`Unknown archive action '${action}'. Valid actions: freeze, list, status, verify`);
+  process.exit(1);
+}
+
 async function main() {
   const args = parseArgs(Bun.argv.slice(2));
 
-  if (args.help || !args.file) {
+  if (args.help || (!args.file && args.command !== "archive")) {
     printHelp();
     process.exit(args.help ? 0 : 1);
+  }
+
+  if (args.command === "archive") {
+    await handleArchiveCommand(args);
+    return;
   }
 
   // Handle archive inspection directly for struct

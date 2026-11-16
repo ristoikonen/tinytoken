@@ -783,6 +783,18 @@
       stream
     </a>
 
+    <!-- 6. archive -->
+    <a class="nav-link" href="#archive">
+      <span class="nav-icon text-purple-600 bg-purple-50">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <path d="M21 8v13H3V8" />
+          <path d="M1 3h22v5H1z" />
+          <path d="M10 12h4" />
+        </svg>
+      </span>
+      archive
+    </a>
+
     <div class="mt-8 pt-4 border-t border-gray-200 text-xs text-gray-400">
       <br>
 
@@ -959,6 +971,35 @@
             <div class="card-footer">
               <span>Output: Binary stream / chunked</span>
               <span class="ml-auto font-medium text-rose-600 group-hover:underline">View details →</span>
+            </div>
+          </a>
+
+          <!-- Card 6: archive -->
+          <a href="#archive" class="command-card group">
+            <div class="card-top">
+              <div class="card-icon-box bg-purple-50 text-purple-600">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 8v13H3V8" />
+                  <path d="M1 3h22v5H1z" />
+                  <path d="M10 12h4" />
+                </svg>
+              </div>
+              <div class="card-arrow">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="m9 18 6-6-6-6" />
+                </svg>
+              </div>
+            </div>
+            <div class="card-title">
+              <span>archive</span>
+              <span class="card-cmd-badge">freeze &amp; registry</span>
+            </div>
+            <div class="card-desc">
+              Freeze current tokens into approved repository with timestamp and label, list collections, or verify ZIP containers.
+            </div>
+            <div class="card-footer">
+              <span>Storage: APP_ARCHIVE_DIR</span>
+              <span class="ml-auto font-medium text-purple-600 group-hover:underline">View details →</span>
             </div>
           </a>
 
@@ -1609,6 +1650,130 @@
         </div>
       </article>
 
+      <!-- 6. DETAIL CARD: archive -->
+      <article id="archive" class="detail-card">
+        <div class="detail-header">
+          <div class="detail-title-group">
+            <div class="detail-icon-wrap bg-purple-50 text-purple-600">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 8v13H3V8" />
+                <path d="M1 3h22v5H1z" />
+                <path d="M10 12h4" />
+              </svg>
+            </div>
+            <div>
+              <h2 class="detail-title">archive</h2>
+              <p class="detail-tagline">Freeze active tokens, manage archive collections, and verify containers</p>
+            </div>
+          </div>
+          <span class="badge-pill font-mono">Collection Lifecycle</span>
+        </div>
+
+        <p class="text-sm text-gray-600 mb-6 leading-relaxed">
+          The <kbd class="px-1.5 py-0.5 bg-gray-100 rounded text-xs font-mono">archive</kbd> command manages approved
+          token collections in <kbd class="px-1.5 py-0.5 bg-gray-100 rounded text-xs font-mono">APP_ARCHIVE_DIR</kbd>.
+          Freeze timestamped snapshots of active tokens with human labels, list registered archives, inspect status,
+          or run zero-copy structural integrity checks on any <kbd class="px-1.5 py-0.5 bg-gray-100 rounded text-xs font-mono">.zip</kbd> container.
+        </p>
+
+        <!-- Syntax Box -->
+        <div class="syntax-box">
+          <div class="syntax-label">SYNTAX</div>
+          <div class="syntax-code">
+            <span class="syntax-cmd">tinytoken archive</span>
+            <span class="syntax-arg">&lt;freeze|list|status|verify&gt;</span>
+            <span class="syntax-opt">[options]</span>
+          </div>
+          <button class="copy-btn" onclick="copySnippet('tinytoken archive <freeze|list|status|verify> [options]')">▢ Copy</button>
+        </div>
+
+        <!-- Parameters Table -->
+        <table class="specs-table">
+          <thead>
+            <tr>
+              <th style="width: 200px;">Action / Flag</th>
+              <th>Type</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>
+                <span class="param-name">freeze</span>
+              </td>
+              <td>Action</td>
+              <td>Freezes active <kbd class="px-1 py-0.5 bg-gray-100 rounded text-xs">tokens.zip</kbd> to a timestamped file in <kbd class="px-1 py-0.5 bg-gray-100 rounded text-xs">APP_ARCHIVE_DIR</kbd> and records in registry.</td>
+            </tr>
+            <tr>
+              <td>
+                <span class="param-name">list</span>
+              </td>
+              <td>Action</td>
+              <td>Lists all approved archives discovered in <kbd class="px-1 py-0.5 bg-gray-100 rounded text-xs">APP_ARCHIVE_DIR</kbd> and <kbd class="px-1 py-0.5 bg-gray-100 rounded text-xs">archive_registry.json</kbd>.</td>
+            </tr>
+            <tr>
+              <td>
+                <span class="param-name">status</span>
+              </td>
+              <td>Action</td>
+              <td>Prints active container path, existence, archive directory, and collection counts.</td>
+            </tr>
+            <tr>
+              <td>
+                <span class="param-name">verify &lt;path&gt;</span>
+              </td>
+              <td>Action</td>
+              <td>Structural validation: checks ZIP EOCD signature, token entry count, and <kbd class="px-1 py-0.5 bg-gray-100 rounded text-xs">GF28</kbd> magic header.</td>
+            </tr>
+            <tr>
+              <td><span class="param-name">--label &lt;text&gt;</span></td>
+              <td>String</td>
+              <td>Human description saved in <kbd class="px-1 py-0.5 bg-gray-100 rounded text-xs">archive_registry.json</kbd> (e.g. "summer 2025 holiday").</td>
+            </tr>
+            <tr>
+              <td><span class="param-name">--dir &lt;path&gt;</span></td>
+              <td>Path</td>
+              <td>Custom archive directory (defaults to <kbd class="px-1 py-0.5 bg-gray-100 rounded text-xs">APP_ARCHIVE_DIR</kbd>).</td>
+            </tr>
+            <tr>
+              <td><span class="param-name">--json</span></td>
+              <td>Flag</td>
+              <td>Outputs machine-readable JSON to stdout.</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Example 1 -->
+        <div class="example-block">
+          <div class="example-bar">
+            <span>Freeze active tokens with label</span>
+            <button class="copy-btn" onclick="copyExample(this)">▢ Copy</button>
+          </div>
+          <pre><span class="code-comment"># Freeze current active tokens into archive repository</span>
+<span class="code-cmd">tinytoken archive freeze</span> <span class="code-flag">--label</span> "images from summer 2025 holiday"</pre>
+        </div>
+
+        <!-- Example 2 -->
+        <div class="example-block">
+          <div class="example-bar">
+            <span>List approved archive collections</span>
+            <button class="copy-btn" onclick="copyExample(this)">▢ Copy</button>
+          </div>
+          <pre><span class="code-comment"># List collections in table format</span>
+<span class="code-cmd">tinytoken archive list</span></pre>
+        </div>
+
+        <!-- Example 3 -->
+        <div class="example-block">
+          <div class="example-bar">
+            <span>Verify container integrity</span>
+            <button class="copy-btn" onclick="copyExample(this)">▢ Copy</button>
+          </div>
+          <pre><span class="code-comment"># Run zero-copy structural verification on ZIP</span>
+<span class="code-cmd">tinytoken archive verify</span> ./data/tokens.zip</pre>
+        </div>
+      </article>
+
       <footer class="mt-20 pt-6 border-t border-gray-200 text-xs text-gray-400 flex items-center justify-between">
 
         <span>&copyRisto Ikonen 2026. All Rights Reserved. TinyToken is part of Risukko Project.</span>
@@ -1646,6 +1811,9 @@
           </li>
           <li class="toc-item">
             <a href="#stream" class="toc-link" data-section="stream">stream</a>
+          </li>
+          <li class="toc-item">
+            <a href="#archive" class="toc-link" data-section="archive">archive</a>
           </li>
         </ul>
       </div>

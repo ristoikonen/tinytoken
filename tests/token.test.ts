@@ -1801,6 +1801,52 @@ describe("TinyToken GF(2^8) + VQ + SHARK/SNARK Pipeline", () => {
     expect(zipOut).toContain("tokens inspected");
   });
 
+  test("cli.ts: archive subcommand (list, status, verify, freeze)", async () => {
+    // 1. archive list
+    const listProc = Bun.spawnSync([process.execPath, "cli.ts", "archive", "list"]);
+    expect(listProc.exitCode).toBe(0);
+
+    // 2. archive status --json
+    const statusProc = Bun.spawnSync([process.execPath, "cli.ts", "archive", "status", "--json"]);
+    expect(statusProc.exitCode).toBe(0);
+    const statusJson = JSON.parse(statusProc.stdout.toString());
+    expect(statusJson.activeArchive.exists).toBe(true);
+    expect(statusJson.activeArchive.sizeBytes).toBeGreaterThan(22);
+
+    // 3. archive verify ./data/tokens.zip
+    const verifyProc = Bun.spawnSync([process.execPath, "cli.ts", "archive", "verify", "./data/tokens.zip"]);
+    expect(verifyProc.exitCode).toBe(0);
+    const verifyOut = verifyProc.stdout.toString();
+    expect(verifyOut).toContain("[ARCHIVE VERIFY SUCCESS]");
+    expect(verifyOut).toContain("GF(2^8) token container");
+
+    // 4. archive freeze with label to temporary directory
+    const testDir = "./data/test_archives_cli";
+    try {
+      const freezeProc = Bun.spawnSync([
+        process.execPath,
+        "cli.ts",
+        "archive",
+        "freeze",
+        "--label",
+        "cli test freeze",
+        "--dir",
+        testDir,
+        "--json",
+      ]);
+      expect(freezeProc.exitCode).toBe(0);
+      const freezeJson = JSON.parse(freezeProc.stdout.toString());
+      expect(freezeJson.success).toBe(true);
+      expect(freezeJson.archive.label).toBe("cli test freeze");
+      expect(freezeJson.archive.filename).toMatch(/^tokens_\d{4}-\d{2}-\d{2}_\d{6}_\d+tok\.zip$/);
+
+      const f = Bun.file(freezeJson.archive.path);
+      expect(await f.exists()).toBe(true);
+    } finally {
+      Bun.spawnSync(["pwsh", "-NoProfile", "-Command", `Remove-Item -Recurse -Force "${testDir}" -ErrorAction SilentlyContinue`]);
+    }
+  });
+
   test("ContentId: immutable content-addressed identity via 32-byte SHA-256 Merkle root", async () => {
     const tokenFile = Bun.file("data/tok_00004_Henri.jpg.token");
     expect(await tokenFile.exists()).toBe(true);

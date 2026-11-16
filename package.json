@@ -12,6 +12,7 @@
     "test": "bun test",
     "tokenize": "bun run cli.ts",
     "struct": "bun run cli.ts struct",
+    "archive": "bun run cli.ts archive",
     "cli": "bun run cli.ts",
     "build:windows": "bun build --compile --target=bun-windows-x64 ./server.ts --outfile ./tinytoken.exe"
   },

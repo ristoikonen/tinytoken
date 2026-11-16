@@ -519,6 +519,10 @@
       memeory mapped file kind of file read -feature
     </a>
 
+    <a class="nav-link active" href="#archive">
+      <span class="nav-icon">🗄</span> freeze &amp; manage archives
+    </a>
+
 
     <!-- Add further commands here -->
     <!--
@@ -725,6 +729,48 @@ bun tinytoken ./documents/report.pdf -o ./output/report.token --info</pre>
 
     </section>
 
+    <section id="archive">
+      <h1>archive</h1>
+      <p>
+        Freeze active tokens into approved archives, list registered collections, and verify archive containers.
+      </p>
+
+      <div class="syntax">
+        <div class="syntax-label">Syntax</div>
+        <span class="command">tinytoken archive</span>
+        <span class="argument">&lt;freeze|list|status|verify&gt;</span>
+        <span class="option">[options]</span>
+      </div>
+
+      <h2>Examples</h2>
+
+      <div class="example">
+        <div class="example-header">
+          <span class="example-title">Freeze active tokens</span>
+          <button class="copy-btn" onclick="copyExample(this)">▢ Copy</button>
+        </div>
+        <pre><span class="comment"># Freeze active tokens into APP_ARCHIVE_DIR with label</span>
+tinytoken archive freeze --label "images from summer 2025 holiday"</pre>
+      </div>
+
+      <div class="example">
+        <div class="example-header">
+          <span class="example-title">List archive collections</span>
+          <button class="copy-btn" onclick="copyExample(this)">▢ Copy</button>
+        </div>
+        <pre><span class="comment"># List approved collections from registry</span>
+tinytoken archive list</pre>
+      </div>
+
+      <div class="example">
+        <div class="example-header">
+          <span class="example-title">Verify archive container</span>
+          <button class="copy-btn" onclick="copyExample(this)">▢ Copy</button>
+        </div>
+        <pre><span class="comment"># Validate ZIP structure and token magic</span>
+tinytoken archive verify ./data/tokens.zip</pre>
+      </div>
+    </section>
 
     <!-- <div class="callout callout-tip">
       <div class="callout-icon">
