@@ -628,7 +628,7 @@
     "isManuallyVerified": true
   },
   "152": {
-    "name": "Gray Kangaroos",
+    "name": "Kangaroo",
     "category": "Silhouette",
     "isManuallyVerified": true,
     "rgb": [
@@ -638,7 +638,7 @@
     ],
     "source": "human_verified",
     "confidence": 1,
-    "updatedAt": "2026-11-01T06:56:10.813Z"
+    "updatedAt": "2026-11-16T21:02:27.314Z"
   },
   "153": {
     "name": "Possum",
@@ -833,7 +833,7 @@
     "updatedAt": "2026-11-01T08:59:52.453Z"
   },
   "194": {
-    "name": "Possum",
+    "name": "Kangaroo",
     "category": "Silhouette",
     "isManuallyVerified": true,
     "rgb": [
@@ -843,10 +843,10 @@
     ],
     "source": "human_verified",
     "confidence": 1,
-    "updatedAt": "2026-11-03T08:07:14.752Z"
+    "updatedAt": "2026-11-16T21:02:27.314Z"
   },
   "195": {
-    "name": "Possum",
+    "name": "Kangaroo",
     "category": "Silhouette",
     "isManuallyVerified": true,
     "rgb": [
@@ -856,7 +856,7 @@
     ],
     "source": "human_verified",
     "confidence": 1,
-    "updatedAt": "2026-11-03T08:07:14.752Z"
+    "updatedAt": "2026-11-16T21:02:27.314Z"
   },
   "196": {
     "name": "Risto",
@@ -872,7 +872,7 @@
     "updatedAt": "2026-11-01T09:10:37.954Z"
   },
   "201": {
-    "name": "Hector",
+    "name": "Kangaroo",
     "category": "Silhouette",
     "isManuallyVerified": true,
     "rgb": [
@@ -882,7 +882,7 @@
     ],
     "source": "human_verified",
     "confidence": 1,
-    "updatedAt": "2026-11-01T09:10:20.194Z"
+    "updatedAt": "2026-11-16T21:02:27.314Z"
   },
   "202": {
     "name": "Possum",

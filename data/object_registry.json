@@ -785,20 +785,24 @@
     "label": "Kangaroo",
     "category": "Silhouette",
     "dominantCentroidDist": {
-      "0": 0.125,
-      "7": 0.125,
-      "49": 0.125,
-      "55": 0.167,
-      "91": 0.167,
-      "97": 0.167,
-      "98": 0.125
+      "0": 0.062,
+      "7": 0.062,
+      "49": 0.062,
+      "55": 0.083,
+      "91": 0.083,
+      "97": 0.083,
+      "98": 0.062,
+      "152": 0.125,
+      "194": 0.125,
+      "195": 0.125,
+      "201": 0.125
     },
     "source": "human_verified",
     "confidence": 1,
-    "version": 2,
-    "observationCount": 2,
+    "version": 3,
+    "observationCount": 3,
     "createdAt": "2026-11-01T09:00:10.166Z",
-    "updatedAt": "2026-11-01T09:02:16.471Z"
+    "updatedAt": "2026-11-16T21:02:27.314Z"
   },
   {
     "recipeId": "rcp_grass_field",

@@ -4352,5 +4352,30 @@
     "observedAt": "2026-11-16T08:12:47.830Z",
     "source": "human_verified",
     "confidence": 1
+  },
+  {
+    "evidenceId": "evi_1794862947316_aqvdf",
+    "recipeId": "rcp_kangaroo",
+    "label": "Kangaroo",
+    "category": "Silhouette",
+    "observedTokenId": "tok_00169_roofilled.jpg",
+    "boundingBox": [
+      0.39512887121523205,
+      0.42133265306122447,
+      0.052559918739599316,
+      0.10612244897959183
+    ],
+    "observedCentroids": [
+      194,
+      195,
+      201,
+      152
+    ],
+    "latitude": -35.1843,
+    "longitude": 149.1328,
+    "utcTimestamp": "2026-11-16T21:02:27.314Z",
+    "observedAt": "2026-11-16T21:02:27.314Z",
+    "source": "human_verified",
+    "confidence": 1
   }
 ]

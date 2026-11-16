@@ -28,6 +28,7 @@ import {
   WEBP_SMART_SUBSAMPLE,
 } from "../models/token";
 import {
+  extractColorHogFallback,
   extractColorHogFallbackFromRgb224,
   extractRealDinoEmbedding,
 } from "./dinoEmbedding";
@@ -598,7 +599,11 @@ export async function rasterizeAssetToWebpAndTensors(
     const sharpNs = Bun.nanoseconds() - tSharp0;
 
     const tDino0 = Bun.nanoseconds();
-    const dinoEmbedding = extractColorHogFallbackFromRgb224(sourceBytes);
+    const dinoEmbedding = extractColorHogFallback(
+      sourceBytes,
+      fallbackHeader.width,
+      fallbackHeader.height,
+    );
     const dinoNs = Bun.nanoseconds() - tDino0;
 
     return {

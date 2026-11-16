@@ -60,6 +60,11 @@ import {
   validateBinaryToken,
 } from "../utils/tokenCodec";
 import {
+  computeDinoCosineSimilarity,
+  extractColorHogFallback,
+  extractColorHogFallbackFromRgb224,
+} from "../utils/dinoEmbedding";
+import {
   adcDistanceToSimilarityPct,
   computeHybridVisualSimilarity,
   computeVqAdcDistance,
@@ -838,6 +843,70 @@ describe("TinyToken GF(2^8) + VQ + SHARK/SNARK Pipeline", () => {
     } finally {
       Bun.env.APP_STOP_ON_25KB_LIMIT = origEnv;
     }
+  });
+
+  test("extractColorHogFallback: dynamic stride & proportional grid handles arbitrary dimensions without zero-vectors", () => {
+    // 1. Small dimensions (e.g. 50x50 = 2,500 pixels < 50,176 pixels cutoff)
+    const smallW = 50;
+    const smallH = 50;
+    const smallBuf = new Uint8Array(smallW * smallH * 3);
+    for (let i = 0; i < smallBuf.length; i += 3) {
+      smallBuf[i] = 200; // Red dominant
+      smallBuf[i + 1] = 50;
+      smallBuf[i + 2] = 50;
+    }
+    const smallEmb = extractColorHogFallback(smallBuf, smallW, smallH);
+    expect(smallEmb.length).toBe(384);
+    // Crucial: Must NOT be all-zeroes!
+    const nonZeroSmall = Array.from(smallEmb).some((val) => val !== 0);
+    expect(nonZeroSmall).toBe(true);
+
+    // Self-similarity must be 1.0
+    const simSelf = computeDinoCosineSimilarity(smallEmb, smallEmb);
+    expect(simSelf).toBeCloseTo(1.0, 4);
+
+    // 2. Typical pipeline dimension: 384x384 (DINO_DECODE_DIMENSION)
+    const dim384 = 384;
+    const buf384 = new Uint8Array(dim384 * dim384 * 3);
+    for (let y = 0; y < dim384; y++) {
+      for (let x = 0; x < dim384; x++) {
+        const idx = (y * dim384 + x) * 3;
+        buf384[idx] = x % 256;
+        buf384[idx + 1] = y % 256;
+        buf384[idx + 2] = 128;
+      }
+    }
+    const emb384 = extractColorHogFallback(buf384, dim384, dim384);
+    expect(emb384.length).toBe(384);
+    const nonZero384 = Array.from(emb384).some((val) => val !== 0);
+    expect(nonZero384).toBe(true);
+
+    // 3. Rectangular dimension: 384x256 (non-square aspect ratio)
+    const rectW = 384;
+    const rectH = 256;
+    const bufRect = new Uint8Array(rectW * rectH * 3);
+    bufRect.fill(120);
+    const embRect = extractColorHogFallback(bufRect, rectW, rectH);
+    expect(embRect.length).toBe(384);
+    const nonZeroRect = Array.from(embRect).some((val) => val !== 0);
+    expect(nonZeroRect).toBe(true);
+
+    // 4. Color differentiation: Red image vs Blue image
+    const blueBuf = new Uint8Array(smallW * smallH * 3);
+    for (let i = 0; i < blueBuf.length; i += 3) {
+      blueBuf[i] = 20;
+      blueBuf[i + 1] = 50;
+      blueBuf[i + 2] = 220; // Blue dominant
+    }
+    const blueEmb = extractColorHogFallback(blueBuf, smallW, smallH);
+    const colorDist = computeDinoCosineSimilarity(smallEmb, blueEmb);
+    expect(colorDist).toBeLessThan(0.7); // Strongly differentiated
+
+    // 5. Backward compatibility: Calling extractColorHogFallbackFromRgb224 without width/height
+    const buf224 = new Uint8Array(224 * 224 * 3).fill(160);
+    const emb224 = extractColorHogFallbackFromRgb224(buf224);
+    expect(emb224.length).toBe(384);
+    expect(Array.from(emb224).some((val) => val !== 0)).toBe(true);
   });
 
   test("extensionToMimeType and formatToMimeType cover all Bun-supported image formats and documents", () => {

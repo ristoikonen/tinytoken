@@ -95,7 +95,7 @@ export async function extractRealDinoEmbedding(
   } catch (err) {
     console.warn("DINOv3 ONNX fallback triggered:", err);
     return {
-      embedding: extractColorHogFallbackFromRgb224(rgbBytes),
+      embedding: extractColorHogFallback(rgbBytes, width, height),
       modelId: EmbeddingModelId.COLOR_HOG_FALLBACK,
     };
   }
@@ -104,24 +104,49 @@ export async function extractRealDinoEmbedding(
 export const extractRealDinoV3Embedding = extractRealDinoEmbedding;
 
 /**
- * Synchronous 384-byte Color/HOG/Gram fallback descriptor (`EmbeddingModelId.COLOR_HOG_FALLBACK = 0x01`)
- * for unit tests or environments without ONNX weights.
+ * Synchronous 384-byte Color/HOG fallback descriptor (`EmbeddingModelId.COLOR_HOG_FALLBACK = 0x01`).
+ * Supports arbitrary image dimensions (e.g. 384x384, non-square, or small thumbnails) using
+ * dynamic row stride and proportional 4x4 spatial grid partitioning.
  */
-export function extractColorHogFallbackFromRgb224(
-  rgb224: Uint8Array,
+export function extractColorHogFallback(
+  rgbBytes: Uint8Array,
+  width?: number,
+  height?: number,
 ): Int8Array<ArrayBuffer> {
   const floatVec = new Float32Array(DINO_EMBEDDING_DIMS);
-  const expectedLen = DINO_IMAGE_SIZE * DINO_IMAGE_SIZE * 3;
 
-  if (rgb224.length < expectedLen) {
+  // Deduce or default dimensions if not provided
+  let w = width;
+  let h = height;
+  if (!w || !h || w <= 0 || h <= 0) {
+    if (rgbBytes.length === DINO_IMAGE_SIZE * DINO_IMAGE_SIZE * 3) {
+      w = DINO_IMAGE_SIZE;
+      h = DINO_IMAGE_SIZE;
+    } else if (rgbBytes.length === 384 * 384 * 3) {
+      w = 384;
+      h = 384;
+    } else {
+      const squareSide = Math.max(1, Math.floor(Math.sqrt(rgbBytes.length / 3)));
+      w = squareSide;
+      h = squareSide;
+    }
+  }
+
+  const totalPixels = w * h;
+  const numAvailablePixels = Math.floor(rgbBytes.length / 3);
+  const numPixels = Math.min(totalPixels, numAvailablePixels);
+
+  if (numPixels === 0) {
     return new Int8Array(new ArrayBuffer(DINO_EMBEDDING_DIMS));
   }
 
-  const invPixels = 1 / (DINO_IMAGE_SIZE * DINO_IMAGE_SIZE);
-  for (let i = 0; i < expectedLen; i += 3) {
-    const r = rgb224[i] ?? 0;
-    const g = rgb224[i + 1] ?? 0;
-    const b = rgb224[i + 2] ?? 0;
+  // 1. Global Opponent Color Histogram (Dimensions 0..63)
+  const invPixels = 1 / numPixels;
+  const maxByteIdx = numPixels * 3;
+  for (let i = 0; i < maxByteIdx; i += 3) {
+    const r = rgbBytes[i] ?? 0;
+    const g = rgbBytes[i + 1] ?? 0;
+    const b = rgbBytes[i + 2] ?? 0;
 
     const luma = (0.299 * r + 0.587 * g + 0.114 * b) / 255.001;
     const rg = (r - g + 255) / 510.001;
@@ -142,23 +167,35 @@ export function extractColorHogFallbackFromRgb224(
     floatVec[i] = (floatVec[i] ?? 0) - histMean;
   }
 
+  // 2. Spatial 4x4 Patch Moments (Dimensions 64..127)
+  const blockW = w / 4;
+  const blockH = h / 4;
+  const stride = w * 3;
+  const stepY = Math.max(1, Math.round(blockH / 28));
+  const stepX = Math.max(1, Math.round(blockW / 28));
+
   for (let cy = 0; cy < 4; cy++) {
+    const yStart = Math.floor(cy * blockH);
+    const yEnd = yStart < h ? Math.min(h, Math.max(yStart + 1, Math.floor((cy + 1) * blockH))) : h;
+
     for (let cx = 0; cx < 4; cx++) {
+      const xStart = Math.floor(cx * blockW);
+      const xEnd = xStart < w ? Math.min(w, Math.max(xStart + 1, Math.floor((cx + 1) * blockW))) : w;
+
       let sumL = 0;
       let sumRG = 0;
       let sumBY = 0;
       let sumL2 = 0;
       let count = 0;
 
-      const yStart = cy * 56;
-      const xStart = cx * 56;
-      for (let y = yStart; y < yStart + 56; y += 2) {
-        const rowOffset = y * DINO_IMAGE_SIZE * 3;
-        for (let x = xStart; x < xStart + 56; x += 2) {
+      for (let y = yStart; y < yEnd; y += stepY) {
+        const rowOffset = y * stride;
+        for (let x = xStart; x < xEnd; x += stepX) {
           const p = rowOffset + x * 3;
-          const r = (rgb224[p] ?? 0) / 255;
-          const g = (rgb224[p + 1] ?? 0) / 255;
-          const b = (rgb224[p + 2] ?? 0) / 255;
+          if (p + 2 >= rgbBytes.length) continue;
+          const r = (rgbBytes[p] ?? 0) / 255;
+          const g = (rgbBytes[p + 1] ?? 0) / 255;
+          const b = (rgbBytes[p + 2] ?? 0) / 255;
           const l = 0.299 * r + 0.587 * g + 0.114 * b;
           sumL += l;
           sumRG += r - g;
@@ -168,38 +205,48 @@ export function extractColorHogFallbackFromRgb224(
         }
       }
 
-      const meanL = sumL / count;
-      const stdL = Math.sqrt(Math.max(0, sumL2 / count - meanL * meanL));
+      const safeCount = Math.max(1, count);
+      const meanL = sumL / safeCount;
+      const stdL = Math.sqrt(Math.max(0, sumL2 / safeCount - meanL * meanL));
       const baseIdx = 64 + (cy * 4 + cx) * 4;
       floatVec[baseIdx] = (meanL - 0.5) * 0.65;
-      floatVec[baseIdx + 1] = (sumRG / count) * 0.95;
-      floatVec[baseIdx + 2] = (sumBY / count) * 0.95;
+      floatVec[baseIdx + 1] = (sumRG / safeCount) * 0.95;
+      floatVec[baseIdx + 2] = (sumBY / safeCount) * 0.95;
       floatVec[baseIdx + 3] = (stdL - 0.18) * 1.35;
     }
   }
 
-  const stride = DINO_IMAGE_SIZE * 3;
-  for (let y = 1; y < DINO_IMAGE_SIZE - 1; y += 2) {
-    const cellY = Math.min(3, (y / 56) | 0);
-    const rowOffset = y * stride;
-    for (let x = 1; x < DINO_IMAGE_SIZE - 1; x += 2) {
-      const p = rowOffset + x * 3;
-      const gx =
-        (rgb224[p + 3]! - rgb224[p - 3]!) * 0.3 +
-        (rgb224[p + 4]! - rgb224[p - 2]!) * 0.59 +
-        (rgb224[p + 5]! - rgb224[p - 1]!) * 0.11;
-      const gy =
-        (rgb224[p + stride]! - rgb224[p - stride]!) * 0.3 +
-        (rgb224[p + stride + 1]! - rgb224[p - stride + 1]!) * 0.59 +
-        (rgb224[p + stride + 2]! - rgb224[p - stride + 2]!) * 0.11;
+  // 3. Sobel HOG Gradients (Dimensions 128..255)
+  if (w >= 3 && h >= 3) {
+    const hogStepY = Math.max(1, Math.round(h / 112));
+    const hogStepX = Math.max(1, Math.round(w / 112));
+    const estSamples = ((h - 2) / hogStepY) * ((w - 2) / hogStepX);
+    const hogWeight = estSamples > 0 ? (12321 / estSamples) * 0.018 : 0.018;
 
-      const mag = Math.hypot(gx, gy) / 255;
-      if (mag > 0.035) {
-        const angle = (Math.atan2(gy, gx) + Math.PI) / (2 * Math.PI);
-        const orientBin = Math.min(7, (angle * 8) | 0);
-        const cellX = Math.min(3, (x / 56) | 0);
-        const hogIdx = 128 + (cellY * 4 + cellX) * 8 + orientBin;
-        floatVec[hogIdx] = (floatVec[hogIdx] ?? 0) + mag * 0.018;
+    for (let y = 1; y < h - 1; y += hogStepY) {
+      const cellY = Math.min(3, Math.floor(y / blockH));
+      const rowOffset = y * stride;
+      for (let x = 1; x < w - 1; x += hogStepX) {
+        const p = rowOffset + x * 3;
+        if (p + stride + 2 >= rgbBytes.length || p - stride < 0) continue;
+
+        const gx =
+          (rgbBytes[p + 3]! - rgbBytes[p - 3]!) * 0.3 +
+          (rgbBytes[p + 4]! - rgbBytes[p - 2]!) * 0.59 +
+          (rgbBytes[p + 5]! - rgbBytes[p - 1]!) * 0.11;
+        const gy =
+          (rgbBytes[p + stride]! - rgbBytes[p - stride]!) * 0.3 +
+          (rgbBytes[p + stride + 1]! - rgbBytes[p - stride + 1]!) * 0.59 +
+          (rgbBytes[p + stride + 2]! - rgbBytes[p - stride + 2]!) * 0.11;
+
+        const mag = Math.hypot(gx, gy) / 255;
+        if (mag > 0.035) {
+          const angle = (Math.atan2(gy, gx) + Math.PI) / (2 * Math.PI);
+          const orientBin = Math.min(7, (angle * 8) | 0);
+          const cellX = Math.min(3, Math.floor(x / blockW));
+          const hogIdx = 128 + (cellY * 4 + cellX) * 8 + orientBin;
+          floatVec[hogIdx] = (floatVec[hogIdx] ?? 0) + mag * hogWeight;
+        }
       }
     }
   }
@@ -207,8 +254,9 @@ export function extractColorHogFallbackFromRgb224(
   return quantizeFloat32ToInt8(floatVec);
 }
 
-// Keep backwards-compatible alias for synchronous callers
-export const extractDinoEmbeddingFromRgb224 = extractColorHogFallbackFromRgb224;
+// Keep backwards-compatible aliases for synchronous callers
+export const extractColorHogFallbackFromRgb224 = extractColorHogFallback;
+export const extractDinoEmbeddingFromRgb224 = extractColorHogFallback;
 
 /**
  * Computes Cosine Similarity (-1.0 .. 1.0) between two 384-byte `Int8Array` embeddings
