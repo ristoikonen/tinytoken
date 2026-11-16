@@ -1,5 +1,6 @@
 import { serve, type BunRequest } from "bun";
 import { LearningHandlers } from "./handlers/learningHandlers";
+import { streamingArchiveHandlers } from "./handlers/streamingArchiveHandlers";
 import { TokenApiHandlers } from "./handlers/tokenHandlers";
 import {
   AllowedFileTypes,
@@ -231,6 +232,10 @@ async function initIndex(): Promise<void> {
 
 // Unified API Route Dispatcher
 async function handleApiRoute(path: string, req: BunRequest, url: URL): Promise<Response> {
+  if (path.startsWith("/api/v1/archives")) {
+    const res = streamingArchiveHandlers.handleRoute(path, req, url);
+    if (res) return res;
+  }
   if (path === "/api/stats") return apiHandlers.handleStats();
   if (path === "/api/codebook") return apiHandlers.handleCodebook();
   if (path === "/api/registry") return apiHandlers.handleGetRegistry();
