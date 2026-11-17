@@ -15,5 +15,14 @@
     "modified": "2026-11-17T04:31:33.503Z",
     "label": "cli test freeze",
     "sha256": "083f176bdc4bb564500806f555123a8a701fccbd13c1ebda040b1eed2c348691"
+  },
+  {
+    "id": "tokens_2026-11-18_102832_57tok",
+    "filename": "tokens_2026-11-18_102832_57tok.zip",
+    "path": "./data/archives/tokens_2026-11-18_102832_57tok.zip",
+    "size": 712508,
+    "modified": "2026-11-17T23:28:32.103Z",
+    "label": "Basics",
+    "sha256": "1a6d25d6c7038ec88fbd3e6156f763976ed077d7cc60efe4a059f8e623d96dde"
   }
 ]

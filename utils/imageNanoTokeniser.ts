@@ -69,6 +69,16 @@
  *    Latency and throughput figures are to be measured empirically via Bun.nanoseconds()
  *    benchmarks rather than stated as static hardcoded assumptions.
  *
+ *  [FIX 8: Ed25519 Domain Prefix Length (Exact 18 Bytes)]
+ *    The domain prefix string is strictly "TT-NANO-ED25519-V1" (18 ASCII characters/bytes, zero
+ *    null terminator). The signed input buffer is: 18B prefix + 448B payload = 466 Bytes Total.
+ *    The domain prefix is ephemeral to the signer/verifier transcript and is NOT stored on the wire.
+ *
+ *  [FIX 9: Complete Parent Independence & Two-Phase CID-128 Resolution]
+ *    NanoToken does NOT depend on the parent token for verification, RS healing, or DINO search.
+ *    The pointer is an opaque routing handle. When resolving CID-128, resolvers must guard against
+ *    16-byte prefix ambiguity and verify the parent's full 32-byte Merkle root upon hydration.
+ *
  * -------------------------------------------------------------------------------------------------
  * SELECTED PRIMARY ARCHITECTURE: 512-BYTE HMAC-SHA256 CONTAINER (CANDIDATE 1)
  * -------------------------------------------------------------------------------------------------
@@ -238,13 +248,13 @@
  * -------------------------------------------------------------------------------------------------
  * ED25519 CRYPTOGRAPHIC BINDING & DOMAIN SEPARATION SPECIFICATION:
  * -------------------------------------------------------------------------------------------------
- *  1. Domain Separation Prefix (Exact 19 Bytes):
+ *  1. Domain Separation Prefix (Exact 18 Bytes):
  *     To prevent signature cross-protocol replay attacks (e.g. replaying a NanoToken signature
  *     against a full TinyToken Section I attestation), the signed message MUST prepend:
- *       DomainPrefix = "TT-NANO-ED25519-v1:" (Exact 19 ASCII Bytes, zero null terminator):
- *       Hex: [0x54, 0x54, 0x2D, 0x4E, 0x41, 0x4E, 0x4F, 0x2D, 0x45, 0x44, 0x32, 0x35, 0x35, 0x31, 0x39, 0x2D, 0x76, 0x31, 0x3A]
- *       (Alternatively, if null-delimited: "TT-NANO-ED25519-v1\0" = 18 ASCII chars + 1 byte 0x00 = 19 Bytes).
- *     Signed Message = DomainPrefix (19 B) || Healed Payload (448 B: 0x000..0x1BF) = 467 Bytes Total.
+ *       DomainPrefix = "TT-NANO-ED25519-V1" (Exact 18 ASCII Bytes, zero null terminator):
+ *       Hex: [0x54, 0x54, 0x2D, 0x4E, 0x41, 0x4E, 0x4F, 0x2D, 0x45, 0x44, 0x32, 0x35, 0x35, 0x31, 0x39, 0x2D, 0x56, 0x31]
+ *     Signed Message = DomainPrefix (18 B) || Healed Payload (448 B: 0x000..0x1BF) = 466 Bytes Total.
+ *     (Note: Stored Ed25519 signature is 64 B at 0x1C0..0x1FF; DomainPrefix is NOT stored on wire).
  *
  *  2. Strict Model Identity Binding:
  *     modelId (0x006..0x007, e.g. 0x0002 for DINOv3 ViT-S/16 Q8) is explicitly covered under
@@ -252,14 +262,21 @@
  *     search index configuration before performing cosine similarity. This prevents cross-model
  *     vector substitution attacks (e.g. signing a text BGE vector and masquerading as visual DINO).
  *
- *  3. Pointer Mode Selection & Resolution:
- *     The parser inspects flags (0x00D) bit 1 to determine pointer resolution semantics:
+ *  3. Pointer Mode Selection & Two-Phase CID-128 Resolution:
+ *     The parser inspects flags (0x00D) bit 1 (FLAG_POINTER_CID128) to determine semantics:
  *     - If (flags & 0x02) === 0 (Mode 0: UUIDv7):
  *       Resolver converts bytes 0x010..0x01F to canonical hex UUID: `s3://bucket/${uuidHex}.token`
  *       or invokes HTTP endpoint `GET /archives/tokens/${uuidHex}`.
- *     - If (flags & 0x02) === 2 (Mode 1: CID-128):
- *       Resolver matches the 16-byte binary prefix against active archive indexes:
- *       `zipEngine.findEntryByCidPrefix16(compactPointer)`.
+ *     - If (flags & 0x02) === 2 (Mode 1: CID-128, Default):
+ *       Two-Phase Resolution Protocol:
+ *         Phase 1 (Routing Hint): Find entries in active archive index matching prefix16.
+ *           -> Ambiguity Guard: If > 1 entry matches prefix16, ABORT resolution with
+ *              AMBIGUOUS_PREFIX error (prevents accidental or crafted prefix collision).
+ *         Phase 2 (Full Merkle Attestation): Once candidate 25 KB parent token is loaded,
+ *           calculate its full 32-byte Merkle root (ContentId) and verify that
+ *           parent.merkleRoot.subarray(0, 16) strictly matches the NanoToken pointer AND
+ *           matches the authoritative archive catalog. A 16-byte prefix alone is NEVER
+ *           treated as a complete identity check.
  *
  * =================================================================================================
  * LOW-LEVEL FFI, ZIG PARSING & MEMORY ALIGNMENT DIRECTIVES
@@ -290,5 +307,33 @@
  *       When slicing typed arrays via `new Int8Array(mmapBuffer, tokenOffset + DINO_OFFSET, 384)`,
  *       the caller must ensure that `tokenOffset % 64 === 0` so the backing ArrayBuffer pointer satisfies
  *       SIMD hardware alignment contracts.
+ *
+ * =================================================================================================
+ * PARENT ASSET INDEPENDENCE & TWO-TIER OPERATIONAL LIFECYCLE
+ * =================================================================================================
+ *
+ *  1. Zero Dependency on Parent for Core Functions:
+ *     NanoToken is 100% self-contained. The parent TinyToken (12-25 KB) DOES NOT need to be
+ *     online, present on disk, or reachable on the network for:
+ *       - Reed-Solomon payload self-healing (runs over NanoToken's own 32B parity).
+ *       - Cryptographic verification (HMAC or Ed25519 verifies NanoToken's own bytes).
+ *       - Vector similarity search (DINO 384-dim Int8 cosine distance runs directly in RAM).
+ *       - Unsupervised clustering, K-Means, and nearest-neighbor classification.
+ *     The pointer (CID-128 or UUIDv7) is strictly an opaque routing handle (like an ISBN on a
+ *     library card). The library card can be authenticated and searched even if the book is absent.
+ *
+ *  2. Graceful Degradation when Parent Asset is Missing:
+ *     When a search query yields a top NanoToken hit, asset hydration is optional:
+ *       - If Parent is Present: UI displays full 320x320 WebP thumbnail and OCR text.
+ *       - If Parent is Absent (Cold storage, detached drive, edge drone): Resolver returns
+ *         parentStatus = "unavailable" | "cold_storage". Search rankings, match scores (e.g. 0.94),
+ *         original dimensions, format, and timestamp remain 100% valid and operational.
+ *
+ *  3. Operational Use-Cases Where Parent Intentionally Does Not Exist:
+ *     - Tactical Edge Drones / Satellites: Drone takes 10 MB images, generates 512B NanoTokens,
+ *       and streams ONLY NanoTokens over satellite to ground control. Raw 10 MB images stay on drone.
+ *     - Privacy-Preserving Cloud Search: Sensitive medical/surveillance imagery is indexed on-prem.
+ *       Only 512B NanoTokens are uploaded to cloud search clusters. The cloud searches and ranks
+ *       embeddings without ever having access to the underlying visual pixels.
  * =================================================================================================
  */
