@@ -4,7 +4,7 @@ import { S3Client } from "bun";
  * 
 bun run S3Runner.ts
 
-[R2] Target: bun-app/tokens/doc-001.tiny (https://6eae64fa83e289be218119704100c3b1.r2.cloudflarestorage.com)
+[R2] Target: bun-app/tokens/doc-001.tiny 
 [R2] Write OK: 25600B in 890.67ms
 [R2] Read OK: 25600B in 240.58ms
 
@@ -16,7 +16,7 @@ bun run S3Runner.ts /list
 
 
 export function getR2Client(): { s3: S3Client; bucket: string; endpoint: string } {
-    const endpoint = Bun.env.S3_ENDPOINT || "https://6eae64fa83e289be218119704100c3b1.r2.cloudflarestorage.com";
+    const endpoint = Bun.env.S3_ENDPOINT || "";
     const accessKeyId = Bun.env.S3_ACCESS_KEY || "";
     const secretAccessKey = Bun.env.S3_SECRET || "";
     const bucket =

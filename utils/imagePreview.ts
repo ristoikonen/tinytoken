@@ -332,7 +332,7 @@ export function boxDownsampleRgbTo16x16(
   return out;
 }
 
-/**
+/** 
  * Decodes any image or SVG (or synthesized document cover) via `sharp` into:
  * - A lean 320x320 WebP preview (`PreviewFormat.WEBP`, typically 2.5 - 9 KB)
  * - A true decoded 16x16 RGB VQ codebook grid (`256 B`)
@@ -458,11 +458,11 @@ export async function rasterizeAssetToWebpAndTensors(
     const bodySvg =
       docLines.length > 0
         ? docLines
-            .map(
-              (l, i) =>
-                `<text x="50" y="${112 + i * 16}" fill="#334155" font-family="monospace" font-size="10">${l}</text>`,
-            )
-            .join("\n")
+          .map(
+            (l, i) =>
+              `<text x="50" y="${112 + i * 16}" fill="#334155" font-family="monospace" font-size="10">${l}</text>`,
+          )
+          .join("\n")
         : `<rect x="54" y="102" width="174" height="10" rx="4" fill="#334155"/>
       <rect x="54" y="124" width="206" height="7" rx="3" fill="#64748b"/>
       <rect x="54" y="142" width="194" height="7" rx="3" fill="#64748b"/>`;
