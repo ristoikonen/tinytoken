@@ -32,6 +32,7 @@ import {
   DEFAULT_OBSERVATION_LONGITUDE,
   visualTraitRegistry,
 } from "../utils/visualTraitRegistry";
+import type { ArchiveManager } from "../utils/archiveManager";
 import type { VqInvertedIndexEngine } from "../utils/vqInvertedIndex";
 import {
   buildNativeTokenZipBuffer,
@@ -47,7 +48,12 @@ export class TokenApiHandlers {
     private imageDir = getAppImageDir(),
     private invertedIndex?: VqInvertedIndexEngine,
     private documentDir = getAppDocumentDir(),
+    private archiveManager?: ArchiveManager,
   ) { }
+
+  public setArchiveManager(manager: ArchiveManager): void {
+    this.archiveManager = manager;
+  }
 
   /**
    * GET /api/stats
@@ -608,12 +614,17 @@ export class TokenApiHandlers {
       return errorResponse("Another archive write or rebuild is currently in progress", 409);
     }
 
-    let body: { folders?: string[]; tokenIds?: string[] } = {};
+    let body: { folders?: string[]; tokenIds?: string[]; archiveName?: string } = {};
     try {
-      body = (await req.json()) as { folders?: string[]; tokenIds?: string[] };
+      body = (await req.json()) as { folders?: string[]; tokenIds?: string[]; archiveName?: string };
     } catch {
       return errorResponse("Invalid JSON payload for /api/archive/create", 400);
     }
+
+    const rawArchiveName = typeof body.archiveName === "string" ? body.archiveName.trim() : "";
+    const cleanArchiveName = rawArchiveName
+      ? rawArchiveName.replace(/\s+/g, "_").replace(/[^a-zA-Z0-9_\-]/g, "")
+      : "";
 
     const tokenIds = Array.isArray(body.tokenIds)
       ? body.tokenIds.map((id) => String(id || "").trim()).filter(Boolean)
@@ -628,6 +639,31 @@ export class TokenApiHandlers {
         400,
       );
     }
+
+    const postProcessArchive = async (): Promise<{
+      archiveName?: string;
+      frozenArchiveId?: string;
+    }> => {
+      const dataDirPath = (this.engine.getDataDirPath ? this.engine.getDataDirPath() : "./data").replace(/\\/g, "/");
+      if (cleanArchiveName) {
+        try {
+          await Bun.write(`${dataDirPath}/.archive_name`, cleanArchiveName);
+        } catch {}
+      }
+      let frozenArchiveId: string | undefined;
+      if (this.archiveManager) {
+        try {
+          const freezeRes = await this.archiveManager.freezeActiveArchive({
+            archiveName: cleanArchiveName || undefined,
+            label: cleanArchiveName || undefined,
+          });
+          if (freezeRes.success && freezeRes.archive) {
+            frozenArchiveId = freezeRes.archive.id;
+          }
+        } catch {}
+      }
+      return { archiveName: cleanArchiveName || undefined, frozenArchiveId };
+    };
 
     this.writeLockInProgress = true;
     try {
@@ -668,6 +704,7 @@ export class TokenApiHandlers {
           await this.invertedIndex.syncTokens(this.engine.getAllEntries());
         }
 
+        const { archiveName, frozenArchiveId } = await postProcessArchive();
         const buildElapsedMs = Math.round(performance.now() - t0);
         return jsonResponse({
           success: true,
@@ -675,6 +712,8 @@ export class TokenApiHandlers {
           totalTokens: items.length,
           archiveBytes: zipBuf.length,
           buildElapsedMs,
+          archiveName,
+          frozenArchiveId,
         });
       }
 
@@ -695,6 +734,8 @@ export class TokenApiHandlers {
         await Bun.write(stampPath, this.imageDir);
       } catch {}
 
+      const { archiveName, frozenArchiveId } = await postProcessArchive();
+
       return jsonResponse({
         success: true,
         mode: "folders",
@@ -709,6 +750,8 @@ export class TokenApiHandlers {
         archiveBytes: buildRes.archiveBytes,
         buildElapsedMs: buildRes.elapsedMs,
         bootIndexTimeMs: this.engine.lastBootIndexMs,
+        archiveName,
+        frozenArchiveId,
       });
     } finally {
       this.writeLockInProgress = false;
@@ -770,12 +813,22 @@ export class TokenApiHandlers {
     const isZip = this.engine.isZipMode ? this.engine.isZipMode() : true;
     const zipFile = Bun.file(zipPath);
 
+    const dataDirPath = (this.engine.getDataDirPath ? this.engine.getDataDirPath() : "./data").replace(/\\/g, "/");
+    let exportFilename = "tokens.zip";
+    try {
+      const nameFile = Bun.file(`${dataDirPath}/.archive_name`);
+      if (await nameFile.exists()) {
+        const savedName = (await nameFile.text()).trim();
+        if (savedName) exportFilename = `${savedName}.zip`;
+      }
+    } catch {}
+
     if (isZip && (await zipFile.exists()) && zipFile.size >= 22) {
       return new Response(zipFile, {
         status: 200,
         headers: {
           "Content-Type": "application/zip",
-          "Content-Disposition": `attachment; filename="tokens.zip"`,
+          "Content-Disposition": `attachment; filename="${exportFilename}"`,
           "Content-Length": String(zipFile.size),
           "Cache-Control": "no-store",
         },
@@ -811,7 +864,7 @@ export class TokenApiHandlers {
       status: 200,
       headers: {
         "Content-Type": "application/zip",
-        "Content-Disposition": `attachment; filename="tokens.zip"`,
+        "Content-Disposition": `attachment; filename="${exportFilename}"`,
         "Content-Length": String(zipBuf.length),
         "Cache-Control": "no-store",
       },

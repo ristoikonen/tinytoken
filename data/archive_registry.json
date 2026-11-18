@@ -8,15 +8,6 @@
     "sha256": "bb912f420d9c86f1b8513c2ff171f4b35b7ea60a8f4c2bd8140c133eb7046f80"
   },
   {
-    "id": "tokens_2026-11-17_153133_83tok",
-    "filename": "tokens_2026-11-17_153133_83tok.zip",
-    "path": "./data/test_archives_cli/tokens_2026-11-17_153133_83tok.zip",
-    "size": 1148624,
-    "modified": "2026-11-17T04:31:33.503Z",
-    "label": "cli test freeze",
-    "sha256": "083f176bdc4bb564500806f555123a8a701fccbd13c1ebda040b1eed2c348691"
-  },
-  {
     "id": "tokens_2026-11-18_102832_57tok",
     "filename": "tokens_2026-11-18_102832_57tok.zip",
     "path": "./data/archives/tokens_2026-11-18_102832_57tok.zip",
@@ -24,5 +15,14 @@
     "modified": "2026-11-17T23:28:32.103Z",
     "label": "Basics",
     "sha256": "1a6d25d6c7038ec88fbd3e6156f763976ed077d7cc60efe4a059f8e623d96dde"
+  },
+  {
+    "id": "Basic_2026-11-18_110529_83tok",
+    "filename": "Basic_2026-11-18_110529_83tok.zip",
+    "path": "./data/archives/Basic_2026-11-18_110529_83tok.zip",
+    "size": 1148627,
+    "modified": "2026-11-18T00:05:29.282Z",
+    "label": "Basic",
+    "sha256": "aa43e35c1ce39decbed56b7457b49a5843afc55052d6a2606291d17e7ac22bf8"
   }
 ]

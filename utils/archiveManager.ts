@@ -30,6 +30,7 @@ export {
 };
 
 export interface FreezeArchiveOptions {
+  archiveName?: string;
   label?: string;
   archiveDir?: string;
   registryPath?: string;
@@ -610,13 +611,16 @@ export class ArchiveManager {
       const pad = (n: number) => String(n).padStart(2, "0");
       const ts = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
 
-      baseId = `tokens_${ts}_${tokenCount}tok`;
+      const rawPrefix = options?.archiveName?.trim() || "tokens";
+      const cleanPrefix = sanitizeArchiveId(rawPrefix.replace(/\s+/g, "_")) || "tokens";
+
+      baseId = `${cleanPrefix}_${ts}_${tokenCount}tok`;
       filename = `${baseId}.zip`;
       destPath = `${targetDir}/${filename}`;
 
       let counter = 1;
       while (await Bun.file(destPath).exists()) {
-        baseId = `tokens_${ts}_${tokenCount}tok_${counter++}`;
+        baseId = `${cleanPrefix}_${ts}_${tokenCount}tok_${counter++}`;
         filename = `${baseId}.zip`;
         destPath = `${targetDir}/${filename}`;
       }

@@ -131,18 +131,22 @@ export class LearningHandlers {
     if (forbidden) return forbidden;
 
     let label: string | undefined;
+    let archiveName: string | undefined;
     if (req.headers.get("content-type")?.includes("application/json")) {
       try {
-        const body = (await req.json()) as { label?: string };
+        const body = (await req.json()) as { label?: string; archiveName?: string };
         if (body && typeof body.label === "string" && body.label.trim()) {
           label = body.label.trim();
+        }
+        if (body && typeof body.archiveName === "string" && body.archiveName.trim()) {
+          archiveName = body.archiveName.trim();
         }
       } catch {
         return errorResponse("Invalid JSON payload", 400);
       }
     }
 
-    const result = await this.archiveManager.freezeActiveArchive({ label });
+    const result = await this.archiveManager.freezeActiveArchive({ label, archiveName });
     if (!result.success) {
       return jsonResponse({ success: false, error: result.error }, 400);
     }

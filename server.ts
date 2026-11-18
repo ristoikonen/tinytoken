@@ -97,6 +97,7 @@ const apiHandlers = new TokenApiHandlers(
   IMAGE_DIR,
   invertedIndex,
   DOCUMENT_DIR,
+  archiveManager,
 );
 
 function logPerfTiming(label: string, startNs: number): void {

@@ -358,11 +358,15 @@ describe("Persistent Knowledge Layer & Transactional Archive Ingestion", () => {
     expect(subsetValidation.valid).toBe(true);
     expect(subsetValidation.tokenCount).toBe(2);
 
-    // 3. Create archive from selected tokenIds
+    // 3. Create archive from selected tokenIds with custom archiveName
+    tokenHandlers.setArchiveManager(archiveManager);
     const createReq = new Request("http://localhost:3000/api/archive/create", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tokenIds: ["tok_gamma", "tok_epsilon"] }),
+      body: JSON.stringify({
+        tokenIds: ["tok_gamma", "tok_epsilon"],
+        archiveName: "CanberraFire",
+      }),
     });
     const createRes = await tokenHandlers.handleCreateArchive(createReq);
     expect(createRes.status).toBe(200);
@@ -370,11 +374,21 @@ describe("Persistent Knowledge Layer & Transactional Archive Ingestion", () => {
       success: boolean;
       mode: string;
       totalTokens: number;
+      archiveName?: string;
+      frozenArchiveId?: string;
     };
     expect(createBody.success).toBe(true);
     expect(createBody.mode).toBe("selection");
     expect(createBody.totalTokens).toBe(2);
+    expect(createBody.archiveName).toBe("CanberraFire");
+    expect(createBody.frozenArchiveId).toMatch(/^CanberraFire_\d{4}-\d{2}-\d{2}_\d{6}_2tok/);
     expect(searchEngine.getCount()).toBe(2);
+
+    // 4. Export archive reflects the custom archive name in Content-Disposition
+    const namedExportRes = await tokenHandlers.handleExportArchive(
+      new URL("http://localhost:3000/api/archive/export"),
+    );
+    expect(namedExportRes.headers.get("Content-Disposition")).toBe('attachment; filename="CanberraFire.zip"');
   });
 
   test("Archive registry: persisted JSON + startup sync with SHA-256 and path-traversal protection", async () => {

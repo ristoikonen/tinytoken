@@ -973,6 +973,11 @@
           <div class="create-archive-header">
             <span>CREATE ARCHIVE (IMAGES &amp; DOCS)</span>
             <div style="display:flex;gap:0.3rem;align-items:center;">
+              <button id="btn-create-from-view" class="btn mono" type="button"
+                style="padding:0.18rem 0.45rem;font-size:0.65rem;"
+                title="Create archive containing only currently listed tokens">
+                From View (0)
+              </button>
               <button id="btn-add-folder" class="btn mono" type="button"
                 style="padding:0.18rem 0.45rem;font-size:0.65rem;" title="Add another source folder">+ Folder</button>
               <button id="btn-close-create-panel" class="popover-close" type="button" title="Close">✕</button>
@@ -980,13 +985,11 @@
           </div>
           <div id="create-folders-list" style="display:flex;flex-direction:column;gap:0.35rem;"></div>
           <div style="display:flex;gap:0.35rem;justify-content:space-between;align-items:center;margin-top:0.1rem;">
-            <button id="btn-create-from-view" class="btn mono" type="button"
-              style="font-size:0.66rem;padding:0.28rem 0.55rem;"
-              title="Create archive containing only currently listed tokens">
-              From Current View
-            </button>
+            <input id="create-archive-name" type="text" class="search-input mono"
+              placeholder="Archive name (e.g. CanberraFire, optional)..."
+              style="flex:1;font-size:0.68rem;padding:0.28rem 0.5rem;" />
             <button id="btn-submit-create-archive" class="btn btn-action-cyan mono" type="button"
-              style="font-size:0.68rem;padding:0.28rem 0.7rem;">
+              style="font-size:0.68rem;padding:0.28rem 0.7rem;white-space:nowrap;">
               ✓ Build Archive
             </button>
           </div>
@@ -2027,21 +2030,22 @@ No object recipe associated with this token yet. Click [✎ Label] to teach.`;
         alert('Please enter at least one folder path.');
         return;
       }
+      const archiveName = document.getElementById('create-archive-name')?.value.trim() || undefined;
       const btn = document.getElementById('btn-submit-create-archive');
       const prevText = btn.textContent;
       btn.textContent = '⏳ Building...';
       btn.disabled = true;
       try {
-        logDebug(`[ARCHIVE] Creating archive from ${folders.length} folder(s): ${folders.join(', ')}...`, 'cyan');
+        logDebug(`[ARCHIVE] Creating archive${archiveName ? ` '${archiveName}'` : ''} from ${folders.length} folder(s): ${folders.join(', ')}...`, 'cyan');
         const res = await fetch('/api/archive/create', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ folders }),
+          body: JSON.stringify({ folders, archiveName }),
         }).then(r => r.json());
 
         if (res.success) {
           logDebug(
-            `[ARCHIVE] Created ${res.totalTokens} tokens (${res.imageTokens ?? 0} img, ${res.documentTokens ?? 0} doc, ${(res.archiveBytes / 1024).toFixed(1)} KB) in ${res.buildElapsedMs}ms`,
+            `[ARCHIVE] Created ${res.totalTokens} tokens (${res.imageTokens ?? 0} img, ${res.documentTokens ?? 0} doc, ${(res.archiveBytes / 1024).toFixed(1)} KB) in ${res.buildElapsedMs}ms${res.archiveName ? ` [${res.archiveName}]` : ''}`,
             'success'
           );
           toggleCreatePanel(false);
@@ -2065,21 +2069,22 @@ No object recipe associated with this token yet. Click [✎ Label] to teach.`;
         alert('No tokens in the current view to build an archive from.');
         return;
       }
+      const archiveName = document.getElementById('create-archive-name')?.value.trim() || undefined;
       const btn = document.getElementById('btn-create-from-view');
       const prevText = btn.textContent;
       btn.textContent = '⏳ Packing...';
       btn.disabled = true;
       try {
-        logDebug(`[ARCHIVE] Creating archive from current view (${tokenIds.length} tokens)...`, 'cyan');
+        logDebug(`[ARCHIVE] Creating archive${archiveName ? ` '${archiveName}'` : ''} from current view (${tokenIds.length} tokens)...`, 'cyan');
         const res = await fetch('/api/archive/create', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ tokenIds }),
+          body: JSON.stringify({ tokenIds, archiveName }),
         }).then(r => r.json());
 
         if (res.success) {
           logDebug(
-            `[ARCHIVE] Packed ${res.totalTokens} tokens (${(res.archiveBytes / 1024).toFixed(1)} KB) in ${res.buildElapsedMs}ms`,
+            `[ARCHIVE] Packed ${res.totalTokens} tokens (${(res.archiveBytes / 1024).toFixed(1)} KB) in ${res.buildElapsedMs}ms${res.archiveName ? ` [${res.archiveName}]` : ''}`,
             'success'
           );
           toggleCreatePanel(false);
@@ -2125,6 +2130,13 @@ No object recipe associated with this token yet. Click [✎ Label] to teach.`;
           const errText = await res.text();
           throw new Error(`Export failed (${res.status}): ${errText.slice(0, 100)}`);
         }
+
+        const cd = res.headers.get('content-disposition');
+        if (cd && !isFiltered) {
+          const match = cd.match(/filename="?([^";]+)"?/);
+          if (match && match[1]) suggestedName = match[1];
+        }
+
         const blob = await res.blob();
 
         if (typeof window.showSaveFilePicker === 'function') {
